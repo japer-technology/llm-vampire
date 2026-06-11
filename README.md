@@ -1,7 +1,7 @@
-# lmstudio-nexus: Aspirations Paper
+# lmshare: Aspirations Paper
 
 **Status:** Aspirational design document for a public repository  
-**Working name:** `lmstudio-nexus`  
+**Working name:** `lmshare`
 **Project type:** Discovery, governance, routing, and optimization layer for LM Studio-compatible private AI compute  
 **Relationship to LM Studio:** Independent project concept. Not affiliated with LM Studio unless explicitly adopted by that team.
 
@@ -9,13 +9,13 @@
 
 ## Abstract
 
-`lmstudio-nexus` is a proposed local-first software layer that discovers LM Studio-compatible inference endpoints, verifies their capabilities, applies owner and organization policy, and routes AI traffic across available private compute.
+`lmshare` is a proposed local-first software layer that discovers LM Studio-compatible inference endpoints, verifies their capabilities, applies owner and organization policy, and routes AI traffic across available private compute.
 
 The core idea is simple:
 
 > One strong GPU should be able to serve many approved users, devices, rooms, families, teams, and events - without surrendering owner control.
 
-LM Studio already provides the essential runtime surface: a local OpenAI-compatible API, optional API token authentication, configurable local server behavior, and LM Link for using models on remote linked devices as if they were local. `lmstudio-nexus` would sit above that surface as a network-aware broker:
+LM Studio already provides the essential runtime surface: a local OpenAI-compatible API, optional API token authentication, configurable local server behavior, and LM Link for using models on remote linked devices as if they were local. `lmshare` would sit above that surface as a network-aware broker:
 
 - Find available LM Studio-compatible services.
 - Identify which models and capabilities are available.
@@ -25,7 +25,7 @@ LM Studio already provides the essential runtime surface: a local OpenAI-compati
 - Optimize for latency, cost, privacy, power, quality, and availability.
 - Provide a stable OpenAI-compatible endpoint to apps and users.
 
-`lmstudio-nexus` is not merely a scanner. It is a permissioned private AI compute fabric.
+`lmshare` is not merely a scanner. It is a permissioned private AI compute fabric.
 
 ---
 
@@ -37,7 +37,7 @@ Millions of homes, offices, studios, labs, classrooms, and gaming rooms contain 
 
 Cloud AI asks every user to rent inference from somewhere else.
 
-`lmstudio-nexus` asks a different question:
+`lmshare` asks a different question:
 
 > What useful AI work can be served first by compute we already own, already trust, and already have nearby?
 
@@ -70,9 +70,9 @@ The opportunity is to build the layer that turns many isolated local inference s
 
 ## Core proposition
 
-`lmstudio-nexus` turns LM Studio-compatible machines into discoverable, governed AI nodes.
+`lmshare` turns LM Studio-compatible machines into discoverable, governed AI nodes.
 
-A network running `lmstudio-nexus` can answer questions like:
+A network running `lmshare` can answer questions like:
 
 - Which approved AI services are available here?
 - Which models are loaded?
@@ -87,10 +87,10 @@ A network running `lmstudio-nexus` can answer questions like:
 The project should expose a simple endpoint to clients:
 
 ```text
-http://localhost:<nexus-port>/v1
+http://localhost:<lmshare-port>/v1
 ```
 
-Behind that endpoint, `lmstudio-nexus` can route to:
+Behind that endpoint, `lmshare` can route to:
 
 ```text
 Local LM Studio
@@ -122,7 +122,7 @@ Family mode should support:
 
 ### 2. Small businesses
 
-A business may already have many GPU-capable workstations. `lmstudio-nexus` can turn those machines into a governed internal inference pool.
+A business may already have many GPU-capable workstations. `lmshare` can turn those machines into a governed internal inference pool.
 
 Business mode should support:
 
@@ -199,7 +199,7 @@ A discovered endpoint should not automatically become routable. The system must 
 
 Local network access is powerful but dangerous if treated casually.
 
-`lmstudio-nexus` should prefer:
+`lmshare` should prefer:
 
 - Explicit opt-in beacons.
 - Manual registration.
@@ -213,7 +213,7 @@ Raw port scanning may be useful in developer mode, but it should not be the defa
 
 Clients should not need to understand the whole network.
 
-They should call one endpoint. `lmstudio-nexus` handles discovery, policy, routing, optimization, caching, fallback, and observability behind that endpoint.
+They should call one endpoint. `lmshare` handles discovery, policy, routing, optimization, caching, fallback, and observability behind that endpoint.
 
 ### 5. No credential leakage
 
@@ -248,7 +248,7 @@ Users and administrators should be able to inspect why a request was routed to a
 Client apps
   |
   v
-OpenAI-compatible Nexus Gateway
+OpenAI-compatible LM Share Gateway
   |
   +--> Policy engine
   +--> Token vault
@@ -267,7 +267,7 @@ Approved LM Studio-compatible endpoints
   +--> Event/classroom machine
 ```
 
-### Component 1: Nexus Gateway
+### Component 1: LM Share Gateway
 
 The gateway is the endpoint applications call.
 
@@ -281,15 +281,15 @@ POST /v1/embeddings
 POST /v1/completions
 ```
 
-It may also expose Nexus-specific routes:
+It may also expose LM Share-specific routes:
 
 ```text
-GET  /nexus/v1/nodes
-GET  /nexus/v1/capabilities
-POST /nexus/v1/routing/preview
-POST /nexus/v1/events
-POST /nexus/v1/tokens
-GET  /nexus/v1/health
+GET  /lmshare/v1/nodes
+GET  /lmshare/v1/capabilities
+POST /lmshare/v1/routing/preview
+POST /lmshare/v1/events
+POST /lmshare/v1/tokens
+GET  /lmshare/v1/health
 ```
 
 ### Component 2: Discovery layer
@@ -313,7 +313,7 @@ The system should identify endpoints as:
 Unknown OpenAI-compatible endpoint
 LM Studio-compatible endpoint
 Owner-labelled LM Studio endpoint
-Nexus-agent verified endpoint
+LM Share agent verified endpoint
 Business-approved endpoint
 Event-approved endpoint
 ```
@@ -479,7 +479,7 @@ Model optimization does not need to mean fine-tuning. The first version can opti
 
 This is one of the most important differentiators.
 
-Many users in the same room, business, class, or event may ask identical or near-identical questions. Many applications also retry or parallelize identical requests. `lmstudio-nexus` should avoid wasting inference where policy allows reuse.
+Many users in the same room, business, class, or event may ask identical or near-identical questions. Many applications also retry or parallelize identical requests. `lmshare` should avoid wasting inference where policy allows reuse.
 
 It should support three levels:
 
@@ -492,7 +492,7 @@ Example:
 ```text
 User A asks: "Summarize this policy."
 User B asks the exact same request before the answer completes.
-Nexus performs one inference.
+LM Share performs one inference.
 Both clients receive the same result.
 ```
 
@@ -539,7 +539,7 @@ Semantic caching should be opt-in and scoped to the correct realm. It must never
 
 ## Concurrent identical question processing
 
-A major goal of `lmstudio-nexus` is to handle concurrent identical questions intelligently.
+A major goal of `lmshare` is to handle concurrent identical questions intelligently.
 
 This has several variations.
 
@@ -702,7 +702,7 @@ A high-value strategy prompt -> best-of-N or consensus routing
 
 ## Model optimization
 
-`lmstudio-nexus` should help users get better results without forcing them to understand every model detail.
+`lmshare` should help users get better results without forcing them to understand every model detail.
 
 Possible model optimization features:
 
@@ -727,20 +727,20 @@ Per-realm approved model lists
 Example aliases:
 
 ```text
-nexus/fast
-nexus/balanced
-nexus/best
-nexus/code
-nexus/embeddings
-nexus/event-safe
-nexus/business-confidential
-nexus/family-study
+lmshare/fast
+lmshare/balanced
+lmshare/best
+lmshare/code
+lmshare/embeddings
+lmshare/event-safe
+lmshare/business-confidential
+lmshare/family-study
 ```
 
 A client can request:
 
 ```text
-model: "nexus/balanced"
+model: "lmshare/balanced"
 ```
 
 The router decides which real model and endpoint should serve the job.
@@ -811,7 +811,7 @@ Whether guest access expires
 
 ## Security posture
 
-`lmstudio-nexus` must be safe by default.
+`lmshare` must be safe by default.
 
 Minimum safety expectations:
 
@@ -853,14 +853,14 @@ Home GPU PC
   Owner enables family share
 
 Parent laptop
-  Runs lmstudio-nexus gateway
+  Runs lmshare gateway
   Uses approved family token
 
 Student laptop
-  Calls http://localhost:<nexus-port>/v1
-  Requests model "nexus/family-study"
+  Calls http://localhost:<lmshare-port>/v1
+  Requests model "lmshare/family-study"
 
-Nexus
+LM Share
   Confirms family policy
   Routes to home GPU
   Uses cache for repeated study prompts when allowed
@@ -879,7 +879,7 @@ Outcome:
 20 GPU-capable machines
 10 nodes opt in to business contribution
 5 nodes are idle at any given moment
-1 Nexus gateway exposes the approved company AI endpoint
+1 LM Share gateway exposes the approved company AI endpoint
 ```
 
 A request comes in:
@@ -911,8 +911,8 @@ Outcome:
 ```text
 Host brings GPU laptop
 Host starts LM Studio
-Host starts lmstudio-nexus event mode
-Nexus creates a QR code
+Host starts lmshare event mode
+LM Share creates a QR code
 Guests connect to local web app
 Gateway enforces safe model, rate limits, and expiry
 ```
@@ -1027,7 +1027,7 @@ Owner stop button
 ## Suggested repository structure
 
 ```text
-lmstudio-nexus/
+lmshare/
   README.md
   ASPIRATIONS.md
   SECURITY.md
@@ -1044,11 +1044,11 @@ lmstudio-nexus/
     business-mode.md
     family-mode.md
   packages/
-    nexus-core/
-    nexus-gateway/
-    nexus-agent/
-    nexus-ui/
-    nexus-cli/
+    lmshare-core/
+    lmshare-gateway/
+    lmshare-agent/
+    lmshare-ui/
+    lmshare-cli/
   examples/
     family-gateway/
     business-router/
@@ -1060,28 +1060,106 @@ lmstudio-nexus/
 
 ## Possible command-line shape
 
+The command surface should start with simple sharing controls, then expose deeper discovery, routing, governance, and admin commands as users need them.
+
+### Simple sharing controls
+
 ```text
-nexus scan
-nexus nodes
-nexus add http://192.168.1.50:1234 --name home-gpu
-nexus token set home-gpu
-nexus serve --port 4321
-nexus route preview --model nexus/balanced
-nexus event start --duration 2h --model nexus/event-safe
-nexus event stop
-nexus share family on
-nexus share business off
+lmshare serve --port 4321
+lmshare status
+lmshare share off
+lmshare share local
+lmshare share personal on
+lmshare share family on
+lmshare share business off
+lmshare share event on --duration 2h --model lmshare/event-safe
+lmshare share stop
+```
+
+### Discovery and node management
+
+```text
+lmshare scan
+lmshare scan --localhost
+lmshare scan --subnet 192.168.1.0/24 --developer-mode
+lmshare nodes
+lmshare nodes show home-gpu
+lmshare nodes add http://192.168.1.50:1234 --name home-gpu
+lmshare nodes approve home-gpu --realm family
+lmshare nodes disable home-gpu
+lmshare nodes remove home-gpu
+lmshare nodes verify home-gpu
+```
+
+### Tokens and access
+
+```text
+lmshare token set home-gpu
+lmshare token rotate home-gpu
+lmshare token remove home-gpu
+lmshare access list
+lmshare access invite family --device student-laptop
+lmshare access revoke family --device student-laptop
+```
+
+### Models, aliases, and routing
+
+```text
+lmshare models
+lmshare models refresh
+lmshare aliases
+lmshare aliases set lmshare/balanced --model local/qwen-code --node home-gpu
+lmshare route preview --model lmshare/balanced
+lmshare route explain --request-id <id>
+lmshare route rules
+lmshare route rules set --realm business --strategy least-latency
+```
+
+### Realms, policy, and governance
+
+```text
+lmshare realms
+lmshare realms create family
+lmshare policy show family
+lmshare policy set family --cache exact --semantic-cache off
+lmshare policy allow-model family lmshare/family-study
+lmshare policy deny-model event lmshare/business-confidential
+lmshare quotas set event --requests-per-minute 20
+lmshare audit tail
+```
+
+### Event mode
+
+```text
+lmshare event start --duration 2h --model lmshare/event-safe
+lmshare event qr
+lmshare event guests
+lmshare event extend --duration 30m
+lmshare event stop
+```
+
+### Cache, observability, and admin
+
+```text
+lmshare cache stats
+lmshare cache clear --realm event
+lmshare health
+lmshare logs tail
+lmshare config show
+lmshare config export
+lmshare config import ./lmshare-config.json
+lmshare shutdown
 ```
 
 ---
 
 ## Possible node manifest
 
-A future Nexus agent could expose a manifest such as:
+A future LM Share agent could expose a manifest such as:
 
 ```json
 {
-  "nexus_version": "0.1",
+  "lmshare_version": "0.1",
   "node_id": "home-gpu-01",
   "owner_label": "Eric's GPU PC",
   "mode": "family_share",
@@ -1100,7 +1178,7 @@ A future Nexus agent could expose a manifest such as:
   "models": [
     {
       "id": "local/qwen-code",
-      "aliases": ["nexus/code"],
+      "aliases": ["lmshare/code"],
       "status": "warm",
       "context_tokens": 32768,
       "policy_labels": ["family", "developer"]
@@ -1119,7 +1197,7 @@ A future Nexus agent could expose a manifest such as:
 
 ## Non-goals
 
-`lmstudio-nexus` should not be:
+`lmshare` should not be:
 
 ```text
 A tool for bypassing LM Studio authentication
@@ -1137,7 +1215,7 @@ The first goal is permissioned private inference routing.
 
 ## The bigger idea
 
-`lmstudio-nexus` is based on the belief that AI compute can become personal, portable, and permissioned.
+`lmshare` is based on the belief that AI compute can become personal, portable, and permissioned.
 
 A person can bring intelligence to a place.
 
@@ -1153,7 +1231,7 @@ The owner chooses when to contribute. The realm chooses what traffic is allowed.
 
 ## One-sentence vision
 
-`lmstudio-nexus` discovers, governs, and routes private AI inference across approved LM Studio-compatible machines.
+`lmshare` discovers, governs, and routes private AI inference across approved LM Studio-compatible machines.
 
 ---
 
@@ -1168,4 +1246,3 @@ The owner chooses when to contribute. The realm chooses what traffic is allowed.
 - LM Studio OpenAI-compatible API documentation: https://lmstudio.ai/docs/developer/openai-compat
 - LM Studio LM Link documentation: https://lmstudio.ai/docs/developer/core/lmlink
 - LM Studio authentication documentation: https://lmstudio.ai/docs/developer/core/authentication
-
