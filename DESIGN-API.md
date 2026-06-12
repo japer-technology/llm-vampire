@@ -2,6 +2,21 @@
 
 **Vampire = LM Studio-compatible API + local-network orchestration extensions.**
 
+This API design carries through the project vision in [VISION.md](VISION.md) (expanded in [ASPIRATION.md](ASPIRATION.md)): idle, LM Studio-compatible GPUs on a local network become one governed, private AI service behind a stable OpenAI-compatible endpoint. Each vision commitment maps to a concrete API surface:
+
+| Vision commitment | API surface in this design |
+| --- | --- |
+| Stable OpenAI-compatible endpoint | §1 Base URL, §5–§6 `/v1/models` and `/v1/chat/completions`, §26 normal-client example |
+| Wakes on the LAN and discovers approved endpoints | §12 node discovery, §13 node registration, Layer 3 node agent API |
+| Verifies models and capabilities | §14 node list, §15 Vampire model inventory |
+| Respects owner tokens and policy before routing | §4.3 route policy, §16 route creation, §21 security model and trust levels |
+| Load-balances and fails over | §8.1 `route` mode, §8.2 `race` mode, §9 routing strategies |
+| Coalesces identical prompts | request deduplication within routing strategies (§9) and modes (§8) |
+| Fuses answers across machines | §8.4 `fusion`, §8.5 `debate`, §10 fusion strategies, §11 dedicated fusion endpoint |
+| Optimizes for latency, privacy, cost, and quality | §9 routing strategies, §18 metrics, §19 traces |
+| Owner decides when to contribute | §13 node registration (opt-in), §21 security model |
+| Users simply see working, local-first AI | Compatibility-first principle (§2), opt-in Vampire extensions (§7) |
+
 The key rule: **anything that already works against LM Studio should keep working unchanged.** LM Studio exposes OpenAI-compatible endpoints such as `/v1/models`, `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, and `/v1/completions`; it also has native REST endpoints for chat and model management. Vampire should sit in front of those endpoints as a transparent proxy, then add optional orchestration controls. ([LM Studio][1])
 
 ---

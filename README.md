@@ -139,6 +139,9 @@ and routed across approved nodes.
 | [VISION.md](VISION.md) | One-paragraph vision for the project. |
 | [ASPIRATION.md](ASPIRATION.md) | The full aspirations paper: thesis, audiences, and goals. |
 | [DESIGN-API.md](DESIGN-API.md) | The OpenAI-compatible + Vampire orchestration API design. |
+| [MVP.md](MVP.md) | Minimum Viable Product definition. |
+| [MVVP.md](MVVP.md) | Minimum Viable Valuable Product (per Guy Kawasaki). |
+| [MVVVP.md](MVVVP.md) | Minimum Viable Valuable Validating Product (per Guy Kawasaki). |
 | [POSSIBILITIES.md](POSSIBILITIES.md) | Broader explorations and feature possibilities. |
 
 ## Construction methods
