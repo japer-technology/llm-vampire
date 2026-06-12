@@ -1,6 +1,6 @@
-LM Studio Vampire could change the world if it turns **private, owner-controlled AI compute** into a usable network primitive.
+# LM Studio Vampire could change the world 
 
-Not “cloud AI versus local AI.” Something more interesting:
+It turns **private, owner-controlled AI compute** into a usable network primitive not “cloud AI versus local AI.”
 
 > **A consent-based private AI compute fabric where ordinary people, families, teams, schools, events, and small organisations can share model access without surrendering control to a central provider.**
 
