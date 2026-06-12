@@ -114,10 +114,38 @@ and pull requests.
 > The following describes the planned experience once the recommended construction
 > ([METHOD-A](METHOD-A.md)) is implemented. It does not work today.
 
+#### Most desired installation path
+
+The headline goal is a **single-command install** that works anywhere with no
+prerequisites — ideal for deploying on Linux boxes, cloud servers, or even in CI.
+
+**macOS / Linux**
+
+```bash
+curl -fsSL https://github.com/japer-technology/lmstudio-vampire/install.sh | bash
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://github.com/japer-technology/lmstudio-vampire/install.ps1 | iex
+```
+
+This downloads and sets up `vampire` directly, with no `pip`, interpreter, or
+manual build step required.
+
+#### Alternative: install via pip
+
+For Python environments, the package install remains available:
+
 ```bash
 # install (planned)
 pip install lmstudio-vampire
+```
 
+#### Run the gateway
+
+```bash
 # run the gateway (planned)
 vampire serve
 ```
