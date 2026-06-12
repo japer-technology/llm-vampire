@@ -1,15 +1,16 @@
 # LM Studio Vampire
 
-> Private AI compute, wherever it is allowed.
+> Private AI compute, offered through LM Studio, wherever the owner allows it.
 
-**`lmstudio-vampire`** turns idle, [LM Studio](https://lmstudio.ai)-compatible GPUs on a
-local network into one governed, private AI service. It wakes on the LAN, discovers
-approved inference endpoints, verifies their models and capabilities, respects owner
-tokens and policy, and then routes, load-balances, and fuses requests behind a single,
-stable OpenAI-compatible endpoint.
+**`lmstudio-vampire`** turns owner-approved **LM Studio API endpoints** into one governed, private AI service.
 
-One strong GPU can serve many approved users, devices, rooms, families, teams, and
-events — without the owner surrendering control.
+Vampire does not discover or control GPUs directly. It connects only to LM Studio servers that an owner has deliberately exposed — locally, on a trusted network, through headless LM Studio, or through LM Studio’s own remote-device routing.
+
+The LM Studio owner stays in control. They decide whether the server is running, whether network access is enabled, which port is exposed, whether API-token authentication is required, which tokens are valid, which models are available, and whether models may be loaded on demand.
+
+Vampire can only use what LM Studio offers. It interrogates reachable endpoints, verifies their model inventory, loaded instances, context limits, capabilities, and access requirements, then routes approved requests behind a single, stable OpenAI-compatible endpoint.
+
+The compute behind an LM Studio endpoint may be local, remote, headless, GPU-backed, CPU-backed, or routed through LM Studio’s own link layer. Vampire does not need to know where the GPU is. LM Studio provides the connection; Vampire provides governance, routing, policy, and aggregation.
 
 ![Status: design stage](https://img.shields.io/badge/status-design%20stage-orange)
 ![Docs: design papers](https://img.shields.io/badge/docs-design%20papers-blue)
