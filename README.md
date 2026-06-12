@@ -1,5 +1,11 @@
 # LM Studio Vampire
 
+<p align="center">
+  <picture>
+    <img src="https://raw.githubusercontent.com/japer-technology/lmstudio-vampire/main/LOGO.png" alt="LM Studio Vampire" width="320">
+  </picture>
+</p>
+
 > Private AI compute, offered through LM Studio, wherever the owner allows it.
 
 **`lmstudio-vampire`** turns owner-approved **LM Studio API endpoints** into one governed, private AI service.
