@@ -330,7 +330,115 @@ capacity exceed any single member.
 
 ---
 
-## 8. Summary of the governing equations
+## 8. Measurement: test, livetest, and timetest
+
+Everything above *consumes* the node metrics `Lᵢ`, `Tᵢ`, `Qᵢ` — but those
+numbers only exist because the gateway actively measures them. Three probe
+tiers produce them, in increasing order of cost and fidelity:
+
+| Probe      | What it does                                        | What it measures              |
+|------------|-----------------------------------------------------|-------------------------------|
+| `test`     | Cheap reachability check (`GET /v1/models`)         | `Aᵢ` (up/down), network RTT   |
+| `livetest` | Real but tiny inference (a few output tokens)       | End-to-end correctness, TTFT  |
+| `timetest` | Timed benchmark generation (fixed prompt, `n` tokens) | `Lᵢ`, `Tᵢ` under load        |
+
+### 8.1 Decomposing latency: TTFT and tokens-per-second
+
+A timed generation of `n_out` tokens separates into two regimes:
+
+```
+L_total = L_TTFT + n_out / T
+```
+
+where `L_TTFT` (time to first token) bundles network RTT, queueing, prompt
+processing (prefill), and — critically — **model load time** if the model was
+cold. `timetest` estimates the two parameters by measuring the first-token
+time and the steady-state inter-token rate:
+
+```
+T̂ = (n_out − 1) / (t_last − t_first)        (tokens/sec, decode only)
+L̂_TTFT = t_first − t_send
+```
+
+Measuring them separately matters because routing decisions use them
+differently: TTFT dominates short interactive requests, while `T` dominates
+long generations. A single blended "latency" number would mis-rank nodes for
+both workloads.
+
+### 8.2 Cold vs. warm: a bimodal distribution
+
+`L_TTFT` is **bimodal**: warm-model probes cluster at milliseconds–seconds,
+cold-model probes (JIT model load) at tens of seconds. Formally it is a
+mixture:
+
+```
+L_TTFT ~ w · F_warm + (1 − w) · F_cold ,    w = P(model resident)
+```
+
+Averaging across the modes produces a number that describes *neither* case,
+so probe results are tagged warm/cold and tracked separately. This is the
+quantitative basis for the "warm model preference" and "JIT load avoidance"
+optimizations (ASPIRATION.md Phase 7): routing to a warm node avoids the
+entire `F_cold` mode, a saving that dwarfs any difference in `T` between
+nodes.
+
+### 8.3 Sampling statistics: how many probes are enough?
+
+A single `timetest` sample is noisy. With `m` samples of a metric with
+standard deviation `σ`, the standard error of the mean is
+
+```
+SE = σ / √m
+```
+
+so halving the error costs **4×** the probes. Ongoing measurements feed the
+EWMA of §2.4 (effective window `≈ 1/α` samples), which is the streaming
+equivalent: fresh `timetest` runs update `L̄ᵢ`, `T̄ᵢ` without storing history.
+Because latency distributions are heavy-tailed, the router tracks
+**percentiles** (p50/p95/p99) rather than means alone; the mean of a
+heavy-tailed sample is dominated by rare stragglers and is a poor predictor
+of typical behaviour.
+
+### 8.4 Probe cost and staleness (the measurement trade-off)
+
+Probing is not free: a `timetest` of `n` tokens consumes `n/Tᵢ` seconds of a
+node's single-server capacity (§3), so probing at interval `τ` adds
+utilisation
+
+```
+ρ_probe = (n / Tᵢ) / τ
+```
+
+which must be kept ≪ 1 to avoid the measurement perturbing the system it
+measures. The opposing pressure is staleness: between probes, the true state
+may drift, and a metric measured `Δt` ago carries uncertainty growing with
+`Δt`. The practical schedule is therefore tiered — frequent cheap `test`
+probes for liveness (`Aᵢ`), infrequent `timetest` runs for calibration
+(`Lᵢ`, `Tᵢ`), with passive measurement of *real* traffic (every routed
+request is a free sample) filling the gap in between. Passive samples are
+preferred when traffic exists; active `timetest` matters precisely for idle
+nodes, which otherwise would never refresh their metrics — and idle nodes
+are the ones the router most wants to send traffic to.
+
+### 8.5 `livetest` as a correctness check (not just timing)
+
+`livetest` verifies that a node returns a *valid* completion, not merely a
+fast TCP handshake. Statistically it is a Bernoulli trial: after `m`
+consecutive successes, the rule-of-three bound gives a 95%-confidence
+failure-rate ceiling of
+
+```
+f ≤ 3 / m
+```
+
+so e.g. 30 clean livetests bound the per-request failure rate at ~10%.
+These failure estimates `fᵢ` are exactly the inputs to the fallback-chain
+product `∏ fᵢ` (§2.6) and the availability product of §7 — the measurement
+layer closes the loop on the reliability maths.
+
+---
+
+## 9. Summary of the governing equations
 
 | Mechanism        | Governing mathematics                                  |
 |------------------|--------------------------------------------------------|
@@ -344,3 +452,6 @@ capacity exceed any single member.
 | Fallback/availability | `P(fail) = ∏ fᵢ` — failures multiply away         |
 | Majority fusion  | Condorcet: `Σ_{j>n/2} C(n,j) pʲ(1−p)^{n−j} > p` for `p > ½` |
 | Fleet capacity   | `T_total = Σ Aᵢ·Tᵢ`; `P(avail) = 1 − ∏(1 − aᵢ)`         |
+| Timing decomposition | `L_total = L_TTFT + n_out/T`; `T̂ = (n_out−1)/(t_last−t_first)` |
+| Probe sampling   | `SE = σ/√m`; probe load `ρ_probe = (n/Tᵢ)/τ ≪ 1`        |
+| Livetest reliability | rule of three: `f ≤ 3/m` after `m` clean probes     |
