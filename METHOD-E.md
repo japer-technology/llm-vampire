@@ -2,17 +2,17 @@
 
 Push as much as possible into the **browser**, backed by only a thin relay.
 
-```text
-Browser app (SPA / PWA)
-   - discovery UI, registry in localStorage/IndexedDB
-   - calls LM Studio nodes directly where CORS allows
-        |                         |
-        | (direct)                | (when blocked)
-        v                         v
-   LM Studio node          tiny relay/signaling service
-                                  |
-                                  v
-                            LM Studio nodes
+```mermaid
+flowchart TD
+    browser["🌐 Browser app (SPA / PWA)<br/>discovery UI · registry in localStorage/IndexedDB<br/>calls LM Studio nodes directly where CORS allows"]
+
+    direct["🧛 LM Studio node"]
+    relay["📡 Tiny relay / signaling service"]
+    relayNodes["🧛 LM Studio nodes"]
+
+    browser -->|"direct"| direct
+    browser -->|"when blocked"| relay
+    relay --> relayNodes
 ```
 
 ## Idea

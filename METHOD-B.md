@@ -3,17 +3,21 @@
 Build the gateway as **one compiled, statically linked binary** (Go or Rust)
 with the browser UI embedded inside it.
 
-```text
-Browser UI (embedded assets)
-        |
-        v
-vampire  (single binary)
-   - OpenAI-compatible gateway
-   - Vampire control API
-   - embedded static UI
-        |
-        v
-LM Studio nodes on the LAN
+```mermaid
+flowchart TD
+    ui["🖥️ Browser UI<br/>(embedded assets)"]
+
+    subgraph binary["⚙️ vampire — single binary (Go / Rust)"]
+        direction TB
+        gateway["OpenAI-compatible gateway"]
+        control["Vampire control API"]
+        embedded["Embedded static UI"]
+    end
+
+    nodes["🧛 LM Studio nodes on the LAN"]
+
+    ui --> binary
+    binary --> nodes
 ```
 
 ## Idea

@@ -3,11 +3,21 @@
 Drop the single orchestrator. Run a small **agent on every LM Studio node**;
 agents gossip to form a shared view, and any agent can act as the gateway.
 
-```text
-Client -> any node's agent (acts as gateway)
-             ^      ^      ^
-             |  gossip / heartbeat mesh  |
-          agent   agent   agent  ...  (one per LM Studio node)
+```mermaid
+flowchart TD
+    client["🧑‍💻 Client"]
+
+    agentA["🧛 agent<br/>(acts as gateway)"]
+    agentB["🧛 agent"]
+    agentC["🧛 agent"]
+
+    client -->|"point at any node"| agentA
+
+    subgraph mesh["Gossip / heartbeat mesh — one agent per LM Studio node"]
+        agentA <-->|"gossip"| agentB
+        agentB <-->|"gossip"| agentC
+        agentA <-->|"gossip"| agentC
+    end
 ```
 
 ## Idea
