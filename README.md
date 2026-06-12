@@ -1,8 +1,11 @@
 # lmstudio-vampire: Aspirations Paper
 
 **Status:** Aspirational design document for a public repository  
+
 **Working name:** `lmstudio-vampire`
+
 **Project type:** Discovery, governance, routing, and optimization layer for LM Studio-compatible private AI compute  
+
 **Relationship to LM Studio:** Independent project concept. Not affiliated with LM Studio unless explicitly adopted by that team.
 
 ---
