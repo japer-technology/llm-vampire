@@ -1058,6 +1058,12 @@ Auto-expiry
 Owner stop button
 ```
 
+> **Note on the UI.** This thematic roadmap groups work by capability; a general
+> local **dashboard** (nodes, models, health, prompt playground) is built as a
+> dedicated step in the METHOD-A build order (step 4 in
+> [METHOD-A.md](METHOD-A.md) / [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)),
+> ahead of the event-specific web UI that lands here in Phase 8.
+
 ---
 
 ## Suggested repository structure

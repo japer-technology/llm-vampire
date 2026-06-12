@@ -34,6 +34,30 @@ nodes, with a browser dashboard.
 
 ## Phases
 
+These phases follow the **METHOD-A build order** (the same numbered steps listed
+in [METHOD-A.md](METHOD-A.md) §"Build order" and the [README](README.md#roadmap)).
+That build order is an *engineering* sequence chosen for the shortest path to a
+working demo; it is not the same numbering as the *thematic* MVP roadmap in
+[ASPIRATION.md](ASPIRATION.md), which groups the work by capability. The two
+relate as follows:
+
+| METHOD-A build step (here) | ASPIRATION thematic phase |
+| --- | --- |
+| 0 — Scaffolding & foundations | Phase 0 (repo foundation) |
+| 1 — Transparent proxy | Phase 2 (OpenAI-compatible proxy) |
+| 2 — Node registry + discovery | Phase 1 (local discovery) + manual parts of Phase 6 |
+| 3 — Routing | Phase 4 (routing) |
+| 4 — Browser UI | dashboard build step (event UI lands in Phase 8) |
+| 5 — Coalescing + cache | Phase 3 (request coalescing) |
+| 6 — Policy + tokens | Phase 5 (policy and realms) |
+| 7 — Fusion & advanced modes | fusion/advanced modes (beyond the thematic roadmap's MVP) |
+
+Coalescing (build step 5) is intentionally sequenced *after* routing and the UI
+here, even though ASPIRATION lists coalescing earlier (Phase 3): the proxy,
+registry, routing, and dashboard together form the smallest shippable,
+demonstrable product, and coalescing is a transparent optimization layered on
+top once traffic flows.
+
 ### Phase 0 — Scaffolding & foundations
 - Python package with the `vampire` console-script entry point.
 - App factory, configuration (default port `7777`, downstream LM Studio `1234`),
@@ -42,7 +66,7 @@ nodes, with a browser dashboard.
   route policy) and OpenAI request/response shapes.
 - Testing (pytest), linting/formatting, type checking, CI.
 
-### Phase 1 — Transparent proxy (Roadmap step 1)
+### Phase 1 — Transparent proxy (build step 1)
 - Drop-in `/v1/*` passthrough to a single configured LM Studio node:
   `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`,
   `/v1/responses`.
@@ -50,15 +74,19 @@ nodes, with a browser dashboard.
 - Acceptance: an existing OpenAI/LM Studio client works unchanged against
   `:7777/v1`.
 
-### Phase 2 — Node registry + discovery (Roadmap step 2)
+### Phase 2 — Node registry + discovery (build step 2)
 - In-memory registry (SQLite seam). `/vampire/v1/status`,
   `GET/POST /vampire/v1/nodes`, `GET/PATCH/DELETE /vampire/v1/nodes/{id}`.
 - Manual registration first (§13), then health checks and capability/model
-  interrogation.
-- `POST /vampire/v1/discover` (§12): static, then mDNS.
+  interrogation. The MVP relies on manual registration only; automatic mDNS
+  discovery and the node agent are deferred (ASPIRATION Phase 6).
+- `POST /vampire/v1/discover` (§12): static/dev-subnet scan first, mDNS later.
 - Aggregate `/v1/models` and `/vampire/v1/models` across nodes (§15).
+- Basic read-only `GET /vampire/v1/metrics` (§18): per-node request counts,
+  health, and latency. This completes the "Minimal MVP" control surface in
+  DESIGN-API §24 and MVP.md; richer, policy-aware metrics arrive in Phase 6.
 
-### Phase 3 — Routing (Roadmap step 3)
+### Phase 3 — Routing (build step 3)
 - Virtual models (`vampire:auto`, `vampire:fast`, …) and a router.
 - MVP routing strategies (§24): `round_robin`, `least_busy`, `least_latency`,
   `model_affinity`, `trusted_only`, plus failover/`fallback`.
@@ -66,20 +94,21 @@ nodes, with a browser dashboard.
   metadata in responses (§7).
 - Routes management: `GET/POST /vampire/v1/routes` (§16).
 
-### Phase 4 — Browser UI (Roadmap step 4)
+### Phase 4 — Browser UI (build step 4)
 - Static SPA served from `/`: dashboard for nodes, models, health, cluster
   status, plus a prompt playground that calls the gateway.
 
-### Phase 5 — Coalescing + cache (Roadmap step 5)
+### Phase 5 — Coalescing + cache (build step 5)
 - In-flight deduplication of identical concurrent prompts.
 - Exact-result cache. Keep CPU-bound work off the event loop.
 
-### Phase 6 — Policy + tokens (Roadmap step 6)
+### Phase 6 — Policy + tokens (build step 6)
 - Bearer-token auth (§21), CORS allowlist, node allowlists, trust levels, owner
   share modes, token vault, realm policy, logging controls.
-- `GET /vampire/v1/metrics` (§18).
+- Extend `GET /vampire/v1/metrics` (§18) with policy-aware, per-realm counters
+  (the basic endpoint ships in Phase 2).
 
-### Phase 7 — Fusion & advanced modes (Roadmap step 7)
+### Phase 7 — Fusion & advanced modes (build step 7)
 - Async fan-out modes (§8): MVP `race` and `fusion`, then `parallel`, `debate`,
   `pipeline`.
 - `POST /vampire/v1/fusion` (§11) and fusion strategies (§10).

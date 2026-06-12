@@ -202,7 +202,10 @@ The recommended build order (from [METHOD-A](METHOD-A.md)) is:
 6. **Policy + tokens** — owner modes, realms, token vault, and allowlists.
 7. **Fusion** — parallel, race, and judge/refiner modes via `/vampire/v1/fusion`.
 
-Each step is intended to be independently shippable.
+Each step is intended to be independently shippable. This is the *build order*
+(fastest path to a working demo); the *thematic* capability roadmap, grouped by
+feature area, is in [ASPIRATION.md](ASPIRATION.md), and
+[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) maps the two together.
 
 ## Contributing
 

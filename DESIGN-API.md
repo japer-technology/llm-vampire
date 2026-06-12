@@ -1278,7 +1278,7 @@ With Vampire detail:
 
 # 24. Minimal MVP
 
-The first working version only needs this:
+The first working version only needs this API surface:
 
 ```txt
 GET  /v1/models
@@ -1292,13 +1292,11 @@ GET  /vampire/v1/models
 GET  /vampire/v1/metrics
 ```
 
-And these modes:
+With the proxy/routing modes:
 
 ```txt
 route
 fallback
-race
-fusion
 ```
 
 And these routing strategies:
@@ -1309,6 +1307,16 @@ least_busy
 least_latency
 model_affinity
 trusted_only
+```
+
+The `race` and `fusion` modes below are **not** part of this first proxy MVP;
+they form a separate "minimal fusion demo" milestone delivered later (see the
+MVVVP in [MVVVP.md](MVVVP.md) and Phase 7 of
+[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md)):
+
+```txt
+race
+fusion
 ```
 
 ---
