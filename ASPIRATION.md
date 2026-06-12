@@ -10,6 +10,39 @@
 
 ---
 
+## The vision
+
+This paper expands on the project vision stated in [VISION.md](VISION.md):
+
+> `lmstudio-vampire` turns idle, LM Studio-compatible GPUs on a local network
+> into one governed, private AI service. It wakes on the LAN, discovers approved
+> inference endpoints, verifies their models and capabilities, and respects owner
+> tokens and policy before routing a single request. Behind a stable
+> OpenAI-compatible endpoint it load-balances, fails over, coalesces identical
+> prompts, and fuses answers across machines — optimizing for latency, privacy,
+> cost, and quality. Families share GPUs; businesses use LM Studio
+> capacity; classrooms and events become AI-capable with just one strong host. The
+> owner decides when to contribute; users simply see working, local-first AI.
+
+Every commitment in that vision is carried through this paper:
+
+| Vision commitment | Where this paper delivers it |
+| --- | --- |
+| Wakes on the LAN and discovers approved endpoints | Discovery layer (Component 2), node agent and mDNS (Phase 6) |
+| Verifies models and capabilities | Capability verifier (Component 3) |
+| Respects owner tokens and policy before routing | Token vault (Component 4), policy engine (Component 5), "Permission before routing" design principle |
+| Stable OpenAI-compatible endpoint | Gateway (Component 1), "Stable API outward" design principle |
+| Load-balances and fails over | Router and scheduler (Component 6), traffic distribution |
+| Coalesces identical prompts | Request coalescer and cache (Component 8), concurrent identical question processing |
+| Fuses answers across machines | Concurrent best-of-N, consensus answer, and related variations |
+| Optimizes for latency, privacy, cost, and quality | Model optimizer (Component 7), model optimization |
+| Families share GPUs | Families audience, family network example, owner modes |
+| Businesses use LM Studio capacity | Small businesses audience, 40-person business example |
+| Classrooms and events become AI-capable with one strong host | Schools/workshops/events audience, event mode (Phase 8), event example |
+| The owner decides when to contribute | "Owner control first" design principle, owner modes |
+
+---
+
 ## Abstract
 
 `lmstudio-vampire` is a proposed local-first software layer that wakes up like a vampire on the local network, searches for LM Studio-compatible capability it is allowed to "suck" from, verifies what each endpoint can provide, applies owner and organization policy, and routes AI traffic across available private compute.
