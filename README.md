@@ -1,7 +1,7 @@
-# lm-vampire: Aspirations Paper
+# lmstudio-vampire: Aspirations Paper
 
 **Status:** Aspirational design document for a public repository  
-**Working name:** `lm-vampire`
+**Working name:** `lmstudio-vampire`
 **Project type:** Discovery, governance, routing, and optimization layer for LM Studio-compatible private AI compute  
 **Relationship to LM Studio:** Independent project concept. Not affiliated with LM Studio unless explicitly adopted by that team.
 
@@ -9,13 +9,13 @@
 
 ## Abstract
 
-`lm-vampire` is a proposed local-first software layer that discovers LM Studio-compatible inference endpoints, verifies their capabilities, applies owner and organization policy, and routes AI traffic across available private compute.
+`lmstudio-vampire` is a proposed local-first software layer that wakes up like a vampire on the local network, searches for LM Studio-compatible capability it is allowed to "suck" from, verifies what each endpoint can provide, applies owner and organization policy, and routes AI traffic across available private compute.
 
 The core idea is simple:
 
 > One strong GPU should be able to serve many approved users, devices, rooms, families, teams, and events - without surrendering owner control.
 
-LM Studio already provides the essential runtime surface: a local OpenAI-compatible API, optional API token authentication, configurable local server behavior, and LM Link for using models on remote linked devices as if they were local. `lm-vampire` would sit above that surface as a network-aware broker:
+LM Studio already provides the essential runtime surface: a local OpenAI-compatible API, optional API token authentication, configurable local server behavior, and LM Link for using models on remote linked devices as if they were local. `lmstudio-vampire` would sit above that surface as a network-aware broker:
 
 - Find available LM Studio-compatible services.
 - Identify which models and capabilities are available.
@@ -25,7 +25,7 @@ LM Studio already provides the essential runtime surface: a local OpenAI-compati
 - Optimize for latency, cost, privacy, power, quality, and availability.
 - Provide a stable OpenAI-compatible endpoint to apps and users.
 
-`lm-vampire` is not merely a scanner. It is a permissioned private AI compute fabric.
+`lmstudio-vampire` is not merely a scanner. It is a permissioned private AI compute fabric.
 
 ---
 
@@ -37,7 +37,7 @@ Millions of homes, offices, studios, labs, classrooms, and gaming rooms contain 
 
 Cloud AI asks every user to rent inference from somewhere else.
 
-`lm-vampire` asks a different question:
+`lmstudio-vampire` asks a different question:
 
 > What useful AI work can be served first by compute we already own, already trust, and already have nearby?
 
@@ -70,9 +70,9 @@ The opportunity is to build the layer that turns many isolated local inference s
 
 ## Core proposition
 
-`lm-vampire` turns LM Studio-compatible machines into discoverable, governed AI nodes.
+`lmstudio-vampire` turns LM Studio-compatible machines into discoverable, governed AI nodes.
 
-A network running `lm-vampire` can answer questions like:
+A network running `lmstudio-vampire` can answer questions like:
 
 - Which approved AI services are available here?
 - Which models are loaded?
@@ -87,10 +87,10 @@ A network running `lm-vampire` can answer questions like:
 The project should expose a simple endpoint to clients:
 
 ```text
-http://localhost:<lm-vampire-port>/v1
+http://localhost:<lmstudio-vampire-port>/v1
 ```
 
-Behind that endpoint, `lm-vampire` can route to:
+Behind that endpoint, `lmstudio-vampire` can route to:
 
 ```text
 Local LM Studio
@@ -122,7 +122,7 @@ Family mode should support:
 
 ### 2. Small businesses
 
-A business may already have many GPU-capable workstations. `lm-vampire` can turn those machines into a governed internal inference pool.
+A business may already have many GPU-capable workstations. `lmstudio-vampire` can turn those machines into a governed internal inference pool.
 
 Business mode should support:
 
@@ -199,7 +199,7 @@ A discovered endpoint should not automatically become routable. The system must 
 
 Local network access is powerful but dangerous if treated casually.
 
-`lm-vampire` should prefer:
+`lmstudio-vampire` should prefer:
 
 - Explicit opt-in beacons.
 - Manual registration.
@@ -213,7 +213,7 @@ Raw port scanning may be useful in developer mode, but it should not be the defa
 
 Clients should not need to understand the whole network.
 
-They should call one endpoint. `lm-vampire` handles discovery, policy, routing, optimization, caching, fallback, and observability behind that endpoint.
+They should call one endpoint. `lmstudio-vampire` handles discovery, policy, routing, optimization, caching, fallback, and observability behind that endpoint.
 
 ### 5. No credential leakage
 
@@ -248,7 +248,7 @@ Users and administrators should be able to inspect why a request was routed to a
 Client apps
   |
   v
-OpenAI-compatible LM Vampire Gateway
+OpenAI-compatible LM Studio Vampire Gateway
   |
   +--> Policy engine
   +--> Token vault
@@ -267,7 +267,7 @@ Approved LM Studio-compatible endpoints
   +--> Event/classroom machine
 ```
 
-### Component 1: LM Vampire Gateway
+### Component 1: LM Studio Vampire Gateway
 
 The gateway is the endpoint applications call.
 
@@ -281,15 +281,15 @@ POST /v1/embeddings
 POST /v1/completions
 ```
 
-It may also expose LM Vampire-specific routes:
+It may also expose LM Studio Vampire-specific routes:
 
 ```text
-GET  /lm-vampire/v1/nodes
-GET  /lm-vampire/v1/capabilities
-POST /lm-vampire/v1/routing/preview
-POST /lm-vampire/v1/events
-POST /lm-vampire/v1/tokens
-GET  /lm-vampire/v1/health
+GET  /lmstudio-vampire/v1/nodes
+GET  /lmstudio-vampire/v1/capabilities
+POST /lmstudio-vampire/v1/routing/preview
+POST /lmstudio-vampire/v1/events
+POST /lmstudio-vampire/v1/tokens
+GET  /lmstudio-vampire/v1/health
 ```
 
 ### Component 2: Discovery layer
@@ -313,7 +313,7 @@ The system should identify endpoints as:
 Unknown OpenAI-compatible endpoint
 LM Studio-compatible endpoint
 Owner-labelled LM Studio endpoint
-LM Vampire agent verified endpoint
+LM Studio Vampire agent verified endpoint
 Business-approved endpoint
 Event-approved endpoint
 ```
@@ -479,7 +479,7 @@ Model optimization does not need to mean fine-tuning. The first version can opti
 
 This is one of the most important differentiators.
 
-Many users in the same room, business, class, or event may ask identical or near-identical questions. Many applications also retry or parallelize identical requests. `lm-vampire` should avoid wasting inference where policy allows reuse.
+Many users in the same room, business, class, or event may ask identical or near-identical questions. Many applications also retry or parallelize identical requests. `lmstudio-vampire` should avoid wasting inference where policy allows reuse.
 
 It should support three levels:
 
@@ -492,7 +492,7 @@ Example:
 ```text
 User A asks: "Summarize this policy."
 User B asks the exact same request before the answer completes.
-LM Vampire performs one inference.
+LM Studio Vampire performs one inference.
 Both clients receive the same result.
 ```
 
@@ -539,7 +539,7 @@ Semantic caching should be opt-in and scoped to the correct realm. It must never
 
 ## Concurrent identical question processing
 
-A major goal of `lm-vampire` is to handle concurrent identical questions intelligently.
+A major goal of `lmstudio-vampire` is to handle concurrent identical questions intelligently.
 
 This has several variations.
 
@@ -702,7 +702,7 @@ A high-value strategy prompt -> best-of-N or consensus routing
 
 ## Model optimization
 
-`lm-vampire` should help users get better results without forcing them to understand every model detail.
+`lmstudio-vampire` should help users get better results without forcing them to understand every model detail.
 
 Possible model optimization features:
 
@@ -727,20 +727,20 @@ Per-realm approved model lists
 Example aliases:
 
 ```text
-lm-vampire/fast
-lm-vampire/balanced
-lm-vampire/best
-lm-vampire/code
-lm-vampire/embeddings
-lm-vampire/event-safe
-lm-vampire/business-confidential
-lm-vampire/family-study
+lmstudio-vampire/fast
+lmstudio-vampire/balanced
+lmstudio-vampire/best
+lmstudio-vampire/code
+lmstudio-vampire/embeddings
+lmstudio-vampire/event-safe
+lmstudio-vampire/business-confidential
+lmstudio-vampire/family-study
 ```
 
 A client can request:
 
 ```text
-model: "lm-vampire/balanced"
+model: "lmstudio-vampire/balanced"
 ```
 
 The router decides which real model and endpoint should serve the job.
@@ -811,7 +811,7 @@ Whether guest access expires
 
 ## Security posture
 
-`lm-vampire` must be safe by default.
+`lmstudio-vampire` must be safe by default.
 
 Minimum safety expectations:
 
@@ -853,14 +853,14 @@ Home GPU PC
   Owner enables family share
 
 Parent laptop
-  Runs lm-vampire gateway
+  Runs lmstudio-vampire gateway
   Uses approved family token
 
 Student laptop
-  Calls http://localhost:<lm-vampire-port>/v1
-  Requests model "lm-vampire/family-study"
+  Calls http://localhost:<lmstudio-vampire-port>/v1
+  Requests model "lmstudio-vampire/family-study"
 
-LM Vampire
+LM Studio Vampire
   Confirms family policy
   Routes to home GPU
   Uses cache for repeated study prompts when allowed
@@ -879,7 +879,7 @@ Outcome:
 20 GPU-capable machines
 10 nodes opt in to business contribution
 5 nodes are idle at any given moment
-1 LM Vampire gateway exposes the approved company AI endpoint
+1 LM Studio Vampire gateway exposes the approved company AI endpoint
 ```
 
 A request comes in:
@@ -911,8 +911,8 @@ Outcome:
 ```text
 Host brings GPU laptop
 Host starts LM Studio
-Host starts lm-vampire event mode
-LM Vampire creates a QR code
+Host starts LM Studio Vampire event mode
+LM Studio Vampire creates a QR code
 Guests connect to local web app
 Gateway enforces safe model, rate limits, and expiry
 ```
@@ -1027,7 +1027,7 @@ Owner stop button
 ## Suggested repository structure
 
 ```text
-lm-vampire/
+lmstudio-vampire/
   README.md
   ASPIRATIONS.md
   SECURITY.md
@@ -1044,11 +1044,11 @@ lm-vampire/
     business-mode.md
     family-mode.md
   packages/
-    lm-vampire-core/
-    lm-vampire-gateway/
-    lm-vampire-agent/
-    lm-vampire-ui/
-    lm-vampire-cli/
+    lmstudio-vampire-core/
+    lmstudio-vampire-gateway/
+    lmstudio-vampire-agent/
+    lmstudio-vampire-ui/
+    lmstudio-vampire-cli/
   examples/
     family-gateway/
     business-router/
@@ -1072,7 +1072,7 @@ vampire share local
 vampire share personal on
 vampire share family on
 vampire share business off
-vampire share event on --duration 2h --model lm-vampire/event-safe
+vampire share event on --duration 2h --model lmstudio-vampire/event-safe
 vampire share stop
 ```
 
@@ -1108,8 +1108,8 @@ vampire access revoke family --device student-laptop
 vampire models
 vampire models refresh
 vampire aliases
-vampire aliases set lm-vampire/balanced --model local/qwen-code --node home-gpu
-vampire route preview --model lm-vampire/balanced
+vampire aliases set lmstudio-vampire/balanced --model local/qwen-code --node home-gpu
+vampire route preview --model lmstudio-vampire/balanced
 vampire route explain --request-id <id>
 vampire route rules
 vampire route rules set --realm business --strategy least-latency
@@ -1122,8 +1122,8 @@ vampire realms
 vampire realms create family
 vampire policy show family
 vampire policy set family --cache exact --semantic-cache off
-vampire policy allow-model family lm-vampire/family-study
-vampire policy deny-model event lm-vampire/business-confidential
+vampire policy allow-model family lmstudio-vampire/family-study
+vampire policy deny-model event lmstudio-vampire/business-confidential
 vampire quotas set event --requests-per-minute 20
 vampire audit tail
 ```
@@ -1131,7 +1131,7 @@ vampire audit tail
 ### Event mode
 
 ```text
-vampire event start --duration 2h --model lm-vampire/event-safe
+vampire event start --duration 2h --model lmstudio-vampire/event-safe
 vampire event qr
 vampire event guests
 vampire event extend --duration 30m
@@ -1147,7 +1147,7 @@ vampire health
 vampire logs tail
 vampire config show
 vampire config export
-vampire config import ./lm-vampire-config.json
+vampire config import ./lmstudio-vampire-config.json
 vampire shutdown
 ```
 
@@ -1155,11 +1155,11 @@ vampire shutdown
 
 ## Possible node manifest
 
-A future LM Vampire agent could expose a manifest such as:
+A future LM Studio Vampire agent could expose a manifest such as:
 
 ```json
 {
-  "lm-vampire_version": "0.1",
+  "lmstudio-vampire_version": "0.1",
   "node_id": "home-gpu-01",
   "owner_label": "Eric's GPU PC",
   "mode": "family_share",
@@ -1178,7 +1178,7 @@ A future LM Vampire agent could expose a manifest such as:
   "models": [
     {
       "id": "local/qwen-code",
-      "aliases": ["lm-vampire/code"],
+      "aliases": ["lmstudio-vampire/code"],
       "status": "warm",
       "context_tokens": 32768,
       "policy_labels": ["family", "developer"]
@@ -1197,7 +1197,7 @@ A future LM Vampire agent could expose a manifest such as:
 
 ## Non-goals
 
-`lm-vampire` should not be:
+`lmstudio-vampire` should not be:
 
 ```text
 A tool for bypassing LM Studio authentication
@@ -1215,7 +1215,7 @@ The first goal is permissioned private inference routing.
 
 ## The bigger idea
 
-`lm-vampire` is based on the belief that AI compute can become personal, portable, and permissioned.
+`lmstudio-vampire` is based on the belief that AI compute can become personal, portable, and permissioned.
 
 A person can bring intelligence to a place.
 
@@ -1231,7 +1231,7 @@ The owner chooses when to contribute. The realm chooses what traffic is allowed.
 
 ## One-sentence vision
 
-`lm-vampire` discovers, governs, and routes private AI inference across approved LM Studio-compatible machines.
+`lmstudio-vampire` discovers, governs, and routes private AI inference across approved LM Studio-compatible machines.
 
 ---
 
