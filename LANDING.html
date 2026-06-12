@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>lmstudio-vampire — Private AI compute, wherever it is allowed</title>
+<meta name="description" content="lmstudio-vampire turns idle LM Studio-compatible GPUs on a local network into one governed, private AI service." />
+<style>
+  :root {
+    --bg: #07050a;
+    --bg-2: #0d0812;
+    --blood: #e3203b;
+    --blood-dim: #8c1326;
+    --fog: #b9aecb;
+    --bone: #f4eff7;
+    --mute: #6e6280;
+    --card: rgba(255, 255, 255, 0.035);
+    --line: rgba(227, 32, 59, 0.22);
+    --radius: 18px;
+    --font: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--bone);
+    font-family: var(--font);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  ::selection { background: var(--blood); color: var(--bone); }
+
+  /* ---------- WebGL canvas ---------- */
+  #scene {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* subtle vignette + grain over the canvas */
+  .vignette {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      radial-gradient(ellipse at 50% 18%, transparent 0%, rgba(7,5,10,0.55) 75%, rgba(7,5,10,0.92) 100%);
+  }
+
+  main { position: relative; z-index: 2; }
+
+  /* ---------- Nav ---------- */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem clamp(1.25rem, 4vw, 3rem);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background: linear-gradient(rgba(7,5,10,0.78), rgba(7,5,10,0.45));
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .brand {
+    display: flex; align-items: center; gap: .6rem;
+    font-weight: 700; letter-spacing: .02em; font-size: 1.02rem;
+    color: var(--bone); text-decoration: none;
+  }
+  .brand .fang { font-size: 1.25rem; filter: drop-shadow(0 0 8px rgba(227,32,59,.7)); }
+  .brand em { color: var(--blood); font-style: normal; }
+  .nav-links { display: flex; gap: 1.6rem; align-items: center; }
+  .nav-links a {
+    color: var(--fog); text-decoration: none; font-size: .9rem; font-weight: 500;
+    transition: color .25s ease;
+  }
+  .nav-links a:hover { color: var(--bone); }
+  .nav-cta {
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: .45rem 1.1rem !important;
+    color: var(--bone) !important;
+    background: rgba(227,32,59,.12);
+    transition: background .25s ease, box-shadow .25s ease;
+  }
+  .nav-cta:hover { background: rgba(227,32,59,.26); box-shadow: 0 0 24px rgba(227,32,59,.35); }
+  @media (max-width: 640px) { .nav-links a:not(.nav-cta) { display: none; } }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    min-height: 100svh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center;
+    padding: 7rem clamp(1.25rem, 5vw, 3rem) 4rem;
+  }
+  .hero .eyebrow {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-size: .78rem; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--blood); font-weight: 600;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: .4rem 1rem; margin-bottom: 1.6rem;
+    background: rgba(227,32,59,.07);
+  }
+  .hero .eyebrow .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--blood);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(227,32,59,.6); }
+    50% { box-shadow: 0 0 0 8px rgba(227,32,59,0); }
+  }
+  .hero h1 {
+    font-size: clamp(2.6rem, 8vw, 5.6rem);
+    line-height: 1.04; font-weight: 800; letter-spacing: -0.03em;
+    max-width: 16ch;
+  }
+  .hero h1 .blood-text {
+    background: linear-gradient(120deg, #ff5d72, var(--blood) 45%, #7a0f20);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    text-shadow: 0 0 60px rgba(227,32,59,.25);
+  }
+  .hero p.sub {
+    margin-top: 1.4rem; max-width: 56ch;
+    color: var(--fog); font-size: clamp(1rem, 2.4vw, 1.2rem);
+  }
+  .hero .cta-row {
+    margin-top: 2.4rem; display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .9rem 1.8rem; border-radius: 999px;
+    font-weight: 600; font-size: .98rem; text-decoration: none;
+    transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+    will-change: transform;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--blood), var(--blood-dim));
+    color: var(--bone);
+    box-shadow: 0 8px 32px rgba(227,32,59,.35), inset 0 1px 0 rgba(255,255,255,.18);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(227,32,59,.5); }
+  .btn-ghost {
+    border: 1px solid rgba(255,255,255,.16); color: var(--bone);
+    background: rgba(255,255,255,.04);
+  }
+  .btn-ghost:hover { transform: translateY(-2px); background: rgba(255,255,255,.09); }
+
+  .scroll-hint {
+    margin-top: 4.5rem; color: var(--mute); font-size: .78rem;
+    letter-spacing: .2em; text-transform: uppercase;
+    display: flex; flex-direction: column; align-items: center; gap: .6rem;
+  }
+  .scroll-hint .drip {
+    width: 1px; height: 44px;
+    background: linear-gradient(var(--blood), transparent);
+    animation: drip 2.2s ease-in-out infinite;
+  }
+  @keyframes drip {
+    0% { transform: scaleY(0); transform-origin: top; opacity: 1; }
+    70% { transform: scaleY(1); transform-origin: top; opacity: 1; }
+    100% { transform: scaleY(1); transform-origin: top; opacity: 0; }
+  }
+
+  /* ---------- Sections ---------- */
+  section { padding: clamp(4rem, 10vw, 8rem) clamp(1.25rem, 5vw, 3rem); max-width: 1180px; margin: 0 auto; }
+  .section-head { text-align: center; margin-bottom: clamp(2.5rem, 6vw, 4.5rem); }
+  .section-head .kicker {
+    color: var(--blood); font-size: .78rem; font-weight: 700;
+    letter-spacing: .24em; text-transform: uppercase;
+  }
+  .section-head h2 {
+    margin-top: .9rem; font-size: clamp(1.9rem, 5vw, 3rem);
+    font-weight: 800; letter-spacing: -0.02em; line-height: 1.12;
+  }
+  .section-head p { margin: 1rem auto 0; max-width: 60ch; color: var(--fog); }
+
+  /* features grid */
+  .grid {
+    display: grid; gap: 1.1rem;
+    grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius);
+    padding: 1.7rem 1.5rem;
+    position: relative; overflow: hidden;
+    transition: border-color .3s ease, transform .3s ease, box-shadow .3s ease;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(227,32,59,.12), transparent 65%);
+    opacity: 0; transition: opacity .35s ease; pointer-events: none;
+  }
+  .card:hover { border-color: var(--line); transform: translateY(-4px); box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+  .card:hover::before { opacity: 1; }
+  .card .icon { font-size: 1.6rem; margin-bottom: .9rem; filter: drop-shadow(0 0 10px rgba(227,32,59,.4)); }
+  .card h3 { font-size: 1.08rem; font-weight: 700; margin-bottom: .45rem; }
+  .card p { color: var(--fog); font-size: .92rem; }
+
+  /* how it works */
+  .flow {
+    display: grid; gap: 1.1rem;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    counter-reset: step;
+  }
+  .step { counter-increment: step; }
+  .step .num {
+    font-family: var(--mono); color: var(--blood); font-size: .82rem;
+    letter-spacing: .12em; margin-bottom: .7rem; display: block;
+  }
+  .step .num::before { content: "0" counter(step) " /"; }
+
+  /* code / terminal */
+  .terminal {
+    background: #0b0710;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(227,32,59,.08);
+    max-width: 760px; margin: 0 auto;
+  }
+  .terminal-bar {
+    display: flex; align-items: center; gap: .45rem;
+    padding: .8rem 1.1rem;
+    background: rgba(255,255,255,.035);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .terminal-bar span { margin-left: .7rem; color: var(--mute); font-size: .78rem; font-family: var(--mono); }
+  .terminal pre {
+    padding: 1.4rem 1.3rem; overflow-x: auto;
+    font-family: var(--mono); font-size: .85rem; line-height: 1.75;
+    color: var(--fog);
+  }
+  .terminal .c-cmd { color: var(--bone); }
+  .terminal .c-flag { color: #ff8a9b; }
+  .terminal .c-ok { color: #4cd97b; }
+  .terminal .c-dim { color: var(--mute); }
+  .terminal .c-blood { color: var(--blood); }
+
+  /* stats strip */
+  .stats {
+    display: grid; gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    text-align: center;
+  }
+  .stat .big {
+    font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 800; letter-spacing: -.03em;
+    background: linear-gradient(180deg, var(--bone), var(--fog));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .stat .label { color: var(--mute); font-size: .82rem; letter-spacing: .14em; text-transform: uppercase; margin-top: .3rem; }
+
+  /* final CTA */
+  .final-cta {
+    text-align: center;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 1.4);
+    background:
+      radial-gradient(700px circle at 50% -10%, rgba(227,32,59,.18), transparent 60%),
+      rgba(255,255,255,.025);
+    padding: clamp(3rem, 8vw, 5.5rem) clamp(1.25rem, 5vw, 3rem);
+    overflow: hidden; position: relative;
+  }
+  .final-cta h2 { font-size: clamp(1.9rem, 5vw, 3rem); font-weight: 800; letter-spacing: -.02em; }
+  .final-cta p { color: var(--fog); margin: 1rem auto 2rem; max-width: 52ch; }
+
+  footer {
+    position: relative; z-index: 2;
+    padding: 2.5rem clamp(1.25rem, 5vw, 3rem);
+    text-align: center; color: var(--mute); font-size: .85rem;
+    border-top: 1px solid rgba(255,255,255,.05);
+  }
+  footer a { color: var(--fog); text-decoration: none; }
+  footer a:hover { color: var(--blood); }
+
+  /* reveal default state (GSAP animates these in) */
+  .reveal { opacity: 0; transform: translateY(34px); }
+  .no-js .reveal, .reduced .reveal { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1 !important; transform: none !important; }
+    .scroll-hint .drip, .hero .eyebrow .pulse { animation: none; }
+  }
+</style>
+</head>
+<body class="no-js">
+<script>document.body.classList.remove('no-js');</script>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<nav aria-label="Main navigation">
+  <a class="brand" href="#top">
+    <span class="fang" aria-hidden="true">🧛</span>
+    lmstudio-<em>vampire</em>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#quickstart">Quickstart</a>
+    <a class="nav-cta" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">GitHub →</a>
+  </div>
+</nav>
+
+<main id="top">
+  <!-- HERO -->
+  <header class="hero">
+    <span class="eyebrow"><span class="pulse"></span> Design-stage · LAN-native AI orchestration</span>
+    <h1 id="hero-title">
+      <span class="line">Wake the idle GPUs.</span><br />
+      <span class="line blood-text">Drain nothing but latency.</span>
+    </h1>
+    <p class="sub" id="hero-sub">
+      <strong>lmstudio-vampire</strong> turns idle, LM Studio-compatible GPUs on your local
+      network into one governed, private AI service — discovered, verified, routed, and
+      fused behind a single OpenAI-compatible endpoint.
+    </p>
+    <div class="cta-row" id="hero-cta">
+      <a class="btn btn-primary" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">Read the design ↗</a>
+      <a class="btn btn-ghost" href="#quickstart">See the intended CLI</a>
+    </div>
+    <div class="scroll-hint" id="hero-hint">
+      <span>Descend</span>
+      <span class="drip"></span>
+    </div>
+  </header>
+
+  <!-- STATS -->
+  <section aria-label="Highlights">
+    <div class="stats">
+      <div class="stat reveal"><div class="big" data-count="1">0</div><div class="label">Stable endpoint</div></div>
+      <div class="stat reveal"><div class="big" data-count="3">0</div><div class="label">Fusion modes</div></div>
+      <div class="stat reveal"><div class="big" data-count="100" data-suffix="%">0</div><div class="label">Local &amp; private</div></div>
+      <div class="stat reveal"><div class="big" data-count="0">0</div><div class="label">Cloud required</div></div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="section-head">
+      <span class="kicker reveal">Powers of the night</span>
+      <h2 class="reveal">Everything between your clients<br />and your GPUs</h2>
+      <p class="reveal">Model execution already exists — LM Studio provides it. The missing layer
+      is discovery, permission, routing, policy, and coordination. That layer is the vampire.</p>
+    </div>
+    <div class="grid">
+      <article class="card reveal"><div class="icon">🧛</div><h3>Discovery</h3><p>Wakes on the LAN and finds approved LM Studio-compatible endpoints automatically.</p></article>
+      <article class="card reveal"><div class="icon">🔌</div><h3>Drop-in compatibility</h3><p>A stable OpenAI-compatible API — existing clients only change their base URL.</p></article>
+      <article class="card reveal"><div class="icon">🧭</div><h3>Smart routing</h3><p>Model-aware and load-aware routing with automatic failover across nodes.</p></article>
+      <article class="card reveal"><div class="icon">🤝</div><h3>Request coalescing</h3><p>Collapses concurrent identical prompts into a single inference run.</p></article>
+      <article class="card reveal"><div class="icon">⚡</div><h3>Caching</h3><p>Serves repeated requests instantly from an exact result cache.</p></article>
+      <article class="card reveal"><div class="icon">🧩</div><h3>Fusion modes</h3><p>Parallel, race, and judge/refiner strategies that combine multiple machines.</p></article>
+      <article class="card reveal"><div class="icon">🔐</div><h3>Owner control</h3><p>Respects tokens, realms, and policy before routing a single request.</p></article>
+      <article class="card reveal"><div class="icon">🏠</div><h3>Local-first &amp; private</h3><p>Prompts stay on trusted, nearby compute. Nothing leaves your network.</p></article>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="section-head">
+      <span class="kicker reveal">The ritual</span>
+      <h2 class="reveal">How it works</h2>
+      <p class="reveal">A transparent proxy in front of one or more LM Studio nodes,
+      adding opt-in orchestration without breaking a single existing client.</p>
+    </div>
+    <div class="flow">
+      <article class="card step reveal"><span class="num"></span><h3>Wake</h3><p>The vampire wakes on the local network and scans for LM Studio-compatible inference endpoints.</p></article>
+      <article class="card step reveal"><span class="num"></span><h3>Verify</h3><p>Each node's models, capabilities, owner tokens, and policy are checked before it joins the registry.</p></article>
+      <article class="card step reveal"><span class="num"></span><h3>Route</h3><p>Requests are routed by model and load, coalesced, cached, and failed-over across nodes.</p></article>
+      <article class="card step reveal"><span class="num"></span><h3>Fuse</h3><p>Optional fusion runs parallel, race, or judge/refiner strategies across many machines at once.</p></article>
+    </div>
+  </section>
+
+  <!-- QUICKSTART -->
+  <section id="quickstart">
+    <div class="section-head">
+      <span class="kicker reveal">Intended experience</span>
+      <h2 class="reveal">One command. One endpoint.</h2>
+      <p class="reveal">This project is at the design stage — the CLI below documents the intended experience.</p>
+    </div>
+    <div class="terminal reveal" role="img" aria-label="Terminal showing the intended vampire CLI usage">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span>~ / lair</span>
+      </div>
+      <pre><code><span class="c-dim">$</span> <span class="c-cmd">vampire wake</span> <span class="c-flag">--lan</span>
+<span class="c-blood">🧛 vampire</span> <span class="c-dim">rising…</span>
+<span class="c-ok">✔</span> discovered <span class="c-cmd">3</span> LM Studio nodes on 192.168.1.0/24
+<span class="c-ok">✔</span> verified models · capabilities · owner policy
+<span class="c-ok">✔</span> gateway listening on <span class="c-cmd">http://localhost:9483/v1</span>
+
+<span class="c-dim">$</span> <span class="c-cmd">curl http://localhost:9483/v1/chat/completions</span> <span class="c-flag">\</span>
+    <span class="c-flag">-d</span> <span class="c-dim">'{"model":"auto","messages":[{"role":"user","content":"hello"}]}'</span>
+<span class="c-dim">→ routed to fastest healthy node · cached · coalesced</span></code></pre>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section>
+    <div class="final-cta reveal">
+      <h2>Private AI compute,<br /><span class="blood-text" style="background:linear-gradient(120deg,#ff5d72,var(--blood) 45%,#7a0f20);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">wherever it is allowed.</span></h2>
+      <p>One strong GPU can serve many approved users, devices, rooms, families, teams,
+      and events — without the owner surrendering control.</p>
+      <a class="btn btn-primary" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">Join the design on GitHub ↗</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>🧛 <strong>lmstudio-vampire</strong> · design-stage project ·
+    <a href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">japer-technology/lmstudio-vampire</a></p>
+</footer>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+<script>
+(function () {
+  "use strict";
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) document.body.classList.add("reduced");
+
+  /* ====================== THREE.JS — blood-mist particle field ====================== */
+  if (window.THREE && !reduced) {
+    try {
+      var canvas = document.getElementById("scene");
+      var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      var scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x07050a, 0.055);
+
+      var camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(0, 0, 9);
+
+      // --- particle mist ---
+      var isMobile = window.innerWidth < 768;
+      var COUNT = isMobile ? 900 : 2200;
+      var positions = new Float32Array(COUNT * 3);
+      var speeds = new Float32Array(COUNT);
+      for (var i = 0; i < COUNT; i++) {
+        positions[i * 3 + 0] = (Math.random() - 0.5) * 30;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * 18;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 18;
+        speeds[i] = 0.15 + Math.random() * 0.55;
+      }
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+      // soft round sprite texture drawn on a tiny canvas (keeps it single-file)
+      var spriteCanvas = document.createElement("canvas");
+      spriteCanvas.width = spriteCanvas.height = 64;
+      var sctx = spriteCanvas.getContext("2d");
+      var grad = sctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, "rgba(255,90,110,1)");
+      grad.addColorStop(0.35, "rgba(227,32,59,0.55)");
+      grad.addColorStop(1, "rgba(227,32,59,0)");
+      sctx.fillStyle = grad;
+      sctx.fillRect(0, 0, 64, 64);
+      var sprite = new THREE.CanvasTexture(spriteCanvas);
+
+      var mat = new THREE.PointsMaterial({
+        size: isMobile ? 0.16 : 0.13,
+        map: sprite,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        sizeAttenuation: true
+      });
+      var points = new THREE.Points(geo, mat);
+      scene.add(points);
+
+      // --- wireframe "fang" icosahedron centerpiece ---
+      var coreGeo = new THREE.IcosahedronGeometry(2.4, 1);
+      var coreMat = new THREE.MeshBasicMaterial({
+        color: 0xe3203b, wireframe: true, transparent: true, opacity: 0.14
+      });
+      var core = new THREE.Mesh(coreGeo, coreMat);
+      core.position.set(0, 0.4, 0);
+      scene.add(core);
+
+      var coreInner = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(1.3, 0),
+        new THREE.MeshBasicMaterial({ color: 0xff5d72, wireframe: true, transparent: true, opacity: 0.1 })
+      );
+      scene.add(coreInner);
+
+      // --- pointer parallax ---
+      var targetX = 0, targetY = 0, curX = 0, curY = 0;
+      window.addEventListener("pointermove", function (e) {
+        targetX = (e.clientX / window.innerWidth - 0.5) * 1.2;
+        targetY = (e.clientY / window.innerHeight - 0.5) * 0.8;
+      }, { passive: true });
+
+      // scroll influences camera depth
+      var scrollT = 0;
+      window.addEventListener("scroll", function () {
+        var max = document.documentElement.scrollHeight - window.innerHeight;
+        scrollT = max > 0 ? window.scrollY / max : 0;
+      }, { passive: true });
+
+      var clock = new THREE.Clock();
+      function tick() {
+        var t = clock.getElapsedTime();
+
+        // drift particles upward like rising mist
+        var pos = geo.attributes.position.array;
+        for (var j = 0; j < COUNT; j++) {
+          pos[j * 3 + 1] += speeds[j] * 0.006;
+          if (pos[j * 3 + 1] > 9) pos[j * 3 + 1] = -9;
+        }
+        geo.attributes.position.needsUpdate = true;
+
+        points.rotation.y = t * 0.02;
+        core.rotation.y = t * 0.12;
+        core.rotation.x = Math.sin(t * 0.3) * 0.2;
+        coreInner.rotation.y = -t * 0.2;
+        coreInner.rotation.z = t * 0.1;
+
+        // smooth parallax
+        curX += (targetX - curX) * 0.04;
+        curY += (targetY - curY) * 0.04;
+        camera.position.x = curX;
+        camera.position.y = -curY - scrollT * 1.6;
+        camera.position.z = 9 - scrollT * 2.2;
+        camera.lookAt(0, 0, 0);
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(tick);
+      }
+      tick();
+
+      window.addEventListener("resize", function () {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    } catch (err) {
+      // WebGL unavailable — page degrades gracefully to the static gradient bg
+      console.warn("three.js scene disabled:", err);
+    }
+  }
+
+  /* ====================== GSAP — entrance + scroll choreography ====================== */
+  if (window.gsap && !reduced) {
+    gsap.registerPlugin(ScrollTrigger);
+
+    // hero entrance
+    var intro = gsap.timeline({ defaults: { ease: "power3.out" } });
+    intro
+      .from(".hero .eyebrow", { y: 24, opacity: 0, duration: 0.7 }, 0.1)
+      .from("#hero-title .line", { y: 56, opacity: 0, duration: 0.9, stagger: 0.16 }, 0.25)
+      .from("#hero-sub", { y: 30, opacity: 0, duration: 0.8 }, 0.65)
+      .from("#hero-cta .btn", { y: 24, opacity: 0, duration: 0.6, stagger: 0.1 }, 0.85)
+      .from("#hero-hint", { opacity: 0, duration: 0.8 }, 1.1)
+      .from("nav", { y: -40, opacity: 0, duration: 0.7 }, 0.2);
+
+    // scroll reveals
+    gsap.utils.toArray(".reveal").forEach(function (el) {
+      gsap.to(el, {
+        opacity: 1, y: 0, duration: 0.85, ease: "power3.out",
+        scrollTrigger: { trigger: el, start: "top 86%", once: true }
+      });
+    });
+
+    // animated counters
+    gsap.utils.toArray(".stat .big").forEach(function (el) {
+      var target = parseFloat(el.getAttribute("data-count")) || 0;
+      var suffix = el.getAttribute("data-suffix") || "";
+      var obj = { v: 0 };
+      gsap.to(obj, {
+        v: target, duration: 1.6, ease: "power2.out",
+        scrollTrigger: { trigger: el, start: "top 88%", once: true },
+        onUpdate: function () { el.textContent = Math.round(obj.v) + suffix; }
+      });
+    });
+
+    // gentle hero parallax out on scroll
+    gsap.to(".hero", {
+      opacity: 0.25, y: -60, ease: "none",
+      scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom 30%", scrub: true }
+    });
+  } else {
+    // no GSAP or reduced motion: ensure content is visible and counters are filled
+    document.querySelectorAll(".reveal").forEach(function (el) {
+      el.style.opacity = 1; el.style.transform = "none";
+    });
+    document.querySelectorAll(".stat .big").forEach(function (el) {
+      el.textContent = (el.getAttribute("data-count") || "0") + (el.getAttribute("data-suffix") || "");
+    });
+  }
+
+  /* card spotlight follows pointer */
+  document.querySelectorAll(".card").forEach(function (card) {
+    card.addEventListener("pointermove", function (e) {
+      var r = card.getBoundingClientRect();
+      card.style.setProperty("--mx", (e.clientX - r.left) + "px");
+      card.style.setProperty("--my", (e.clientY - r.top) + "px");
+    }, { passive: true });
+  });
+})();
+</script>
+</body>
+</html>
