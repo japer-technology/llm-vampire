@@ -9,20 +9,24 @@ most direct path from the [ASPIRATION](ASPIRATION.md) and
 
 ## Shape
 
-```text
-Browser UI (dashboard + playground)
-        |  HTTP / WebSocket
-        v
-Python app  (single process: vampire serve)
-   - OpenAI-compatible gateway   /v1/...
-   - Vampire control API         /vampire/v1/...
-   - Static UI host              /
-   - Node registry + router
-   - Coalescer / cache
-   - Policy + token vault
-        |  HTTP (OpenAI-compatible)
-        v
-Approved LM Studio nodes on the LAN
+```mermaid
+flowchart TD
+    ui["🖥️ Browser UI<br/>(dashboard + playground)"]
+
+    subgraph app["🐍 Python app — single process: <code>vampire serve</code>"]
+        direction TB
+        gateway["OpenAI-compatible gateway<br/><code>/v1/...</code>"]
+        control["Vampire control API<br/><code>/vampire/v1/...</code>"]
+        static["Static UI host<br/><code>/</code>"]
+        router["Node registry + router"]
+        cache["Coalescer / cache"]
+        policy["Policy + token vault"]
+    end
+
+    nodes["🧛 Approved LM Studio nodes on the LAN"]
+
+    ui -->|"HTTP / WebSocket"| app
+    app -->|"HTTP (OpenAI-compatible)"| nodes
 ```
 
 One process serves three things at once: the OpenAI-compatible API that clients

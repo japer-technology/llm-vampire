@@ -3,16 +3,20 @@
 Build gateway and UI in **one TypeScript codebase**, sharing request/response
 types end to end.
 
-```text
-React/Svelte UI  (Vite)
-        |  typed client
-        v
-Node gateway  (Fastify / Hono)
-   - OpenAI-compatible gateway
-   - Vampire control API
-        |
-        v
-LM Studio nodes on the LAN
+```mermaid
+flowchart TD
+    ui["⚛️ React/Svelte UI<br/>(Vite)"]
+
+    subgraph node["🟢 Node gateway (Fastify / Hono)"]
+        direction TB
+        gateway["OpenAI-compatible gateway"]
+        control["Vampire control API"]
+    end
+
+    nodes["🧛 LM Studio nodes on the LAN"]
+
+    ui -->|"typed client"| node
+    node --> nodes
 ```
 
 ## Idea

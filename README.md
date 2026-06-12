@@ -79,22 +79,33 @@ own, already trust, and already have nearby?*
 `lmstudio-vampire` sits in front of one or more LM Studio nodes as a transparent proxy
 and adds opt-in orchestration:
 
-```text
-        OpenAI-compatible clients
-                  │
-                  ▼
-   ┌───────────────────────────────┐
-   │        lmstudio-vampire        │
-   │  • OpenAI-compatible gateway   │   /v1/...
-   │  • Vampire control API         │   /vampire/v1/...
-   │  • Node registry + router      │
-   │  • Coalescer / cache           │
-   │  • Policy + token vault        │
-   └───────────────────────────────┘
-                  │  OpenAI-compatible HTTP
-        ┌─────────┼─────────┐
-        ▼         ▼         ▼
-    LM Studio  LM Studio  LM Studio   (approved LAN nodes)
+```mermaid
+flowchart TD
+    clients["🧑‍💻 OpenAI-compatible clients"]
+
+    subgraph vampire["🧛 lmstudio-vampire"]
+        direction TB
+        gateway["OpenAI-compatible gateway<br/><code>/v1/...</code>"]
+        control["Vampire control API<br/><code>/vampire/v1/...</code>"]
+        router["Node registry + router"]
+        cache["Coalescer / cache"]
+        policy["Policy + token vault"]
+    end
+
+    node1["LM Studio"]
+    node2["LM Studio"]
+    node3["LM Studio"]
+
+    clients --> vampire
+    vampire -->|"OpenAI-compatible HTTP"| node1
+    vampire -->|"OpenAI-compatible HTTP"| node2
+    vampire -->|"OpenAI-compatible HTTP"| node3
+
+    subgraph lan["Approved LAN nodes"]
+        node1
+        node2
+        node3
+    end
 ```
 
 - **Compatibility first.** Routes such as `/v1/models`, `/v1/chat/completions`,
