@@ -1,4 +1,4 @@
-# lmstudio-vampire
+# LM Studio Vampire
 
 > Private AI compute, wherever it is allowed.
 
