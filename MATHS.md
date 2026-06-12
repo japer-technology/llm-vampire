@@ -195,11 +195,70 @@ requests (birthday bound) — negligible for any realistic workload, so two
 requests share a key if and only if they are identical. (The design already
 uses `sha256` hashes for model/response attestation, DESIGN-API.md §19.)
 
-Note: coalescing identical prompts into one inference is only semantically
-safe for deterministic decoding (`temperature = 0` or a fixed `seed`);
-otherwise identical prompts legitimately yield different samples.
+### 4.2 The determinism predicate (when sharing a result is *valid*)
 
-### 4.2 Coalescing factor
+Sharing one inference across several requests — by coalescing or by cache
+reuse — is only correct when the request maps to a **reproducible** output.
+Naively this is "`temperature = 0` or a fixed `seed`", but that is too
+coarse. Two refinements matter.
+
+**(a) The seed only matters when sampling is stochastic.** Greedy decoding
+(`temperature → 0`, or `top_k = 1`) is already a deterministic argmax over
+logits; the seed is *ignored*. A request that sets a `seed` but leaves
+`temperature > 0` is reproducible **only** for that exact seed *and* the full
+sampling tuple `(temperature, top_p, top_k, penalties, …)`. The determinism
+predicate is therefore:
+
+```
+D(r) = greedy(r)  ∨  ( seed(r) fixed  ∧  sampling-params(r) fixed )
+```
+
+A settable seed turns an otherwise-random request into a cacheable one, but
+*only* if every other sampling parameter is pinned in the canonical key —
+otherwise the same seed under different `top_p` legitimately diverges.
+
+**(b) Reproducibility is conditional on the backend, not just the request.**
+The model output is a function of the request *and* the backend context `θ`:
+
+```
+output = f( prompt, params, seed ; θ ),
+θ = ( model-weights, quantization, engine/version, numeric environment )
+```
+
+The same `(prompt, seed, params)` on a different `θ` — a different quant of
+the "same" model, a different llama.cpp build, GPU vs. CPU, or even a
+different batch composition — generally yields **different tokens**. So a
+fixed seed guarantees determinism *within one backend*, never across a
+heterogeneous fleet. The consequence for the key of §4.1 is that exact-result
+**caching must bind the backend fingerprint**:
+
+```
+key_cache(r) = SHA-256( canonical(r) ‖ fingerprint(θ) )
+```
+
+In-flight **coalescing** is exempt from this hazard: all attached duplicates
+ride the *same* upstream call, so they trivially share `θ`. It is cross-time
+cache reuse and cross-node reuse that require the `θ`-bound key. (This is why
+ASPIRATION.md's "deterministic cache" must be scoped per backend, not fleet-wide.)
+
+**(c) Batch-invariance — the subtle trap.** Coalescing deliberately *batches*
+requests, but many inference kernels are not batch-invariant: floating-point
+reduction order changes with batch composition, perturbing logits by ~1 ULP.
+Under greedy decoding a 1-ULP wobble almost never flips the argmax; under
+stochastic sampling it can flip a token, and autoregression then amplifies the
+divergence. So "I set a seed" is a *claim* of determinism that must be
+**validated**, not trusted.
+
+**Validation by replay.** When a seed can be set, the gateway validates
+determinism empirically: issue the same `(prompt, seed, params)` to the same
+backend `m` times. If all `m` outputs are identical, the backend is treated as
+deterministic for that `θ` and the result is admitted to the cache; any
+mismatch demotes the request to non-cacheable. Because this is a Bernoulli
+check, the rule-of-three bound of §8.5 applies — `m` clean replays bound the
+residual nondeterminism rate at `≤ 3/m` with 95% confidence — tying seed
+validation directly into the measurement maths.
+
+### 4.3 Coalescing factor
 
 If `d` identical requests arrive while one inference for that key is in
 flight, all `d` are attached to the single upstream call. The backend load
@@ -207,7 +266,7 @@ reduction for that key is a factor of `d`; system-wide, if a fraction `p` of
 arrivals are coalesced duplicates, backend traffic shrinks to `(1 − p)` of
 client traffic.
 
-### 4.3 Cache hit rate and effective latency
+### 4.4 Cache hit rate and effective latency
 
 With cache hit probability `h`, cache lookup latency `L_c`, and inference
 latency `L_b`:
@@ -447,7 +506,8 @@ layer closes the loop on the reliability maths.
 | Metric smoothing | EWMA: `x̄ ← α·x + (1−α)·x̄`                              |
 | Load awareness   | M/M/1: `E[T] = 1/(μ−λ)`, blow-up as `ρ → 1`            |
 | Pooling          | M/M/k wait < k × M/M/1 wait at equal load              |
-| Coalescing/cache | `key = SHA-256(canonical(r))`; `E[L] = h·L_c + (1−h)·L_b` |
+| Coalescing/cache | `key = SHA-256(canonical(r) ‖ fingerprint(θ))`; `E[L] = h·L_c + (1−h)·L_b` |
+| Determinism      | safe to share iff `D(r)` holds *and* backend `θ` matches; validate by replay (`≤ 3/m`) |
 | Race             | `L = min(L₁…L_k)`; `E = 1/(kμ)` for i.i.d. exponential |
 | Fallback/availability | `P(fail) = ∏ fᵢ` — failures multiply away         |
 | Majority fusion  | Condorcet: `Σ_{j>n/2} C(n,j) pʲ(1−p)^{n−j} > p` for `p > ½` |
