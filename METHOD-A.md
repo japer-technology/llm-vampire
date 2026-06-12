@@ -92,7 +92,12 @@ The whole thing installs with `pip install lmstudio-vampire` and runs with
 6. **Policy + tokens.** Owner modes, realms, token vault, CORS/node allowlists.
 7. **Fusion.** Parallel, race, and judge/refiner modes via `/vampire/v1/fusion`.
 
-Each step is independently shippable and maps onto the MVP roadmap in ASPIRATION.
+Each step is independently shippable. These build-order steps cover the same
+work as the thematic MVP roadmap in [ASPIRATION.md](ASPIRATION.md), but grouped
+and ordered for fastest time-to-demo rather than by capability — notably,
+coalescing and routing are sequenced differently and a dashboard UI step is
+added here. See the mapping table in
+[IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for the exact correspondence.
 
 ---
 

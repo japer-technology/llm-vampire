@@ -40,7 +40,11 @@ API surface in [DESIGN-API.md](DESIGN-API.md).
 4. **CLI**: `vampire serve`, `vampire nodes add`, `vampire nodes list`.
 
 This corresponds to Phases 1–2 of the ASPIRATION.md roadmap and §24 "Minimal
-MVP" of DESIGN-API.md.
+MVP" of DESIGN-API.md. Note that this MVP **intentionally narrows** §24: the
+`race` and `fusion` modes listed there are deferred (see "Out of scope" below),
+because they are not part of the smallest *viable* proxy. This MVP implements
+§24's API surface and the `route`/`fallback` modes only; fusion arrives in the
+MVVVP.
 
 ### Out of scope (deferred to MVVP/MVVVP)
 
@@ -58,6 +62,9 @@ MVP" of DESIGN-API.md.
 - A normal OpenAI-compatible client works unchanged when its base URL is
   switched from `http://localhost:1234/v1` to `http://localhost:7777/v1`.
 - Requests fail over from a downed preferred node to a fallback node.
+- The control endpoints respond: `GET /vampire/v1/status`,
+  `GET /vampire/v1/nodes` (and `POST`), `GET /vampire/v1/models`, and
+  `GET /vampire/v1/metrics`.
 - `pip install -e ".[dev]"` installs, and `python -m pytest` passes.
 
 ---
