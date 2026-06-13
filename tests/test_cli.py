@@ -60,7 +60,9 @@ def test_cli_discover_sends_static_discovery_request(
 ) -> None:
     seen = _mock_cli_client(
         monkeypatch,
-        lambda request: httpx.Response(200, json={"object": "vampire.discovery_result", "nodes": []}),
+        lambda request: httpx.Response(
+            200, json={"object": "vampire.discovery_result", "nodes": []}
+        ),
     )
 
     assert (
