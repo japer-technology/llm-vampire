@@ -250,7 +250,20 @@
     font-family: var(--mono);
   }
   .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 0.8rem; align-content: start; }
-  .node {
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0.6rem 1rem 0;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--vamp-dim);
+    border-radius: 10px;
+    background: rgba(172, 67, 217, 0.1);
+  }
+  .filter-bar .filter-text { font-size: 0.78rem; color: var(--bone); }
+  .filter-bar .filter-text b { color: var(--vamp-hot); font-family: var(--mono); }  .node {
     position: relative;
     overflow: hidden;
     background: linear-gradient(180deg, var(--card-strong), var(--card));
@@ -350,6 +363,10 @@
   .fact[title]:hover { border-color: var(--vamp-dim); background: rgba(172, 67, 217, 0.08); }
   .model-list li[title] { cursor: help; }
   .model-list li:hover { background: rgba(172, 67, 217, 0.1); }
+  .model-list li.model-item { cursor: pointer; }
+  .model-list li.model-item:hover { background: rgba(172, 67, 217, 0.16); }
+  .model-list li.model-item:focus-visible { outline: 2px solid var(--vamp-hot); outline-offset: 1px; }
+  .model-list li.model-item.active { border-left: 2px solid var(--vamp-hot); background: rgba(172, 67, 217, 0.18); }
   .stat[title] { cursor: help; transition: border-color 0.15s ease; }
   .stat[title]:hover { border-color: var(--vamp-dim); }
   .btn-small.is-active { color: var(--bone); border-color: var(--vamp); background: rgba(172, 67, 217, 0.16); }
@@ -563,6 +580,7 @@
           <button class="btn-ghost btn-small" id="collapseBtn" title="Collapse or expand every computer at once">Collapse all</button>
         </div>
       </div>
+      <div class="filter-bar" id="filterBar" hidden></div>
       <div class="monitor-panel" id="monitorPanel" hidden aria-live="polite">
         <div class="monitor-head">
           <div class="monitor-title">
@@ -609,6 +627,7 @@
     progressFound: $("progressFound"), progressMode: $("progressMode"), summary: $("summary"), results: $("results"),
     historyList: $("historyList"), targetCount: $("targetCount"), runLabel: $("runLabel"), lastSaved: $("lastSaved"),
     showLiveBtn: $("showLiveBtn"), showAllBtn: $("showAllBtn"), densityBtn: $("densityBtn"), collapseBtn: $("collapseBtn"), toast: $("toast"),
+    filterBar: $("filterBar"),
     monitorPanel: $("monitorPanel"), monitorMeta: $("monitorMeta"), monitorGraph: $("monitorGraph"),
     monitorLegend: $("monitorLegend"), monitorNext: $("monitorNext"),
   };
@@ -628,6 +647,10 @@
   let compact = false;
   const localIps = new Set();
   const collapsedDevices = new Set();
+  // Active result filter. null = show everything. Otherwise one of:
+  //   { type: "device", key }      -> show only that one computer
+  //   { type: "model", id }        -> show only that model and every device offering it
+  let focus = null;
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
@@ -1088,7 +1111,7 @@
   function renderResults() {
     renderSummary();
     els.results.classList.toggle("compact", compact);
-    const devices = groupDevices(lastResults)
+    let devices = groupDevices(lastResults)
       .filter((device) => showOffline || device.status !== "offline")
       .sort((a, b) =>
         (a.local ? 0 : 1) - (b.local ? 0 : 1) ||
@@ -1097,12 +1120,52 @@
         a.latency - b.latency ||
         a.host.localeCompare(b.host));
 
+    devices = applyFocus(devices);
+    renderFilterBar(devices.length);
+
     if (!devices.length) {
-      els.results.innerHTML = `<p class="empty">No readable or detected LM Studio interfaces or Vampire gateways yet. Start a scan, or choose “Include offline” to inspect every attempted target.</p>`;
+      if (focus) {
+        els.results.innerHTML = `<p class="empty">Nothing matches the current filter anymore. Choose “Show all devices” to clear it.</p>`;
+      } else {
+        els.results.innerHTML = `<p class="empty">No readable or detected LM Studio interfaces or Vampire gateways yet. Start a scan, or choose “Include offline” to inspect every attempted target.</p>`;
+      }
       return;
     }
     els.results.innerHTML = devices.map(deviceCard).join("");
   }
+
+  // Reduce the device list down to whatever the active filter targets. A device
+  // focus keeps a single computer; a model focus keeps every computer offering
+  // that model. When no filter is active the list is returned unchanged.
+  function applyFocus(devices) {
+    if (!focus) return devices;
+    if (focus.type === "device") {
+      const match = devices.find((device) => device.key === focus.key);
+      if (!match) { focus = null; return devices; }
+      return [match];
+    }
+    if (focus.type === "model") {
+      const matches = devices.filter((device) => device.models.some((model) => model.id === focus.id));
+      if (!matches.length) { focus = null; return devices; }
+      return matches;
+    }
+    return devices;
+  }
+
+  function renderFilterBar(visibleCount) {
+    if (!focus) {
+      els.filterBar.hidden = true;
+      els.filterBar.innerHTML = "";
+      return;
+    }
+    const label = focus.type === "device"
+      ? `Showing only <b>${esc(focus.label || focus.key)}</b>`
+      : `Showing <b>${esc(focus.id)}</b> across <b>${visibleCount}</b> device${visibleCount === 1 ? "" : "s"}`;
+    els.filterBar.hidden = false;
+    els.filterBar.innerHTML = `<span class="filter-text">${label}</span>` +
+      `<button class="btn-ghost btn-small" data-action="clear-focus" title="Clear the filter and show every device again">Show all devices</button>`;
+  }
+
 
   function fact(value, label, title) {
     if (value === "" || value === null || value === undefined) return "";
@@ -1161,25 +1224,36 @@
       </div>
     </div>` : "";
 
+    const focusDeviceBtn = focus && focus.type === "device" && focus.key === device.key
+      ? `<button class="btn-ghost btn-small is-active" data-action="clear-focus" title="Clear the filter and show every device again">Show all devices</button>`
+      : `<button class="btn-ghost btn-small" data-action="focus-device" data-key="${esc(device.key)}" data-label="${esc(deviceLabel(device))}" title="Hide every other computer and show only this one">Only this computer</button>`;
     const corsHelp = device.status === "detected" ? `
       <div class="node-actions">
+        ${focusDeviceBtn}
         <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(primary.origin)}" title="Copy this computer's address">Copy origin</button>
         <button class="btn-ghost btn-small" data-action="copy-cors" data-origin="${esc(primary.origin)}" title="Copy the command to enable CORS on this host">Copy CORS fix</button>
       </div>` : `
       <div class="node-actions">
+        ${focusDeviceBtn}
         <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(primary.origin)}" title="Copy this computer's address">Copy origin</button>
       </div>`;
 
     let modelsBlock = "";
     if (device.models.length) {
-      const items = device.models.map((model) => {
+      const focusModelId = focus && focus.type === "model" ? focus.id : null;
+      const shown = focusModelId ? device.models.filter((model) => model.id === focusModelId) : device.models;
+      const items = shown.map((model) => {
         const tags = [
           model.type, model.state, model.compat, model.arch, model.publisher, model.quant ? `q:${model.quant}` : "",
           model.params, model.ctx ? `${model.ctx} ctx` : "",
         ].filter(Boolean).map(esc).join(" · ");
-        return `<li class="${model.state === "loaded" ? "loaded" : ""}" title="${esc(model.id)}${tags ? ` — ${tags}` : ""}"><span>${esc(model.id)}</span><span class="tag">${tags}</span></li>`;
+        const active = model.id === focusModelId ? " active" : "";
+        return `<li class="model-item ${model.state === "loaded" ? "loaded" : ""}${active}" role="button" tabindex="0" data-action="focus-model" data-model="${esc(model.id)}" title="Click to show every device offering ${esc(model.id)}${tags ? ` — ${tags}` : ""}"><span>${esc(model.id)}</span><span class="tag">${tags}</span></li>`;
       }).join("");
-      modelsBlock = `<details class="models"${compact ? "" : " open"}><summary title="Show or hide the model list for this computer">${device.models.length} model${device.models.length === 1 ? "" : "s"} interrogated</summary><ul class="model-list">${items}</ul></details>`;
+      const summaryLabel = focusModelId
+        ? `Showing ${shown.length} of ${device.models.length} model${device.models.length === 1 ? "" : "s"}`
+        : `${device.models.length} model${device.models.length === 1 ? "" : "s"} interrogated`;
+      modelsBlock = `<details class="models"${compact ? "" : " open"}><summary title="Show or hide the model list for this computer">${summaryLabel}</summary><ul class="model-list">${items}</ul></details>`;
     }
 
     const meta = [
@@ -1572,8 +1646,21 @@
     renderResults();
   }
 
+  function setFocus(next) {
+    focus = next;
+    if (next && next.type === "device") {
+      collapsedDevices.delete(next.key);
+    } else if (next && next.type === "model") {
+      // Expand any device that offers the focused model so the row is visible.
+      for (const device of groupDevices(lastResults)) {
+        if (device.models.some((model) => model.id === next.id)) collapsedDevices.delete(device.key);
+      }
+    }
+    renderResults();
+  }
+
   function handleDelegatedClick(event) {
-    const button = event.target.closest("button[data-action]");
+    const button = event.target.closest("[data-action]");
     if (!button) return;
     const action = button.dataset.action;
     const id = button.dataset.id;
@@ -1585,6 +1672,18 @@
       renderResults();
       return;
     }
+    if (action === "focus-device") {
+      setFocus({ type: "device", key: button.dataset.key, label: button.dataset.label });
+      return;
+    }
+    if (action === "focus-model") {
+      setFocus({ type: "model", id: button.dataset.model });
+      return;
+    }
+    if (action === "clear-focus") {
+      setFocus(null);
+      return;
+    }
     if (action === "copy-origin") copyText(origin);
     if (action === "copy-cors") copyText(`Enable CORS on ${origin}: in LM Studio enable Serve on Local Network + Enable CORS, or run lms server start --cors --port ${new URL(origin).port || "1234"}.`);
     if (action === "load-history") loadHistory(id);
@@ -1593,6 +1692,15 @@
       if (item) downloadPayload(item.payload, "lmstudio-saved-scan");
     }
     if (action === "delete-history") deleteHistory(id);
+  }
+
+  // Keyboard parity for clickable list rows (model items) that are not native buttons.
+  function handleDelegatedKeydown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const row = event.target.closest("li[data-action]");
+    if (!row) return;
+    event.preventDefault();
+    handleDelegatedClick(event);
   }
 
   function bindEvents() {
@@ -1609,6 +1717,7 @@
     els.densityBtn.addEventListener("click", toggleDensity);
     els.collapseBtn.addEventListener("click", toggleCollapseAll);
     document.addEventListener("click", handleDelegatedClick);
+    document.addEventListener("keydown", handleDelegatedKeydown);
     for (const input of [els.subnet, els.rangeStart, els.rangeEnd, els.ports, els.timeout, els.concurrency, els.interval, els.manual, els.includeLocalhost, els.huntVampires]) {
       input.addEventListener("input", () => { updateTargetPreview(); saveSettings(); });
       input.addEventListener("change", () => { updateTargetPreview(); saveSettings(); });
