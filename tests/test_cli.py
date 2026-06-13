@@ -159,8 +159,12 @@ def test_required_implementation_plan_commands_are_bound_to_handlers() -> None:
         ["status"],
         ["discover"],
         ["nodes"],
+        ["models"],
+        ["metrics"],
         ["route"],
         ["share", "off"],
+        ["dashboard"],
+        ["ui"],
     ]
 
     for command in commands:
@@ -214,6 +218,34 @@ def test_cli_nodes_update_get_delete_route_get_delete_and_share_call_control_api
     }
     assert seen[6]["json"] == {"mode": "off", "enabled": False}
     assert capsys.readouterr().out.count('"ok": true') == 7
+
+
+def test_cli_models_metrics_and_dashboard_commands(
+    monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    seen = _mock_cli_client(monkeypatch, lambda request: httpx.Response(200, json={"ok": True}))
+    opened: list[str] = []
+    monkeypatch.setattr("vampire.cli.webbrowser.open", opened.append)
+
+    assert cli.main(["models"]) == 0
+    assert cli.main(["metrics", "--gateway", "http://gateway:7777/"]) == 0
+    assert cli.main(["dashboard", "--gateway", "http://gateway:7777"]) == 0
+    assert cli.main(["ui", "--gateway", "http://gateway:7777", "--open"]) == 0
+
+    assert seen == [
+        {
+            "method": "GET",
+            "url": "http://127.0.0.1:7777/vampire/v1/models",
+            "json": None,
+        },
+        {
+            "method": "GET",
+            "url": "http://gateway:7777/vampire/v1/metrics",
+            "json": None,
+        },
+    ]
+    assert opened == ["http://gateway:7777"]
+    assert "http://gateway:7777" in capsys.readouterr().out
 
 
 def test_cli_share_off_rejects_extra_state(capsys: CaptureFixture[str]) -> None:

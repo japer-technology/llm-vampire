@@ -3,38 +3,587 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>lmstudio-vampire</title>
+    <title>lmstudio-vampire dashboard</title>
     <style>
-      body {
-        font-family: system-ui, sans-serif;
-        margin: 0;
-        background: #0f0f12;
-        color: #e8e8ea;
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
+      :root {
+        color-scheme: dark;
+        --bg: #08080c;
+        --panel: #14141c;
+        --panel-strong: #1c1c28;
+        --text: #f3f0ff;
+        --muted: #aaa3bd;
+        --accent: #c77dff;
+        --accent-strong: #ff4fd8;
+        --good: #54d990;
+        --bad: #ff6b6b;
+        --warn: #ffd166;
+        --line: #2d2b3a;
       }
-      main { max-width: 40rem; padding: 2rem; }
-      h1 { margin-bottom: 0.25rem; }
-      code { background: #1d1d22; padding: 0.1rem 0.35rem; border-radius: 4px; }
-      a { color: #c97bff; }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(199, 125, 255, 0.24), transparent 30rem),
+          radial-gradient(circle at top right, rgba(255, 79, 216, 0.12), transparent 24rem),
+          var(--bg);
+        color: var(--text);
+      }
+
+      header, main { width: min(1180px, calc(100vw - 2rem)); margin: 0 auto; }
+
+      header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1rem;
+        align-items: end;
+        padding: 2rem 0 1rem;
+      }
+
+      h1, h2, h3 { margin: 0; }
+
+      h1 { font-size: clamp(2rem, 6vw, 4rem); letter-spacing: -0.06em; }
+      h2 { font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+      h3 { font-size: 1rem; }
+
+      button, input, select, textarea {
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        font: inherit;
+      }
+
+      input, select, textarea {
+        width: 100%;
+        background: #0e0e15;
+        color: var(--text);
+        padding: 0.75rem;
+      }
+
+      textarea { min-height: 9rem; resize: vertical; }
+
+      button {
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: white;
+        padding: 0.75rem 1rem;
+        font-weight: 700;
+      }
+
+      button.secondary { background: var(--panel-strong); color: var(--text); }
+      button:disabled { cursor: wait; opacity: 0.55; }
+
+      code, pre {
+        background: #0d0d13;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+      }
+
+      code { padding: 0.1rem 0.35rem; }
+      pre { overflow: auto; padding: 1rem; white-space: pre-wrap; }
+
+      .muted { color: var(--muted); }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: flex-end; }
+      .grid { display: grid; gap: 1rem; }
+      .cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .columns { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); align-items: start; }
+
+      .card {
+        background: color-mix(in srgb, var(--panel) 92%, transparent);
+        border: 1px solid var(--line);
+        border-radius: 1.25rem;
+        padding: 1rem;
+        box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.22);
+      }
+
+      .stat { display: grid; gap: 0.35rem; }
+      .stat strong { font-size: 2rem; line-height: 1; }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .row:first-child { border-top: 0; }
+      .stack { display: grid; gap: 0.75rem; }
+      .inline { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+      .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+      .span-all { grid-column: 1 / -1; }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #0f0f17;
+        color: var(--muted);
+        padding: 0.25rem 0.55rem;
+        font-size: 0.82rem;
+      }
+
+      .ok { color: var(--good); }
+      .bad { color: var(--bad); }
+      .warn { color: var(--warn); }
+      .empty { color: var(--muted); padding: 1rem 0; }
+      .error { border-color: color-mix(in srgb, var(--bad), var(--line)); color: var(--bad); }
+
+      footer { color: var(--muted); text-align: center; padding: 2rem 1rem; }
     </style>
   </head>
   <body>
-    <main>
-      <h1>🧛 lmstudio-vampire</h1>
-      <p>Private AI compute, offered through LM Studio, wherever the owner allows it.</p>
-      <p>
-        Phase 0 and Phase 1 are active: the package runs, the control status
-        endpoint responds, and <code>/v1/*</code> transparently proxies to a
-        configured LM Studio node. The full dashboard and prompt playground are
-        delivered in Phase 4 of
-        <a href="https://github.com/japer-technology/lmstudio-vampire">IMPLEMENTATION-PLAN.md</a>.
-      </p>
-      <p>
-        Control API: <code>/vampire/v1/status</code> ·
-        OpenAI-compatible API: <code>/v1/models</code>
-      </p>
+    <header>
+      <div>
+        <p class="pill">Phase 4 dashboard + playground</p>
+        <h1>🧛 lmstudio-vampire</h1>
+        <p class="muted">
+          Govern owner-approved LM Studio nodes from one OpenAI-compatible gateway.
+        </p>
+      </div>
+      <div class="toolbar">
+        <button id="refresh" type="button">Refresh cluster</button>
+        <button id="discover" class="secondary" type="button">Discover static nodes</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="grid cards" aria-label="Cluster summary">
+        <article class="card stat">
+          <span class="muted">Gateway</span>
+          <strong id="version">—</strong>
+          <span id="gateway-state" class="muted">Loading status…</span>
+        </article>
+        <article class="card stat">
+          <span class="muted">Nodes online</span>
+          <strong id="nodes-online">—</strong>
+          <span id="nodes-total" class="muted">— registered</span>
+        </article>
+        <article class="card stat">
+          <span class="muted">Models</span>
+          <strong id="model-count">—</strong>
+          <span class="muted">Physical + virtual inventory</span>
+        </article>
+        <article class="card stat">
+          <span class="muted">Throughput</span>
+          <strong id="tokens-per-second">—</strong>
+          <span class="muted">registered node tokens/sec</span>
+        </article>
+      </section>
+
+      <section class="grid columns">
+        <article class="card stack">
+          <div class="inline"><h2>Nodes</h2><span id="node-refresh-state" class="pill">idle</span></div>
+          <div id="nodes" class="stack"><p class="empty">No nodes loaded yet.</p></div>
+          <form id="node-form" class="stack">
+            <h3>Add owner-approved node</h3>
+            <div class="form-grid">
+              <label>Node ID<input name="id" placeholder="home-gpu" required /></label>
+              <label>LM Studio URL<input name="lmstudio_base_url" placeholder="http://192.168.1.50:1234" required /></label>
+              <label>Name<input name="name" placeholder="Studio GPU" /></label>
+              <label>Tags<input name="tags" placeholder="gpu,fast,trusted-lan" /></label>
+            </div>
+            <label class="inline"><input name="trusted" type="checkbox" style="width:auto" /> Trusted route target</label>
+            <button type="submit">Register node</button>
+          </form>
+        </article>
+
+        <article class="card stack">
+          <h2>Models</h2>
+          <div id="models" class="stack"><p class="empty">No models loaded yet.</p></div>
+        </article>
+      </section>
+
+      <section class="grid columns">
+        <article class="card stack">
+          <h2>Routes</h2>
+          <div id="routes" class="stack"><p class="empty">No routes configured.</p></div>
+          <form id="route-form" class="stack">
+            <h3>Create virtual route</h3>
+            <div class="form-grid">
+              <label>Route ID<input name="id" placeholder="route-auto" required /></label>
+              <label>Virtual model<input name="virtual_model" placeholder="vampire:auto" required /></label>
+              <label>Targets<input name="targets" placeholder="node-a:model-a,node-b:model-b" required /></label>
+              <label>
+                Strategy
+                <select name="strategy">
+                  <option>round_robin</option>
+                  <option>least_busy</option>
+                  <option>least_latency</option>
+                  <option>model_affinity</option>
+                  <option>trusted_only</option>
+                </select>
+              </label>
+              <label class="span-all">Fallback model<input name="fallback" placeholder="vampire:backup" /></label>
+            </div>
+            <button type="submit">Save route</button>
+          </form>
+        </article>
+
+        <article class="card stack">
+          <h2>Prompt playground</h2>
+          <form id="prompt-form" class="stack">
+            <div class="form-grid">
+              <label>Model<input name="model" value="vampire:auto" required /></label>
+              <label>
+                Mode
+                <select name="mode">
+                  <option value="route">route</option>
+                  <option value="fallback">fallback</option>
+                  <option value="">plain proxy</option>
+                </select>
+              </label>
+              <label>
+                Strategy
+                <select name="strategy">
+                  <option value="">route default</option>
+                  <option>round_robin</option>
+                  <option>least_busy</option>
+                  <option>least_latency</option>
+                  <option>model_affinity</option>
+                  <option>trusted_only</option>
+                </select>
+              </label>
+            </div>
+            <label>Prompt<textarea name="prompt" placeholder="Ask the cluster something…" required></textarea></label>
+            <button type="submit">Send to gateway</button>
+          </form>
+          <pre id="playground-output">Responses from /v1/chat/completions appear here.</pre>
+        </article>
+      </section>
+
+      <section class="grid columns">
+        <article class="card stack">
+          <h2>Metrics</h2>
+          <div id="metrics" class="stack"><p class="empty">No metrics loaded yet.</p></div>
+        </article>
+        <article class="card stack">
+          <h2>Owner share mode</h2>
+          <div id="share" class="stack"><p class="empty">Share state not loaded.</p></div>
+        </article>
+      </section>
     </main>
+
+    <footer>
+      API surfaces: <code>/v1/*</code> compatibility · <code>/vampire/v1/*</code> control · static UI at <code>/</code>
+    </footer>
+
+    <script>
+      const state = { status: null, nodes: [], models: [], routes: [], metrics: null, share: null };
+      const $ = (id) => document.getElementById(id);
+
+      function asJson(response) {
+        return response.text().then((text) => {
+          const payload = text ? JSON.parse(text) : {};
+          if (!response.ok) {
+            const message = payload.detail || payload.error?.message || response.statusText;
+            throw new Error(message);
+          }
+          return payload;
+        });
+      }
+
+      async function api(path, options = {}) {
+        const headers = { Accept: "application/json", ...(options.headers || {}) };
+        if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+        return asJson(await fetch(path, { ...options, headers }));
+      }
+
+      function setBusy(button, busy) {
+        button.disabled = busy;
+        button.dataset.originalText ||= button.textContent;
+        button.textContent = busy ? "Working…" : button.dataset.originalText;
+      }
+
+      function pill(text, tone = "") {
+        const span = document.createElement("span");
+        span.className = `pill ${tone}`.trim();
+        span.textContent = text;
+        return span;
+      }
+
+      function empty(text) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = text;
+        return p;
+      }
+
+      function renderList(container, items, renderer, emptyText) {
+        container.replaceChildren();
+        if (!items.length) {
+          container.append(empty(emptyText));
+          return;
+        }
+        items.forEach((item) => container.append(renderer(item)));
+      }
+
+      function renderSummary() {
+        $("version").textContent = state.status?.version || "—";
+        $("gateway-state").textContent = state.status ? state.status.object : "Gateway unavailable";
+        $("nodes-online").textContent = state.status?.nodes_online ?? "—";
+        $("nodes-total").textContent = `${state.status?.nodes_total ?? "—"} registered`;
+        $("model-count").textContent = state.models.length;
+        const tps = state.metrics?.cluster?.tokens_per_second;
+        $("tokens-per-second").textContent = Number.isFinite(tps) ? tps.toFixed(1) : "0.0";
+      }
+
+      function renderNodes() {
+        renderList(
+          $("nodes"),
+          state.nodes,
+          (node) => {
+            const article = document.createElement("article");
+            article.className = "row";
+            const details = document.createElement("div");
+            const title = document.createElement("strong");
+            title.textContent = node.name || node.id;
+            const meta = document.createElement("p");
+            meta.className = "muted";
+            meta.textContent = `${node.lmstudio_base_url} · ${node.models?.length || 0} models · ${node.request_count || 0} probes`;
+            const tags = document.createElement("div");
+            tags.className = "inline";
+            tags.append(pill(node.status || "unknown", node.status === "online" ? "ok" : "bad"));
+            if (node.trusted) tags.append(pill("trusted", "ok"));
+            (node.tags || []).forEach((tag) => tags.append(pill(tag)));
+            details.append(title, meta, tags);
+            const actions = document.createElement("div");
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "secondary";
+            remove.textContent = "Remove";
+            remove.addEventListener("click", () => deleteNode(node.id));
+            actions.append(remove);
+            article.append(details, actions);
+            return article;
+          },
+          "No owner-approved LM Studio nodes registered."
+        );
+      }
+
+      function renderModels() {
+        renderList(
+          $("models"),
+          state.models,
+          (model) => {
+            const article = document.createElement("article");
+            article.className = "row";
+            const details = document.createElement("div");
+            const title = document.createElement("strong");
+            title.textContent = model.model || model.id;
+            const meta = document.createElement("p");
+            meta.className = "muted";
+            meta.textContent = model.node ? `node ${model.node}` : `owned by ${model.owned_by || "vampire"}`;
+            details.append(title, meta);
+            article.append(details, pill(model.node ? "physical" : "virtual"));
+            return article;
+          },
+          "No models found. Register or discover an LM Studio node."
+        );
+      }
+
+      function renderRoutes() {
+        renderList(
+          $("routes"),
+          state.routes,
+          (route) => {
+            const article = document.createElement("article");
+            article.className = "row";
+            const details = document.createElement("div");
+            const title = document.createElement("strong");
+            title.textContent = `${route.virtual_model} (${route.id})`;
+            const meta = document.createElement("p");
+            meta.className = "muted";
+            meta.textContent = `${route.strategy} · ${route.targets.map((t) => `${t.node}:${t.model}`).join(", ") || "no targets"}`;
+            details.append(title, meta);
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "secondary";
+            remove.textContent = "Delete";
+            remove.addEventListener("click", () => deleteRoute(route.id));
+            article.append(details, remove);
+            return article;
+          },
+          "No virtual-model routes configured."
+        );
+      }
+
+      function renderMetrics() {
+        const metrics = $("metrics");
+        metrics.replaceChildren();
+        if (!state.metrics) {
+          metrics.append(empty("Metrics unavailable."));
+          return;
+        }
+        const cluster = state.metrics.cluster || {};
+        metrics.append(pill(`${cluster.active_requests || 0} active requests`));
+        metrics.append(pill(`${cluster.queue_depth || 0} queued`));
+        renderList(
+          metrics,
+          state.metrics.nodes || [],
+          (node) => {
+            const row = document.createElement("article");
+            row.className = "row";
+            const text = document.createElement("div");
+            const title = document.createElement("strong");
+            title.textContent = node.node;
+            const meta = document.createElement("p");
+            meta.className = "muted";
+            meta.textContent = `${node.requests_total} requests · ${node.errors_total} errors · ${node.avg_latency_ms ?? "?"} ms`;
+            text.append(title, meta);
+            row.append(text, pill(node.health, node.health === "online" ? "ok" : "bad"));
+            return row;
+          },
+          "No per-node metrics yet."
+        );
+      }
+
+      function renderShare() {
+        const share = $("share");
+        share.replaceChildren();
+        if (!state.share) {
+          share.append(empty("Share state unavailable."));
+          return;
+        }
+        share.append(pill(`${state.share.mode} · ${state.share.enabled ? "enabled" : "disabled"}`, state.share.enabled ? "ok" : "warn"));
+        if (state.share.duration) share.append(pill(`duration ${state.share.duration}`));
+        if (state.share.model) share.append(pill(`model ${state.share.model}`));
+      }
+
+      function renderAll() {
+        renderSummary();
+        renderNodes();
+        renderModels();
+        renderRoutes();
+        renderMetrics();
+        renderShare();
+      }
+
+      async function refreshCluster() {
+        $("node-refresh-state").textContent = "refreshing";
+        try {
+          const [status, nodes, models, routes, metrics, share] = await Promise.all([
+            api("/vampire/v1/status"),
+            api("/vampire/v1/nodes"),
+            api("/vampire/v1/models"),
+            api("/vampire/v1/routes"),
+            api("/vampire/v1/metrics"),
+            api("/vampire/v1/share"),
+          ]);
+          state.status = status;
+          state.nodes = nodes.data || [];
+          state.models = models.data || [];
+          state.routes = routes.data || [];
+          state.metrics = metrics;
+          state.share = share;
+          $("node-refresh-state").textContent = "fresh";
+        } catch (error) {
+          $("gateway-state").textContent = error.message;
+          $("gateway-state").className = "bad";
+          $("node-refresh-state").textContent = "error";
+        }
+        renderAll();
+      }
+
+      async function deleteNode(id) {
+        await api(`/vampire/v1/nodes/${encodeURIComponent(id)}`, { method: "DELETE" });
+        await refreshCluster();
+      }
+
+      async function deleteRoute(id) {
+        await api(`/vampire/v1/routes/${encodeURIComponent(id)}`, { method: "DELETE" });
+        await refreshCluster();
+      }
+
+      $("refresh").addEventListener("click", async (event) => {
+        setBusy(event.currentTarget, true);
+        await refreshCluster();
+        setBusy(event.currentTarget, false);
+      });
+
+      $("discover").addEventListener("click", async (event) => {
+        setBusy(event.currentTarget, true);
+        await api("/vampire/v1/discover", { method: "POST", body: JSON.stringify({ methods: ["static"] }) });
+        await refreshCluster();
+        setBusy(event.currentTarget, false);
+      });
+
+      $("node-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const tags = String(form.get("tags") || "")
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean);
+        const body = {
+          id: String(form.get("id")),
+          lmstudio_base_url: String(form.get("lmstudio_base_url")),
+          trusted: form.get("trusted") === "on",
+          tags,
+        };
+        const name = String(form.get("name") || "").trim();
+        if (name) body.name = name;
+        await api("/vampire/v1/nodes", { method: "POST", body: JSON.stringify(body) });
+        event.currentTarget.reset();
+        await refreshCluster();
+      });
+
+      $("route-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const targets = String(form.get("targets") || "")
+          .split(",")
+          .map((target) => target.trim())
+          .filter(Boolean)
+          .map((target) => {
+            const [node, ...modelParts] = target.split(":");
+            return { node, model: modelParts.join(":") };
+          });
+        const body = {
+          id: String(form.get("id")),
+          virtual_model: String(form.get("virtual_model")),
+          targets,
+          strategy: String(form.get("strategy")),
+        };
+        const fallback = String(form.get("fallback") || "").trim();
+        if (fallback) body.fallback = fallback;
+        await api("/vampire/v1/routes", { method: "POST", body: JSON.stringify(body) });
+        event.currentTarget.reset();
+        await refreshCluster();
+      });
+
+      $("prompt-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const mode = String(form.get("mode") || "");
+        const strategy = String(form.get("strategy") || "");
+        const vampire = {};
+        if (mode) vampire.mode = mode;
+        if (strategy) vampire.routing = { strategy };
+        const body = {
+          model: String(form.get("model")),
+          messages: [{ role: "user", content: String(form.get("prompt")) }],
+          stream: false,
+        };
+        if (Object.keys(vampire).length) body.vampire = vampire;
+        $("playground-output").textContent = "Waiting for /v1/chat/completions…";
+        try {
+          const response = await api("/v1/chat/completions", { method: "POST", body: JSON.stringify(body) });
+          $("playground-output").className = "";
+          $("playground-output").textContent = JSON.stringify(response, null, 2);
+        } catch (error) {
+          $("playground-output").className = "error";
+          $("playground-output").textContent = error.message;
+        }
+      });
+
+      refreshCluster();
+    </script>
   </body>
 </html>

@@ -97,6 +97,10 @@ top once traffic flows.
 ### Phase 4 — Browser UI (build step 4)
 - Static SPA served from `/`: dashboard for nodes, models, health, cluster
   status, plus a prompt playground that calls the gateway.
+- Implemented: the plain static SPA drives the existing control API for status,
+  nodes, discovery, models, routes, metrics, and share state, and posts playground
+  prompts to `/v1/chat/completions`. The `vampire dashboard` / `vampire ui`
+  command prints or opens the served dashboard URL.
 
 ### Phase 5 — Coalescing + cache (build step 5)
 - In-flight deduplication of identical concurrent prompts.
