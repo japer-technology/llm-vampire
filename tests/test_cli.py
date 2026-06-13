@@ -194,7 +194,15 @@ def test_cli_nodes_update_get_delete_route_get_delete_and_share_call_control_api
     )
     assert cli.main(["share", "stop"]) == 0
 
-    assert [request["method"] for request in seen] == ["PATCH", "GET", "DELETE", "GET", "DELETE", "POST", "POST"]
+    assert [request["method"] for request in seen] == [
+        "PATCH",
+        "GET",
+        "DELETE",
+        "GET",
+        "DELETE",
+        "POST",
+        "POST",
+    ]
     assert seen[0]["url"] == "http://127.0.0.1:7777/vampire/v1/nodes/node-a"
     assert seen[0]["json"] == {"trusted": True, "queue_depth": 3}
     assert seen[5]["url"] == "http://127.0.0.1:7777/vampire/v1/share"
