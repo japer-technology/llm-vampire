@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import socket
 from datetime import datetime, timezone
 from time import perf_counter
 from urllib.parse import urlparse
@@ -27,6 +28,105 @@ def _node_id_for_url(base_url: str) -> str:
     host = (parsed.hostname or "localhost").replace(".", "-").replace(":", "-")
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     return f"node-{host}-{port}"
+
+
+def _local_ip_addresses() -> set[str]:
+    """Return loopback and interface IP addresses for this host."""
+    addresses = {"127.0.0.1", "::1"}
+    try:
+        addrinfo = socket.getaddrinfo(socket.gethostname(), None)
+    except OSError:
+        return addresses
+
+    for family, _, _, _, sockaddr in addrinfo:
+        if family in {socket.AF_INET, socket.AF_INET6}:
+            addresses.add(str(sockaddr[0]))
+    return addresses
+
+
+def _host_ip_address(host: str | None) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """Parse ``host`` as an IP address when possible."""
+    if host is None:
+        return None
+    try:
+        return ipaddress.ip_address(host)
+    except ValueError:
+        return None
+
+
+def _url_with_host(base_url: str, host: str) -> str:
+    """Return ``base_url`` with its hostname replaced by ``host``."""
+    parsed = urlparse(base_url)
+    netloc = f"[{host}]" if ":" in host else host
+    if parsed.port is not None:
+        netloc = f"{netloc}:{parsed.port}"
+    return parsed._replace(netloc=netloc).geturl()
+
+
+def _local_access_key(base_url: str, local_ips: set[str]) -> tuple[str, int] | None:
+    """Group equivalent localhost, loopback, and local-interface discovery URLs."""
+    parsed = urlparse(base_url)
+    host = parsed.hostname
+    host_ip = _host_ip_address(host)
+    is_localhost = host is not None and host.lower() == "localhost"
+    is_loopback = host_ip is not None and host_ip.is_loopback
+    is_local_ip = host_ip is not None and str(host_ip) in local_ips
+    if not (is_localhost or is_loopback or is_local_ip):
+        return None
+
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    return (parsed.scheme, port)
+
+
+def _local_access_rank(base_url: str, local_ips: set[str]) -> tuple[int, str]:
+    """Rank local-access URLs so LAN IPs win, then 127.0.0.1, then localhost."""
+    parsed = urlparse(base_url)
+    host = parsed.hostname
+    host_ip = _host_ip_address(host)
+    if host_ip is not None and not host_ip.is_loopback and str(host_ip) in local_ips:
+        return (0, str(host_ip))
+    if host_ip is not None and str(host_ip) == "127.0.0.1":
+        return (1, "")
+    if host is not None and host.lower() == "localhost":
+        return (2, "")
+    return (3, str(host_ip) if host_ip is not None else base_url)
+
+
+def _preferred_local_access_url(urls: list[str], local_ips: set[str]) -> str:
+    """Choose the display/probe URL for a group of local access aliases."""
+    best = min(urls, key=lambda url: _local_access_rank(url, local_ips))
+    host_ip = _host_ip_address(urlparse(best).hostname)
+    if host_ip is not None and not host_ip.is_loopback and str(host_ip) in local_ips:
+        return best
+    return _url_with_host(best, "127.0.0.1")
+
+
+def _dedupe_local_access_urls(urls: list[str]) -> list[str]:
+    """Collapse localhost, 127.0.0.1, and local-interface IP aliases per port."""
+    local_ips = _local_ip_addresses()
+    local_groups: dict[tuple[str, int], list[str]] = {}
+    for url in urls:
+        key = _local_access_key(url, local_ips)
+        if key is not None:
+            local_groups.setdefault(key, []).append(url)
+
+    deduped: list[str] = []
+    emitted_urls: set[str] = set()
+    emitted_local_keys: set[tuple[str, int]] = set()
+    for url in urls:
+        key = _local_access_key(url, local_ips)
+        if key is not None:
+            if key in emitted_local_keys:
+                continue
+            candidate = _preferred_local_access_url(local_groups[key], local_ips)
+            emitted_local_keys.add(key)
+        else:
+            candidate = url
+
+        if candidate not in emitted_urls:
+            deduped.append(candidate)
+            emitted_urls.add(candidate)
+    return deduped
 
 
 def _coerce_model_cards(payload: object) -> list[ModelCard]:
@@ -163,7 +263,7 @@ def _candidate_urls(request: DiscoveryRequest) -> list[str]:
                 for port in request.ports:
                     urls.append(f"http://{host}:{port}")
 
-    return list(dict.fromkeys(urls))
+    return _dedupe_local_access_urls(list(dict.fromkeys(urls)))
 
 
 async def discover_nodes(request: DiscoveryRequest) -> list[Node]:
