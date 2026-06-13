@@ -188,6 +188,9 @@ and routed across approved nodes.
 | [MVVP.md](MVVP.md) | Minimum Viable Valuable Product (per Guy Kawasaki). |
 | [MVVVP.md](MVVVP.md) | Minimum Viable Valuable Validating Product (per Guy Kawasaki). |
 | [POSSIBILITIES.md](POSSIBILITIES.md) | Broader explorations and feature possibilities. |
+| [docs/vampire.md](docs/vampire.md) | The consent & contribution design thesis, in the project's vampire/folklore register. |
+| [docs/startrek.md](docs/startrek.md) | The same thesis retold in a Star Trek register. |
+| [docs/security-design-thesis.md](docs/security-design-thesis.md) | The rigorous, metaphor-free security treatment: consent, `vampire<NN>` tiers, metering, enforcement. |
 
 ## Construction methods
 
