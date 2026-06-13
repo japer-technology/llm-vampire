@@ -6,12 +6,14 @@ from collections.abc import Iterator
 
 import pytest
 
-from vampire.registry import registry
+from vampire.registry import registry, route_registry
 
 
 @pytest.fixture(autouse=True)
 def clear_registry() -> Iterator[None]:
     """Keep the in-memory node registry isolated between tests."""
     registry.clear()
+    route_registry.clear()
     yield
     registry.clear()
+    route_registry.clear()

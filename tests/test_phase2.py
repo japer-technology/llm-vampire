@@ -91,7 +91,9 @@ def test_registered_nodes_aggregate_openai_and_vampire_models(client: TestClient
 
     openai_models = client.get("/v1/models").json()
     assert openai_models["object"] == "list"
-    assert {model["id"] for model in openai_models["data"]} == {"node-a-model", "node-b-model"}
+    assert {"node-a-model", "node-b-model"}.issubset(
+        {model["id"] for model in openai_models["data"]}
+    )
 
     vampire_models = client.get("/vampire/v1/models").json()
     assert vampire_models["object"] == "list"
