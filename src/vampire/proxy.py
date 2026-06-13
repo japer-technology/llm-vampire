@@ -12,6 +12,7 @@ top of this seam in later phases.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 
 import httpx
@@ -20,6 +21,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.responses import Response
 
 from vampire.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 # Headers that must not be copied verbatim between connections. ``host`` and
 # ``content-length`` are recomputed by httpx for the upstream request; the
@@ -61,7 +64,7 @@ def _filter_response_headers(headers: httpx.Headers) -> list[tuple[str, str]]:
     return [(k, v) for k, v in headers.multi_items() if k.lower() not in _HOP_BY_HOP_HEADERS]
 
 
-def _upstream_error(message: str, detail: str) -> JSONResponse:
+def _upstream_error(message: str) -> JSONResponse:
     """OpenAI-compatible error envelope for an unreachable node (§23)."""
     return JSONResponse(
         status_code=502,
@@ -70,7 +73,6 @@ def _upstream_error(message: str, detail: str) -> JSONResponse:
                 "message": message,
                 "type": "vampire_upstream_error",
                 "code": "upstream_unavailable",
-                "vampire": {"detail": detail},
             }
         },
     )
@@ -102,10 +104,9 @@ async def proxy_request(request: Request, *, downstream_base_url: str | None = N
         upstream = await client.send(upstream_request, stream=True)
     except httpx.RequestError as exc:
         await client.aclose()
-        return _upstream_error(
-            f"Could not reach downstream LM Studio node at {base_url}.",
-            f"{type(exc).__name__}: {exc}",
-        )
+        # Log the underlying cause server-side; do not leak internals to clients.
+        logger.warning("Downstream LM Studio node %s unreachable: %r", base_url, exc)
+        return _upstream_error(f"Could not reach downstream LM Studio node at {base_url}.")
 
     async def body_stream() -> AsyncIterator[bytes]:
         try:
