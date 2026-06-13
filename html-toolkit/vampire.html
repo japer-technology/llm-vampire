@@ -115,9 +115,33 @@
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
   }
-  .sidebar { display: grid; grid-template-rows: auto 1fr; }
+  .sidebar { display: grid; grid-template-rows: auto 1fr; position: relative; }
   .mainstage { display: flex; flex-direction: column; }
   .mainstage > .scroll { flex: 1 1 auto; }
+  /* Collapsed targeting: the sidebar shrinks to a thin left rail until opened. */
+  .sidebar-rail { display: none; }
+  .workspace.nav-collapsed { grid-template-columns: 46px minmax(0, 1fr); }
+  .workspace.nav-collapsed .sidebar { grid-template-rows: 1fr; }
+  .workspace.nav-collapsed .sidebar > .section-title,
+  .workspace.nav-collapsed .sidebar > .scroll { display: none; }
+  .workspace.nav-collapsed .sidebar-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--vamp-hot);
+    cursor: pointer;
+    padding: 1rem 0;
+  }
+  .workspace.nav-collapsed .sidebar-rail:hover { color: var(--vamp); background: rgba(172, 67, 217, 0.08); }
+  .workspace.nav-collapsed .sidebar-rail:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--vamp); }
+  .sidebar-rail .rail-icon { font-size: 1.1rem; }
+  .sidebar-rail .rail-text { writing-mode: vertical-rl; text-transform: uppercase; letter-spacing: 0.22em; font-size: 0.72rem; color: var(--fog); }
   /* Focus mode: an active filter takes over the full screen below the header. */
   .app.focus-mode .workspace { grid-template-columns: minmax(0, 1fr); }
   .app.focus-mode .sidebar { display: none; }
@@ -137,6 +161,8 @@
     color: var(--vamp-hot);
   }
   .section-title small { color: var(--mute); font-family: var(--mono); font-size: 0.68rem; }
+  .section-title-side { display: flex; align-items: center; gap: 0.5rem; }
+  #collapseSidebar { line-height: 1; padding: 0.2rem 0.5rem; }
 
   .panel {
     background: rgba(0,0,0,0.18);
@@ -300,8 +326,31 @@
     border-radius: 10px;
     background: rgba(172, 67, 217, 0.1);
   }
+  .filter-bar[hidden] { display: none; }
   .filter-bar .filter-text { font-size: 0.78rem; color: var(--bone); }
-  .filter-bar .filter-text b { color: var(--vamp-hot); font-family: var(--mono); }  .node {
+  .filter-bar .filter-text b { color: var(--vamp-hot); font-family: var(--mono); }
+  .summary-breakdown {
+    margin: 0.6rem 1rem 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(172,67,217,0.06), rgba(0,0,0,0.18));
+    overflow: hidden;
+    flex: none;
+  }
+  .summary-breakdown .breakdown-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+    padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--line-soft);
+  }
+  .summary-breakdown .breakdown-title { font-size: 0.78rem; color: var(--bone); font-weight: 600; }
+  .summary-breakdown .breakdown-scroll { max-height: 280px; overflow: auto; scrollbar-color: var(--vamp-dim) transparent; }
+  .breakdown-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+  .breakdown-table th, .breakdown-table td { text-align: left; padding: 0.4rem 0.8rem; border-bottom: 1px solid var(--line-soft); }
+  .breakdown-table thead th { position: sticky; top: 0; background: var(--bg-3); color: var(--vamp-hot); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; cursor: help; }
+  .breakdown-table td.num, .breakdown-table th.num { text-align: right; font-family: var(--mono); }
+  .breakdown-table td.model-cell { font-family: var(--mono); max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breakdown-table tbody tr:hover { background: rgba(172, 67, 217, 0.08); }
+  .breakdown-table tfoot td { font-weight: 600; color: var(--fog); background: rgba(255,255,255,0.03); }
+  .node {
     position: relative;
     overflow: hidden;
     background: linear-gradient(180deg, var(--card-strong), var(--card));
@@ -433,10 +482,14 @@
   @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
   .monitor-chart { margin-top: 0.7rem; height: 200px; }
   .monitor-chart svg { width: 100%; height: 100%; overflow: visible; }
-  .monitor-legend { display: flex; flex-wrap: wrap; gap: 0.45rem 1rem; margin-top: 0.55rem; }
-  .legend-item { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--fog); font-family: var(--mono); }
-  .legend-swatch { width: 11px; height: 11px; border-radius: 3px; }
+  .monitor-legend { display: flex; flex-wrap: wrap; gap: 0.45rem 0.7rem; margin-top: 0.55rem; }
+  .legend-item { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: var(--fog); font-family: var(--mono); background: rgba(255,255,255,0.04); border: 1px solid var(--line-soft); border-radius: 999px; padding: 0.22rem 0.6rem; cursor: pointer; transition: opacity 0.15s ease, border-color 0.15s ease; }
+  .legend-item:hover { border-color: var(--vamp); }
+  .legend-item:focus-visible { outline: none; border-color: var(--vamp); box-shadow: 0 0 0 3px rgba(172, 67, 217, 0.14); }
+  .legend-item.is-off { opacity: 0.45; text-decoration: line-through; }
+  .legend-swatch { width: 11px; height: 11px; border-radius: 3px; border: 1px solid transparent; }
   .legend-item b { color: var(--bone); }
+  .monitor-chart svg rect[fill="transparent"], .monitor-chart svg circle { cursor: help; }
   .btn-primary.is-active { background: linear-gradient(135deg, var(--ok), #1f9e74); box-shadow: 0 12px 28px rgba(54, 211, 153, 0.22); }
 
   .history-list { display: grid; gap: 0.5rem; }
@@ -508,11 +561,18 @@
     </div>
   </header>
 
-  <main class="workspace">
-    <aside class="sidebar" aria-label="Scanner controls">
+  <main class="workspace nav-collapsed" id="workspace">
+    <aside class="sidebar" id="sidebar" aria-label="Scanner controls">
+      <button type="button" class="sidebar-rail" id="expandSidebar" data-action="expand-sidebar" title="Open the targeting panel to configure the scan" aria-label="Open targeting panel" aria-expanded="false">
+        <span class="rail-icon" aria-hidden="true">⟩</span>
+        <span class="rail-text">Targeting</span>
+      </button>
       <div class="section-title">
         <h2>Targeting</h2>
-        <small id="targetCount">0 targets</small>
+        <div class="section-title-side">
+          <small id="targetCount">0 targets</small>
+          <button type="button" class="btn-ghost btn-small" id="collapseSidebar" data-action="collapse-sidebar" title="Minimise the targeting panel to the left rail" aria-label="Minimise targeting panel">⟨</button>
+        </div>
       </div>
       <div class="scroll">
         <section class="panel">
@@ -641,6 +701,7 @@
         <button class="btn-ghost btn-small" id="sortDirBtn" title="Toggle ascending or descending order">Asc ↑</button>
       </div>
       <div class="filter-bar" id="filterBar" hidden></div>
+      <div class="summary-breakdown" id="summaryBreakdown" hidden aria-live="polite"></div>
       <div class="monitor-panel" id="monitorPanel" hidden aria-live="polite">
         <div class="monitor-head">
           <div class="monitor-title">
@@ -732,9 +793,11 @@
     historyList: $("historyList"), targetCount: $("targetCount"), runLabel: $("runLabel"), lastSaved: $("lastSaved"),
     showLiveBtn: $("showLiveBtn"), showAllBtn: $("showAllBtn"), densityBtn: $("densityBtn"), collapseBtn: $("collapseBtn"), toast: $("toast"),
     filterBar: $("filterBar"),
+    summaryBreakdown: $("summaryBreakdown"),
     restrictInput: $("restrictInput"), sortSelect: $("sortSelect"), sortDirBtn: $("sortDirBtn"),
     monitorPanel: $("monitorPanel"), monitorMeta: $("monitorMeta"), monitorGraph: $("monitorGraph"),
     monitorLegend: $("monitorLegend"), monitorNext: $("monitorNext"),
+    workspace: $("workspace"),
   };
 
   let abort = null;
@@ -743,6 +806,8 @@
   let monitorCountdown = null;
   let monitorNextAt = 0;
   let timeline = [];
+  // Series hidden from the monitor graph (toggled by clicking legend titles).
+  const hiddenSeries = new Set();
   let lastResults = [];
   let lastTargets = [];
   let lastRun = null;
@@ -1338,6 +1403,7 @@
     devices = applyFocus(devices);
     appEl.classList.toggle("focus-mode", !!focus);
     renderFilterBar(devices.length);
+    renderSummaryBreakdown(devices);
 
     if (!devices.length) {
       if (focus) {
@@ -1402,6 +1468,137 @@
       `<button class="btn-ghost btn-small" data-action="clear-focus" title="Clear the filter and show every device again">Show all devices</button>`;
   }
 
+  // Turn an active total into a readable data table: which models, how many
+  // nodes serve them, the concurrent capacity, and what is loaded right now.
+  function renderSummaryBreakdown(devices) {
+    const el = els.summaryBreakdown;
+    if (!focus || focus.type !== "summary" || !devices.length) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
+    const table = (caption, head, rows, foot) => `<div class="breakdown-head">
+        <span class="breakdown-title" title="A data listing of the total you selected above">${esc(caption)}</span>
+        <button class="btn-ghost btn-small" data-action="clear-focus" title="Clear this total and show every device again">Close</button>
+      </div>
+      <div class="breakdown-scroll"><table class="breakdown-table">
+        <thead><tr>${head.map((h) => `<th title="${esc(h.tip)}">${esc(h.label)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.join("") || `<tr><td colspan="${head.length}">No data.</td></tr>`}</tbody>
+        ${foot ? `<tfoot>${foot}</tfoot>` : ""}
+      </table></div>`;
+
+    let html = "";
+    if (focus.summary === "distinct" || focus.summary === "total") {
+      const map = new Map();
+      for (const d of devices) {
+        for (const m of d.models) {
+          let e = map.get(m.id);
+          if (!e) { e = { nodes: new Set(), instances: 0, loaded: 0 }; map.set(m.id, e); }
+          e.nodes.add(d.key);
+          e.instances += 1;
+          if (m.state === "loaded") e.loaded += 1;
+        }
+      }
+      const entries = [...map.entries()].sort((a, b) => b[1].nodes.size - a[1].nodes.size || a[0].localeCompare(b[0]));
+      let totalInstances = 0;
+      let totalLoaded = 0;
+      const rows = entries.map(([id, e]) => {
+        totalInstances += e.instances;
+        totalLoaded += e.loaded;
+        return `<tr>
+          <td class="model-cell" title="${esc(id)}">${esc(id)}</td>
+          <td class="num">${e.nodes.size}</td>
+          <td class="num">${e.nodes.size}</td>
+          <td class="num">${e.loaded}</td>
+        </tr>`;
+      });
+      const head = [
+        { label: "Model", tip: "Distinct model identifier exposed on the network" },
+        { label: "Nodes", tip: "How many computers offer this model" },
+        { label: "Concurrent", tip: "Maximum requests that could run at once — one per node offering the model" },
+        { label: "Loaded", tip: "Nodes with this model already loaded in memory" },
+      ];
+      const foot = `<tr>
+          <td>${map.size} distinct · ${totalInstances} total</td>
+          <td class="num">${devices.length}</td>
+          <td class="num">${totalInstances}</td>
+          <td class="num">${totalLoaded}</td>
+        </tr>`;
+      html = table(`${map.size} distinct models across ${devices.length} node${devices.length === 1 ? "" : "s"}`, head, rows, foot);
+    } else if (focus.summary === "vampires") {
+      const head = [
+        { label: "Gateway", tip: "Computer exposing a Vampire gateway" },
+        { label: "Version", tip: "Reported gateway version" },
+        { label: "Nodes total", tip: "Nodes registered with this gateway" },
+        { label: "Nodes online", tip: "Gateway nodes currently online" },
+        { label: "Share", tip: "Owner sharing mode advertised by the gateway" },
+      ];
+      const rows = devices.map((d) => {
+        const v = d.vampire || {};
+        return `<tr>
+          <td class="model-cell" title="${esc(deviceLabel(d))}">${esc(deviceLabel(d))}</td>
+          <td>${esc(v.version || "—")}</td>
+          <td class="num">${esc(v.nodes_total ?? "—")}</td>
+          <td class="num">${esc(v.nodes_online ?? "—")}</td>
+          <td>${esc(v.share || "—")}</td>
+        </tr>`;
+      });
+      html = table(`${devices.length} Vampire gateway${devices.length === 1 ? "" : "s"}`, head, rows, null);
+    } else if (focus.summary === "loaded") {
+      const head = [
+        { label: "Model", tip: "Model currently held in memory" },
+        { label: "Computer", tip: "Node that has the model loaded" },
+        { label: "Details", tip: "Type, quantisation and context where reported" },
+      ];
+      const rows = [];
+      for (const d of devices) {
+        for (const m of d.models) {
+          if (m.state !== "loaded") continue;
+          const tags = [m.type, m.quant ? `q:${m.quant}` : "", m.ctx ? `${m.ctx} ctx` : ""].filter(Boolean).join(" · ");
+          rows.push(`<tr>
+            <td class="model-cell" title="${esc(m.id)}">${esc(m.id)}</td>
+            <td title="${esc(deviceLabel(d))}">${esc(deviceLabel(d))}</td>
+            <td>${esc(tags || "—")}</td>
+          </tr>`);
+        }
+      }
+      html = table(`${rows.length} loaded model instance${rows.length === 1 ? "" : "s"}`, head, rows, null);
+    } else {
+      // online / LM Studio surfaces.
+      const head = [
+        { label: "Computer", tip: "Reachable LM Studio surface" },
+        { label: "API", tip: "Which API dialect answered" },
+        { label: "Models", tip: "Unique models this computer exposes" },
+        { label: "Loaded", tip: "Models currently held in memory" },
+        { label: "Latency", tip: "Round-trip time of the probe" },
+      ];
+      let totalModels = 0;
+      let totalLoaded = 0;
+      const rows = devices.map((d) => {
+        const loaded = (d.stats && d.stats.loaded) || 0;
+        totalModels += d.models.length;
+        totalLoaded += loaded;
+        return `<tr>
+          <td class="model-cell" title="${esc(deviceLabel(d))}">${esc(deviceLabel(d))}</td>
+          <td>${esc(FLAVOR_LABELS[d.flavor] || "—")}</td>
+          <td class="num">${d.models.length}</td>
+          <td class="num">${loaded}</td>
+          <td class="num">${esc(d.latency)} ms</td>
+        </tr>`;
+      });
+      const foot = `<tr>
+          <td>${devices.length} computer${devices.length === 1 ? "" : "s"}</td>
+          <td></td>
+          <td class="num">${totalModels}</td>
+          <td class="num">${totalLoaded}</td>
+          <td></td>
+        </tr>`;
+      html = table(`${devices.length} LM Studio surface${devices.length === 1 ? "" : "s"}`, head, rows, foot);
+    }
+    el.hidden = false;
+    el.innerHTML = html;
+  }
+
 
   function fact(value, label, title) {
     if (value === "" || value === null || value === undefined) return "";
@@ -1424,8 +1621,12 @@
 
   function deviceLabel(device) {
     if (device.local) {
+      // Show the machine as its LAN IP address. Avoid printing "localhost" or
+      // "127.0.0.1", which would otherwise advertise that this is the operator's
+      // own computer. When no LAN IP has been discovered yet, fall back to a
+      // neutral label rather than exposing the loopback aliases.
       const ip = localLanIp();
-      return ip ? `${ip} (localhost/127.0.0.1)` : "This computer (localhost/127.0.0.1)";
+      return ip || "This computer";
     }
     return device.host;
   }
@@ -1672,8 +1873,9 @@
       els.monitorLegend.innerHTML = "";
       return;
     }
+    const activeSeries = SERIES.filter((s) => !hiddenSeries.has(s.key));
     let maxY = 1;
-    for (const p of points) for (const s of SERIES) maxY = Math.max(maxY, p[s.key] || 0);
+    for (const p of points) for (const s of activeSeries) maxY = Math.max(maxY, p[s.key] || 0);
     const niceMax = Math.max(1, Math.ceil(maxY * 1.15));
     const x0 = pad.l;
     const x1 = W - pad.r;
@@ -1681,6 +1883,10 @@
     const y1 = H - pad.b;
     const xFor = (i) => points.length === 1 ? (x0 + x1) / 2 : x0 + (i / (points.length - 1)) * (x1 - x0);
     const yFor = (v) => y1 - (v / niceMax) * (y1 - y0);
+    // Per-point dots and titles stay readable until the timeline gets crowded;
+    // past that we drop to lines only (plus the final marker) to avoid clutter.
+    const showDots = points.length <= 48;
+    const fmtFull = (t) => new Date(t).toLocaleString([], { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
 
     let svg = "";
     // Gridlines + Y labels
@@ -1696,16 +1902,38 @@
     svg += `<text x="${x0}" y="${H - 6}" fill="#645874" font-size="10" text-anchor="start" font-family="monospace">${esc(fmt(points[0].t))}</text>`;
     svg += `<text x="${x1}" y="${H - 6}" fill="#645874" font-size="10" text-anchor="end" font-family="monospace">${esc(fmt(points[points.length - 1].t))}</text>`;
 
-    for (const s of SERIES) {
+    for (const s of activeSeries) {
       const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${xFor(i).toFixed(1)} ${yFor(p[s.key] || 0).toFixed(1)}`).join(" ");
       svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-      const last = points[points.length - 1];
-      svg += `<circle cx="${xFor(points.length - 1).toFixed(1)}" cy="${yFor(last[s.key] || 0).toFixed(1)}" r="3" fill="${s.color}"/>`;
+      if (showDots) {
+        // A dot on every time point, each carrying its own hover title.
+        for (let i = 0; i < points.length; i++) {
+          const v = points[i][s.key] || 0;
+          svg += `<circle cx="${xFor(i).toFixed(1)}" cy="${yFor(v).toFixed(1)}" r="2.6" fill="${s.color}"><title>${esc(s.label)}: ${v} · ${esc(fmtFull(points[i].t))}</title></circle>`;
+        }
+      } else {
+        // Too crowded for every dot: keep just the latest marker.
+        const last = points[points.length - 1];
+        svg += `<circle cx="${xFor(points.length - 1).toFixed(1)}" cy="${yFor(last[s.key] || 0).toFixed(1)}" r="3" fill="${s.color}"/>`;
+      }
+    }
+    // A full-height hover band per time point summarising every series there.
+    if (showDots && points.length > 1) {
+      const band = (x1 - x0) / Math.max(1, points.length - 1);
+      for (let i = 0; i < points.length; i++) {
+        const cx = xFor(i);
+        const rx = Math.max(0, cx - band / 2);
+        const summary = SERIES.map((s) => `${s.label}: ${points[i][s.key] || 0}`).join("\n");
+        svg += `<rect x="${rx.toFixed(1)}" y="${y0}" width="${band.toFixed(1)}" height="${(y1 - y0).toFixed(1)}" fill="transparent"><title>${esc(fmtFull(points[i].t))}\n${esc(summary)}</title></rect>`;
+      }
     }
     els.monitorGraph.innerHTML = svg;
 
     const latest = points[points.length - 1];
-    els.monitorLegend.innerHTML = SERIES.map((s) => `<span class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${esc(s.label)}: <b>${latest[s.key] || 0}</b></span>`).join("");
+    els.monitorLegend.innerHTML = SERIES.map((s) => {
+      const off = hiddenSeries.has(s.key);
+      return `<button type="button" class="legend-item${off ? " is-off" : ""}" data-action="toggle-series" data-series="${esc(s.key)}" aria-pressed="${off ? "false" : "true"}" title="Click to ${off ? "show" : "hide"} the ${esc(s.label)} line on the graph"><span class="legend-swatch" style="background:${off ? "transparent" : s.color};border-color:${s.color}"></span>${esc(s.label)}: <b>${latest[s.key] || 0}</b></button>`;
+    }).join("");
   }
 
   function updateMonitorMeta() {
@@ -1941,6 +2169,21 @@
       if (collapsedDevices.has(key)) collapsedDevices.delete(key);
       else collapsedDevices.add(key);
       renderResults();
+      return;
+    }
+    if (action === "collapse-sidebar") {
+      els.workspace.classList.add("nav-collapsed");
+      return;
+    }
+    if (action === "expand-sidebar") {
+      els.workspace.classList.remove("nav-collapsed");
+      return;
+    }
+    if (action === "toggle-series") {
+      const key = button.dataset.series;
+      if (hiddenSeries.has(key)) hiddenSeries.delete(key);
+      else hiddenSeries.add(key);
+      renderGraph();
       return;
     }
     if (action === "focus-device") {
