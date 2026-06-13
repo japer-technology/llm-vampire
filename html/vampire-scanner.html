@@ -78,6 +78,8 @@
     padding: clamp(0.9rem, 1.6vw, 1.25rem);
     box-shadow: var(--shadow);
     backdrop-filter: blur(16px);
+    position: relative;
+    z-index: 100;
   }
   .brand { display: flex; gap: 0.9rem; align-items: center; min-width: 0; }
   .mark {
@@ -146,30 +148,10 @@
   .sidebar { display: grid; grid-template-rows: auto 1fr; position: relative; }
   .mainstage { display: flex; flex-direction: column; }
   .mainstage > .scroll { flex: 1 1 auto; }
-  /* Collapsed settings: the sidebar shrinks to a thin left rail until opened. */
+  /* Hidden settings: the sidebar is fully hidden until opened from the header. */
   .sidebar-rail { display: none; }
-  .workspace.nav-collapsed { grid-template-columns: 46px minmax(0, 1fr); }
-  .workspace.nav-collapsed .sidebar { grid-template-rows: 1fr; }
-  .workspace.nav-collapsed .sidebar > .section-title,
-  .workspace.nav-collapsed .sidebar > .scroll { display: none; }
-  .workspace.nav-collapsed .sidebar-rail {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.85rem;
-    width: 100%;
-    height: 100%;
-    border: none;
-    background: transparent;
-    color: var(--vamp-hot);
-    cursor: pointer;
-    padding: 1rem 0;
-  }
-  .workspace.nav-collapsed .sidebar-rail:hover { color: var(--vamp); background: rgba(172, 67, 217, 0.08); }
-  .workspace.nav-collapsed .sidebar-rail:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--vamp); }
-  .sidebar-rail .rail-icon { font-size: 1.1rem; }
-  .sidebar-rail .rail-text { writing-mode: vertical-rl; text-transform: uppercase; letter-spacing: 0.22em; font-size: 0.72rem; color: var(--fog); }
+  .workspace.nav-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .workspace.nav-collapsed .sidebar { display: none; }
   /* Focus mode: an active filter takes over the full screen below the header. */
   .app.focus-mode .workspace { grid-template-columns: minmax(0, 1fr); }
   .app.focus-mode .sidebar { display: none; }
@@ -419,6 +401,24 @@
   .chevron { color: var(--mute); font-size: 0.8rem; transition: transform 0.18s ease; }
   .node.collapsed .chevron { transform: rotate(-90deg); }
   .node.collapsed .node-body { display: none; }
+  .loaded-collapsed { display: none; }
+  .node.collapsed .loaded-collapsed {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.6rem;
+  }
+  .loaded-collapsed .loaded-label { font-size: 0.7rem; color: var(--mute); font-family: var(--mono); align-self: center; }
+  .loaded-collapsed .loaded-chip {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--bone);
+    background: rgba(0,0,0,0.23);
+    border-left: 2px solid var(--ok);
+    border-radius: 8px;
+    padding: 0.2rem 0.45rem;
+    overflow-wrap: anywhere;
+  }
   .device-aliases { margin-top: 0.6rem; font-size: 0.7rem; color: var(--ok); font-family: var(--mono); }
   .badge {
     display: inline-flex;
@@ -588,16 +588,15 @@
         </a>
       </div>
       <div>
-        <h1 class="app-title" tabindex="0" title="Hunt LM Studio nodes and other Vampire gateways on trusted networks, interrogate every reachable surface for deep detail, run a live status monitor, then save and export clean evidence for your Vampire registry.">LM Studio Vampire</h1>
+        <h1 class="app-title" tabindex="0" title="Hunt LM Studio nodes and other Vampire gateways on trusted networks, interrogate every reachable surface for deep detail, run a live status monitor, then save and export clean evidence for your Vampire registry.">LM Studio Vampire Scanner</h1>
       </div>
     </div>
     <div class="top-actions" aria-label="Global scan commands">
       <button class="btn-ghost" id="settingsBtn" aria-expanded="false" aria-controls="sidebar" title="Open or close the Settings panel">Settings</button>
-      <button class="btn-primary" id="scanBtn">Scan network</button>
-      <button class="btn-ghost" id="monitorBtn">Status monitor</button>
-      <button class="btn-ghost" id="stopBtn" disabled>Stop</button>
+      <button class="btn-primary" id="scanBtn">Scan</button>
+      <button class="btn-ghost" id="monitorBtn">Monitor</button>
       <div class="export-menu">
-        <button class="btn-ghost" id="exportBtn" disabled aria-haspopup="true" aria-expanded="false" data-action="toggle-export-menu" title="Save this scan or export it to a file">Export ▾</button>
+        <button class="btn-ghost" id="exportBtn" disabled aria-haspopup="true" aria-expanded="false" data-action="toggle-export-menu" title="Save this scan or export it to a file">Export</button>
         <div class="export-list" id="exportList" role="menu" hidden>
           <button type="button" role="menuitem" data-action="export-do" data-export="save">Save to browser</button>
           <button type="button" role="menuitem" data-action="export-do" data-export="json">Download JSON</button>
@@ -832,7 +831,7 @@
     subnet: $("subnet"), rangeStart: $("rangeStart"), rangeEnd: $("rangeEnd"), ports: $("ports"),
     timeout: $("timeout"), concurrency: $("concurrency"), token: $("token"), manual: $("manual"),
     includeLocalhost: $("includeLocalhost"), huntVampires: $("huntVampires"), interval: $("interval"),
-    scanBtn: $("scanBtn"), monitorBtn: $("monitorBtn"), stopBtn: $("stopBtn"), settingsBtn: $("settingsBtn"),
+    scanBtn: $("scanBtn"), monitorBtn: $("monitorBtn"), settingsBtn: $("settingsBtn"),
     exportBtn: $("exportBtn"), exportList: $("exportList"), copyBtn: $("copyBtn"), clearBtn: $("clearBtn"), detectBtn: $("detectBtn"),
     progressWrap: $("progressWrap"), progressBar: $("progressBar"), progressText: $("progressText"),
     progressFound: $("progressFound"), progressMode: $("progressMode"), summary: $("summary"), results: $("results"),
@@ -1749,6 +1748,10 @@
       </div>`;
 
     let modelsBlock = "";
+    const loadedModels = device.models.filter((model) => model.state === "loaded");
+    const loadedCollapsed = loadedModels.length
+      ? `<div class="loaded-collapsed" title="Models currently loaded in memory on this computer"><span class="loaded-label">Loaded:</span>${loadedModels.map((model) => `<span class="loaded-chip">${esc(model.id)}</span>`).join("")}</div>`
+      : "";
     if (device.models.length) {
       const focusModelId = focus && focus.type === "model" ? focus.id : null;
       const shown = focusModelId ? device.models.filter((model) => model.id === focusModelId) : device.models;
@@ -1782,6 +1785,7 @@
         </div>
         <div class="node-badges">${badges}<span class="chevron" aria-hidden="true">▾</span></div>
       </button>
+      ${loadedCollapsed}
       <div class="node-body">
         ${aliasNote}
         <div class="surfaces">${endpointChips}</div>
@@ -1827,8 +1831,9 @@
   }
 
   function setRunning(running) {
-    els.scanBtn.disabled = running;
-    els.stopBtn.disabled = !running;
+    // The Scan button doubles as the Stop control while a scan is running.
+    els.scanBtn.textContent = running ? "Stop scan" : "Scan";
+    els.scanBtn.classList.toggle("is-active", running);
     els.detectBtn.disabled = running;
     els.progressWrap.hidden = !running && !lastResults.length;
     els.progressMode.textContent = running ? "scanning" : "idle";
@@ -1891,7 +1896,6 @@
 
   function stopScan() {
     if (abort) abort.cancelled = true;
-    els.stopBtn.disabled = true;
     els.progressMode.textContent = "stopping";
     stopMonitor();
   }
@@ -2042,7 +2046,7 @@
     monitoring = true;
     els.monitorPanel.hidden = false;
     els.scanBtn.hidden = true;
-    els.monitorBtn.textContent = "Stop monitor";
+    els.monitorBtn.textContent = "Pause Monitor";
     els.monitorBtn.classList.add("is-active");
     renderGraph();
     updateMonitorMeta();
@@ -2057,7 +2061,7 @@
     if (monitorTimer) { clearTimeout(monitorTimer); monitorTimer = null; }
     if (monitorCountdown) { clearInterval(monitorCountdown); monitorCountdown = null; }
     els.scanBtn.hidden = false;
-    els.monitorBtn.textContent = "Status monitor";
+    els.monitorBtn.textContent = "Monitor";
     els.monitorBtn.classList.remove("is-active");
     updateMonitorMeta();
     toast("Status monitor stopped.");
@@ -2393,9 +2397,8 @@
   }
 
   function bindEvents() {
-    els.scanBtn.addEventListener("click", () => startScan());
+    els.scanBtn.addEventListener("click", () => { if (abort) stopScan(); else startScan(); });
     els.monitorBtn.addEventListener("click", toggleMonitor);
-    els.stopBtn.addEventListener("click", stopScan);
     els.settingsBtn.addEventListener("click", () => {
       const collapsed = els.workspace.classList.toggle("nav-collapsed");
       els.settingsBtn.setAttribute("aria-expanded", String(!collapsed));
