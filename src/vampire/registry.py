@@ -6,7 +6,7 @@ memory; a SQLite (``aiosqlite``) persistence seam is planned per METHOD-A.md.
 
 from __future__ import annotations
 
-from vampire.models import Node, NodeUpdate
+from vampire.models import Node, NodeUpdate, RoutePolicy
 
 
 class NodeRegistry:
@@ -55,3 +55,43 @@ class NodeRegistry:
 
 # Process-wide registry instance used by the control API.
 registry = NodeRegistry()
+
+
+class RouteRegistry:
+    """In-memory registry of virtual-model route policies."""
+
+    def __init__(self) -> None:
+        """Create an empty route-policy registry."""
+        self._routes: dict[str, RoutePolicy] = {}
+
+    def add(self, route: RoutePolicy) -> RoutePolicy:
+        """Store or replace ``route`` by id and return the stored model."""
+        self._routes[route.id] = route
+        return route
+
+    def get(self, route_id: str) -> RoutePolicy | None:
+        """Return a route policy by id, or ``None`` when it is not registered."""
+        return self._routes.get(route_id)
+
+    def get_by_virtual_model(self, virtual_model: str) -> RoutePolicy | None:
+        """Return the first route policy matching ``virtual_model``."""
+        return next(
+            (route for route in self._routes.values() if route.virtual_model == virtual_model),
+            None,
+        )
+
+    def list(self) -> list[RoutePolicy]:
+        """Return registered routes in insertion order as a snapshot list."""
+        return list(self._routes.values())
+
+    def remove(self, route_id: str) -> bool:
+        """Remove a route policy by id and report whether anything was removed."""
+        return self._routes.pop(route_id, None) is not None
+
+    def clear(self) -> None:
+        """Remove all process-local route policies."""
+        self._routes.clear()
+
+
+# Process-wide route-policy registry used by Phase 3 routing and control API.
+route_registry = RouteRegistry()

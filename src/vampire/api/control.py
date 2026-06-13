@@ -19,8 +19,9 @@ from vampire.cluster import (
     refresh_node,
     refresh_registered_nodes,
 )
-from vampire.models import DiscoveryRequest, Node, NodeUpdate
-from vampire.registry import registry
+from vampire.models import DiscoveryRequest, Node, NodeUpdate, RoutePolicy
+from vampire.registry import registry, route_registry
+from vampire.router import MVP_STRATEGIES
 
 router = APIRouter(prefix="/vampire/v1", tags=["vampire-control"])
 
@@ -103,3 +104,34 @@ async def list_vampire_models() -> dict[str, Any]:
 async def metrics() -> dict[str, Any]:
     """Return basic per-node health, request-count, and latency metrics (§18)."""
     return metrics_snapshot()
+
+
+@router.get("/routes")
+async def list_routes() -> dict[str, Any]:
+    """Return configured Phase 3 virtual-model route policies (§16)."""
+    return {"object": "list", "data": [route.model_dump() for route in route_registry.list()]}
+
+
+@router.post("/routes")
+async def create_route(route: RoutePolicy) -> dict[str, Any]:
+    """Create or replace a virtual-model route policy (§16)."""
+    if route.strategy not in MVP_STRATEGIES:
+        raise HTTPException(status_code=400, detail="unsupported routing strategy")
+    return route_registry.add(route).model_dump()
+
+
+@router.get("/routes/{route_id}")
+async def get_route(route_id: str) -> dict[str, Any]:
+    """Return a configured route policy or 404 when it is unknown."""
+    route = route_registry.get(route_id)
+    if route is None:
+        raise HTTPException(status_code=404, detail="route not found")
+    return route.model_dump()
+
+
+@router.delete("/routes/{route_id}")
+async def delete_route(route_id: str) -> dict[str, Any]:
+    """Remove a configured route policy or return 404 if it is absent."""
+    if not route_registry.remove(route_id):
+        raise HTTPException(status_code=404, detail="route not found")
+    return {"id": route_id, "status": "removed"}

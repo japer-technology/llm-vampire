@@ -106,11 +106,22 @@ async def proxy_request(request: Request, *, downstream_base_url: str | None = N
     byte iterator and returned as a ``StreamingResponse`` so regular JSON,
     chunked transfer, and Server-Sent Events all avoid full-body buffering.
     """
+    return await proxy_request_with_body(request, downstream_base_url=downstream_base_url)
+
+
+async def proxy_request_with_body(
+    request: Request,
+    *,
+    downstream_base_url: str | None = None,
+    body: bytes | None = None,
+    response_headers: dict[str, str] | None = None,
+) -> Response:
+    """Forward ``request`` with an optional pre-serialized body and response metadata."""
     settings = get_settings()
     base_url = (downstream_base_url or settings.lmstudio_base_url).rstrip("/")
     url = f"{base_url}{request.url.path}"
 
-    body = await request.body()
+    body = body if body is not None else await request.body()
     headers = _filter_request_headers(httpx.Headers(request.headers.raw))
 
     client = build_async_client()
@@ -127,7 +138,10 @@ async def proxy_request(request: Request, *, downstream_base_url: str | None = N
         await client.aclose()
         # Log the underlying cause server-side; do not leak internals to clients.
         logger.warning("Downstream LM Studio node %s unreachable: %r", base_url, exc)
-        return _upstream_error(f"Could not reach downstream LM Studio node at {base_url}.")
+        response = _upstream_error(f"Could not reach downstream LM Studio node at {base_url}.")
+        if response_headers:
+            response.headers.update(response_headers)
+        return response
 
     async def body_stream() -> AsyncIterator[bytes]:
         """Relay upstream bytes and close both sides of the upstream connection."""
@@ -138,9 +152,12 @@ async def proxy_request(request: Request, *, downstream_base_url: str | None = N
             await upstream.aclose()
             await client.aclose()
 
+    filtered_headers = dict(_filter_response_headers(upstream.headers))
+    if response_headers:
+        filtered_headers.update(response_headers)
     return StreamingResponse(
         body_stream(),
         status_code=upstream.status_code,
-        headers=dict(_filter_response_headers(upstream.headers)),
+        headers=filtered_headers,
         media_type=upstream.headers.get("content-type"),
     )
