@@ -77,8 +77,8 @@ any of which can stand behind an API endpoint:
 | --- | --- |
 | **LM Studio (desktop app)** | The GUI app for Mac/Windows/Linux, with a Developer tab that runs the local API server. The most common node type — the owner toggles the server on or off in the GUI. |
 | **llmster** | The core of LM Studio packaged as a standalone, server-native daemon with no GUI (LM Studio 0.4.0+). Ideal for headless Linux boxes, cloud servers, and GPU rigs. |
-| **`lms` CLI** | The MIT-licensed command-line utility that ships with LM Studio for scripting node behavior: starting the server, loading models, and managing links. |
-| **lmstudio-python / lmstudio-js** | Official SDKs speaking LM Studio's native protocol (Vampire primarily uses HTTP). |
+| **`lms` CLI** | The MIT-licensed command-line utility ([lmstudio-ai/lms](https://github.com/lmstudio-ai/lms)) that ships with LM Studio for scripting node behavior: starting the server, loading models, and managing links. |
+| **lmstudio-python / lmstudio-js** | Official SDKs ([lmstudio-ai/lmstudio-python](https://github.com/lmstudio-ai/lmstudio-python), [lmstudio-ai/lmstudio-js](https://github.com/lmstudio-ai/lmstudio-js)) speaking LM Studio's native protocol (Vampire primarily uses HTTP). |
 | **LM Link** | An end-to-end-encrypted device network (built on Tailscale) that lets a node use a remote model as if it were local. |
 
 ### The local API server
@@ -340,3 +340,13 @@ issue to discuss licensing.
 - [OpenAI-compatible API](https://lmstudio.ai/docs/developer/openai-compat)
 - [LM Link](https://lmstudio.ai/docs/developer/core/lmlink)
 - [Authentication](https://lmstudio.ai/docs/developer/core/authentication)
+
+It is informed by LM Studio's open-source repositories under the
+[`lmstudio-ai`](https://github.com/lmstudio-ai) organisation:
+
+- [lmstudio-ai/docs](https://github.com/lmstudio-ai/docs) — official App and Developer docs (the source for the [`lmstudio.ai/`](lmstudio.ai/) reference folder)
+- [lmstudio-ai/lms](https://github.com/lmstudio-ai/lms) — the `lms` CLI
+- [lmstudio-ai/lmstudio-python](https://github.com/lmstudio-ai/lmstudio-python) — official Python SDK
+- [lmstudio-ai/lmstudio-js](https://github.com/lmstudio-ai/lmstudio-js) — official TypeScript SDK
+- [lmstudio-ai/configs](https://github.com/lmstudio-ai/configs) — JSON configuration file format and examples
+- [lmstudio-ai/mlx-engine](https://github.com/lmstudio-ai/mlx-engine) — Apple MLX inference engine
