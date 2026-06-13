@@ -3,498 +3,717 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>lmstudio-vampire — LAN Scanner for LM Studio APIs</title>
-<meta name="description" content="Scan the local network for reachable LM Studio API interfaces. A single-file browser tool from the lmstudio-vampire project." />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src http: https:; img-src data: blob:;" />
+<meta name="referrer" content="no-referrer" />
+<title>lmstudio-vampire — LAN Scanner Command Deck</title>
+<meta name="description" content="A hardened single-file command deck for discovering, triaging, saving, and exporting reachable LM Studio API surfaces on a trusted LAN." />
 <style>
   :root {
-    --bg: #07050a;
-    --bg-2: #0d0812;
+    color-scheme: dark;
+    --bg: #040307;
+    --bg-2: #0b0710;
+    --bg-3: #130d1a;
     --blood: #e3203b;
+    --blood-hot: #ff2c47;
     --blood-dim: #8c1326;
-    --fog: #b9aecb;
-    --bone: #f4eff7;
-    --mute: #6e6280;
-    --card: rgba(255, 255, 255, 0.035);
-    --line: rgba(227, 32, 59, 0.22);
+    --fog: #c8bed6;
+    --bone: #f8f3fb;
+    --mute: #8c819d;
+    --faint: #5e536d;
+    --card: rgba(255, 255, 255, 0.045);
+    --card-strong: rgba(255, 255, 255, 0.075);
+    --line: rgba(227, 32, 59, 0.24);
+    --line-soft: rgba(255, 255, 255, 0.08);
     --ok: #36d399;
     --warn: #f5b54a;
+    --danger: #ff5c7a;
     --off: #5a5168;
-    --radius: 14px;
-    --font: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+    --radius: 18px;
+    --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { min-height: 100%; }
   html { scroll-behavior: smooth; }
   body {
+    min-height: 100svh;
+    overflow: hidden;
     background:
-      radial-gradient(ellipse at 50% -10%, rgba(227, 32, 59, 0.12) 0%, transparent 55%),
-      var(--bg);
+      radial-gradient(circle at 12% 8%, rgba(227, 32, 59, 0.22), transparent 28rem),
+      radial-gradient(circle at 82% -8%, rgba(120, 56, 255, 0.18), transparent 30rem),
+      linear-gradient(135deg, #040307 0%, #090511 42%, #050309 100%);
     color: var(--bone);
     font-family: var(--font);
-    line-height: 1.55;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    min-height: 100vh;
   }
   ::selection { background: var(--blood); color: var(--bone); }
+  a { color: var(--blood-hot); }
+  code, kbd { font-family: var(--mono); background: rgba(255,255,255,0.07); padding: 0.08rem 0.32rem; border-radius: 5px; }
 
-  main {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
+  .app {
+    height: 100svh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 1rem;
+    padding: clamp(0.75rem, 1.5vw, 1.25rem);
   }
 
-  header.hero { margin-bottom: 1.75rem; }
-  header.hero h1 {
-    font-size: clamp(1.5rem, 4vw, 2.25rem);
-    letter-spacing: -0.02em;
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025));
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) + 4px);
+    padding: clamp(0.9rem, 1.6vw, 1.25rem);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+  }
+  .brand { display: flex; gap: 0.9rem; align-items: center; min-width: 0; }
+  .mark {
+    width: 3rem;
+    height: 3rem;
+    display: grid;
+    place-items: center;
+    border-radius: 1rem;
+    background: radial-gradient(circle at 30% 20%, var(--blood-hot), var(--blood-dim));
+    box-shadow: 0 0 38px rgba(227, 32, 59, 0.28);
+    font-size: 1.6rem;
+  }
+  h1 { font-size: clamp(1.2rem, 2.2vw, 2rem); letter-spacing: -0.035em; line-height: 1.1; }
+  .lede { color: var(--fog); max-width: 82ch; font-size: 0.92rem; margin-top: 0.25rem; }
+  .top-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; justify-content: flex-end; }
+
+  .workspace {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(310px, 380px) minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .sidebar, .mainstage {
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) + 4px);
+    background: linear-gradient(180deg, rgba(255,255,255,0.065), rgba(255,255,255,0.025));
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(16px);
+  }
+  .sidebar { display: grid; grid-template-rows: auto 1fr; }
+  .mainstage { display: grid; grid-template-rows: auto auto 1fr; }
+  .scroll { min-height: 0; overflow: auto; padding: 1rem; scrollbar-color: var(--blood-dim) transparent; }
+
+  .section-title {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1rem 0;
   }
-  header.hero p.lede {
-    color: var(--fog);
-    max-width: 60ch;
-    margin-top: 0.4rem;
+  .section-title h2, .panel h2 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--blood-hot);
   }
-  a { color: var(--blood); }
+  .section-title small { color: var(--mute); font-family: var(--mono); font-size: 0.68rem; }
 
   .panel {
-    background: var(--card);
-    border: 1px solid var(--line);
+    background: rgba(0,0,0,0.18);
+    border: 1px solid var(--line-soft);
     border-radius: var(--radius);
-    padding: 1.25rem;
-    margin-bottom: 1.25rem;
-    backdrop-filter: blur(6px);
+    padding: 1rem;
+    margin-bottom: 0.85rem;
   }
-  .panel h2 {
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--blood);
-    margin-bottom: 1rem;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.9rem 1.1rem;
-  }
-  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .panel h2 { margin-bottom: 0.8rem; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .field { display: flex; flex-direction: column; gap: 0.32rem; min-width: 0; }
   .field label {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--mute);
   }
-  .field small { color: var(--mute); font-size: 0.68rem; }
-  input[type="text"], input[type="number"], textarea {
+  .field small, .microcopy { color: var(--mute); font-size: 0.72rem; }
+  input[type="text"], input[type="number"], textarea, select {
     width: 100%;
-    background: var(--bg-2);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(4, 3, 7, 0.86);
+    border: 1px solid var(--line-soft);
     color: var(--bone);
     font-family: var(--mono);
-    font-size: 0.85rem;
-    border-radius: 8px;
-    padding: 0.5rem 0.6rem;
+    font-size: 0.82rem;
+    border-radius: 10px;
+    padding: 0.58rem 0.65rem;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   }
-  textarea { resize: vertical; min-height: 64px; }
-  input:focus, textarea:focus { outline: none; border-color: var(--blood-dim); }
-  .checkbox { flex-direction: row; align-items: center; gap: 0.5rem; }
-  .checkbox label { text-transform: none; letter-spacing: 0; color: var(--bone); font-size: 0.85rem; }
+  textarea { resize: vertical; min-height: 7rem; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--blood); box-shadow: 0 0 0 3px rgba(227, 32, 59, 0.14); }
+  input::placeholder, textarea::placeholder { color: var(--faint); }
+  .checkbox { flex-direction: row; align-items: center; gap: 0.55rem; }
+  .checkbox input { accent-color: var(--blood); }
+  .checkbox label { text-transform: none; letter-spacing: 0; color: var(--bone); font-size: 0.84rem; }
 
-  .actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.1rem; align-items: center; }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; margin-top: 0.9rem; }
+  .wide { grid-column: 1 / -1; }
   button {
     font-family: var(--font);
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.84rem;
+    font-weight: 750;
     border: 1px solid transparent;
-    border-radius: 9px;
-    padding: 0.55rem 1.1rem;
+    border-radius: 11px;
+    padding: 0.64rem 0.85rem;
     cursor: pointer;
-    transition: transform 0.05s ease, background 0.2s ease, opacity 0.2s ease;
+    transition: transform 0.05s ease, background 0.2s ease, opacity 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    white-space: nowrap;
   }
   button:active { transform: translateY(1px); }
-  button[disabled] { opacity: 0.45; cursor: not-allowed; }
-  .btn-primary { background: var(--blood); color: var(--bone); }
-  .btn-primary:hover:not([disabled]) { background: #ff2c47; }
-  .btn-ghost { background: transparent; color: var(--fog); border-color: var(--line); }
-  .btn-ghost:hover:not([disabled]) { color: var(--bone); border-color: var(--blood-dim); }
+  button[disabled] { opacity: 0.42; cursor: not-allowed; transform: none; }
+  .btn-primary { background: linear-gradient(135deg, var(--blood-hot), var(--blood-dim)); color: var(--bone); box-shadow: 0 12px 28px rgba(227, 32, 59, 0.2); }
+  .btn-primary:hover:not([disabled]) { filter: brightness(1.08); }
+  .btn-ghost { background: rgba(255,255,255,0.035); color: var(--fog); border-color: var(--line-soft); }
+  .btn-ghost:hover:not([disabled]) { color: var(--bone); border-color: var(--blood-dim); background: rgba(227, 32, 59, 0.08); }
+  .btn-danger { color: var(--danger); }
+  .btn-small { padding: 0.38rem 0.55rem; font-size: 0.72rem; border-radius: 8px; }
 
-  .progress-wrap { margin-top: 1.1rem; }
+  .hint {
+    color: var(--fog);
+    background: rgba(227, 32, 59, 0.075);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 0.85rem;
+    font-size: 0.78rem;
+  }
+  .hint strong { color: var(--bone); }
+  .hint ul { margin: 0.45rem 0 0 1.1rem; }
+  .hint li + li { margin-top: 0.25rem; }
+
+  .status-strip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.7rem;
+    padding: 1rem 1rem 0;
+  }
+  .stat {
+    background: rgba(0,0,0,0.22);
+    border: 1px solid var(--line-soft);
+    border-radius: 15px;
+    padding: 0.78rem 0.9rem;
+    min-width: 0;
+  }
+  .stat b { display: block; font-size: clamp(1.15rem, 2.5vw, 1.9rem); line-height: 1; }
+  .stat span { color: var(--mute); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .progress-wrap { padding: 0.9rem 1rem 0; }
   .progress-track {
-    height: 8px;
-    background: var(--bg-2);
+    height: 10px;
+    background: rgba(0,0,0,0.35);
     border-radius: 99px;
     overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid var(--line-soft);
   }
-  .progress-bar {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--blood-dim), var(--blood));
-    transition: width 0.15s linear;
-  }
-  .progress-meta {
+  .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blood-dim), var(--blood-hot)); transition: width 0.15s linear; }
+  .progress-meta { display: flex; justify-content: space-between; gap: 1rem; color: var(--mute); font-family: var(--mono); font-size: 0.74rem; margin-top: 0.42rem; }
+
+  .results-toolbar {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1rem 0;
+  }
+  .toolbar-left { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--fog);
+    border: 1px solid var(--line-soft);
+    background: rgba(0,0,0,0.22);
+    border-radius: 999px;
+    padding: 0.32rem 0.6rem;
     font-size: 0.72rem;
-    color: var(--mute);
-    margin-top: 0.4rem;
     font-family: var(--mono);
   }
-
-  .summary { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
-  .stat {
-    background: var(--bg-2);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px;
-    padding: 0.5rem 0.9rem;
-    font-size: 0.8rem;
-  }
-  .stat b { font-size: 1.1rem; display: block; }
-
-  .results { display: grid; gap: 0.8rem; }
+  .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 0.8rem; align-content: start; }
   .node {
-    background: var(--card);
-    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--card-strong), var(--card));
+    border: 1px solid var(--line-soft);
     border-radius: var(--radius);
-    padding: 1rem 1.1rem;
+    padding: 1rem;
   }
-  .node-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .node-id { font-family: var(--mono); font-size: 0.95rem; font-weight: 600; }
-  .node-meta { color: var(--mute); font-size: 0.74rem; font-family: var(--mono); }
-
+  .node::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--off); opacity: 0.85; }
+  .node.online::before { background: var(--ok); }
+  .node.detected::before { background: var(--warn); }
+  .node-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .node-id { font-family: var(--mono); font-size: 0.93rem; font-weight: 750; overflow-wrap: anywhere; }
+  .node-meta { color: var(--mute); font-size: 0.74rem; font-family: var(--mono); margin-top: 0.12rem; }
   .badge {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.7rem;
-    font-weight: 700;
+    font-size: 0.68rem;
+    font-weight: 850;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    padding: 0.25rem 0.6rem;
+    padding: 0.27rem 0.62rem;
     border-radius: 99px;
   }
   .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-  .badge.online { color: var(--ok); background: rgba(54, 211, 153, 0.12); }
-  .badge.detected { color: var(--warn); background: rgba(245, 181, 74, 0.12); }
-  .badge.offline { color: var(--off); background: rgba(90, 81, 104, 0.15); }
+  .badge.online { color: var(--ok); background: rgba(54, 211, 153, 0.13); }
+  .badge.detected { color: var(--warn); background: rgba(245, 181, 74, 0.13); }
+  .badge.offline { color: var(--off); background: rgba(90, 81, 104, 0.16); }
+  .surfaces, .node-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+  .surface { font-family: var(--mono); font-size: 0.7rem; padding: 0.22rem 0.5rem; border-radius: 7px; background: rgba(0,0,0,0.24); border: 1px solid var(--line-soft); color: var(--fog); }
+  .models { margin-top: 0.85rem; border-top: 1px solid var(--line-soft); padding-top: 0.75rem; }
+  .models summary { cursor: pointer; font-size: 0.8rem; color: var(--fog); }
+  .model-list { list-style: none; margin-top: 0.62rem; display: grid; gap: 0.36rem; }
+  .model-list li { font-family: var(--mono); font-size: 0.75rem; color: var(--bone); display: flex; justify-content: space-between; gap: 1rem; padding: 0.34rem 0.45rem; background: rgba(0,0,0,0.23); border-radius: 8px; }
+  .model-list li span:first-child { overflow-wrap: anywhere; }
+  .model-list li span.tag { color: var(--mute); text-align: right; }
+  .node-note { margin-top: 0.72rem; font-size: 0.76rem; color: var(--warn); }
+  .empty { color: var(--mute); font-size: 0.92rem; text-align: center; padding: 8vh 1rem; border: 1px dashed var(--line-soft); border-radius: var(--radius); background: rgba(0,0,0,0.12); }
 
-  .surfaces { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem; }
-  .surface {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    background: var(--bg-2);
-    border: 1px solid rgba(255,255,255,0.06);
-    color: var(--fog);
+  .history-list { display: grid; gap: 0.5rem; }
+  .history-item {
+    display: grid;
+    gap: 0.25rem;
+    border: 1px solid var(--line-soft);
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 0.7rem;
   }
-  .models { margin-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.7rem; }
-  .models summary { cursor: pointer; font-size: 0.78rem; color: var(--fog); }
-  .model-list { list-style: none; margin-top: 0.6rem; display: grid; gap: 0.3rem; }
-  .model-list li {
-    font-family: var(--mono);
-    font-size: 0.76rem;
-    color: var(--bone);
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.25rem 0.4rem;
-    background: var(--bg-2);
-    border-radius: 6px;
-  }
-  .model-list li span.tag { color: var(--mute); }
-  .node-note { margin-top: 0.6rem; font-size: 0.74rem; color: var(--warn); }
+  .history-item strong { font-size: 0.82rem; }
+  .history-item span { color: var(--mute); font-family: var(--mono); font-size: 0.68rem; }
+  .history-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
 
-  .empty { color: var(--mute); font-size: 0.85rem; text-align: center; padding: 2rem 0; }
-  .hint {
-    font-size: 0.78rem;
-    color: var(--mute);
-    background: rgba(227, 32, 59, 0.06);
+  .toast {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    max-width: min(26rem, calc(100vw - 2rem));
+    background: rgba(9, 5, 17, 0.96);
     border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 0.7rem 0.9rem;
-    margin-top: 1rem;
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    color: var(--bone);
+    padding: 0.8rem 0.95rem;
+    font-size: 0.82rem;
+    opacity: 0;
+    transform: translateY(0.5rem);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 10;
   }
-  code { font-family: var(--mono); background: var(--bg-2); padding: 0.08rem 0.3rem; border-radius: 4px; }
-  footer { margin-top: 2.5rem; color: var(--mute); font-size: 0.74rem; text-align: center; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 980px) {
+    body { overflow: auto; }
+    .app { height: auto; min-height: 100svh; }
+    .topbar, .workspace { grid-template-columns: 1fr; }
+    .sidebar, .mainstage { overflow: visible; }
+    .scroll { overflow: visible; }
+    .status-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 620px) {
+    .grid, .actions, .status-strip { grid-template-columns: 1fr; }
+    .top-actions, .results-toolbar { align-items: stretch; flex-direction: column; }
+    .top-actions button { width: 100%; }
+    .mark { display: none; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <header class="hero">
-    <h1>🧛 LM Studio LAN Scanner</h1>
-    <p class="lede">
-      Probe your local network for reachable LM Studio API interfaces. This is a single,
-      dependency-free page from the <a href="https://github.com/japer-technology/lmstudio-vampire">lmstudio-vampire</a>
-      project — it runs entirely in your browser and contacts only the hosts you target.
-    </p>
-  </header>
-
-  <section class="panel">
-    <h2>Targets</h2>
-    <div class="grid">
-      <div class="field">
-        <label for="subnet">Subnet base (/24)</label>
-        <input type="text" id="subnet" value="192.168.1" placeholder="192.168.1" />
-        <small>First three octets, e.g. <code>192.168.1</code></small>
-      </div>
-      <div class="field">
-        <label for="rangeStart">Host start</label>
-        <input type="number" id="rangeStart" value="1" min="0" max="255" />
-      </div>
-      <div class="field">
-        <label for="rangeEnd">Host end</label>
-        <input type="number" id="rangeEnd" value="254" min="0" max="255" />
-      </div>
-      <div class="field">
-        <label for="ports">Ports</label>
-        <input type="text" id="ports" value="1234" />
-        <small>Comma-separated. 1234 is the LM Studio default.</small>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">🧛</div>
+      <div>
+        <h1>LM Studio LAN Scanner Command Deck</h1>
+        <p class="lede">Discover LM Studio nodes on trusted networks, distinguish readable APIs from CORS-blocked responders, save scan snapshots on command, and export clean evidence for your Vampire registry.</p>
       </div>
     </div>
-
-    <div class="grid" style="margin-top: 0.9rem;">
-      <div class="field">
-        <label for="timeout">Timeout (ms)</label>
-        <input type="number" id="timeout" value="800" min="100" max="10000" step="100" />
-      </div>
-      <div class="field">
-        <label for="concurrency">Concurrency</label>
-        <input type="number" id="concurrency" value="24" min="1" max="128" />
-      </div>
-      <div class="field">
-        <label for="token">Auth token (optional)</label>
-        <input type="text" id="token" placeholder="token for protected nodes" />
-        <small>Sent as the HTTP <code>Authorization</code> header.</small>
-      </div>
-      <div class="field checkbox" style="align-self: end;">
-        <input type="checkbox" id="includeLocalhost" checked />
-        <label for="includeLocalhost">Also probe localhost</label>
-      </div>
-    </div>
-
-    <div class="field" style="margin-top: 0.9rem;">
-      <label for="manual">Extra targets (one per line)</label>
-      <textarea id="manual" placeholder="http://10.0.0.5:1234&#10;192.168.0.42:1234&#10;my-gpu-host.local:1234"></textarea>
-      <small>Accepts <code>host</code>, <code>host:port</code>, or a full <code>http(s)://host:port</code> URL.</small>
-    </div>
-
-    <div class="actions">
+    <div class="top-actions" aria-label="Global scan commands">
       <button class="btn-primary" id="scanBtn">Scan network</button>
       <button class="btn-ghost" id="stopBtn" disabled>Stop</button>
-      <button class="btn-ghost" id="detectBtn">Detect my subnet</button>
+      <button class="btn-ghost" id="saveBtn" disabled>Save scan</button>
       <button class="btn-ghost" id="exportBtn" disabled>Export JSON</button>
     </div>
+  </header>
 
-    <div class="progress-wrap" id="progressWrap" hidden>
-      <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
-      <div class="progress-meta">
-        <span id="progressText">0 / 0</span>
-        <span id="progressFound">0 found</span>
+  <main class="workspace">
+    <aside class="sidebar" aria-label="Scanner controls">
+      <div class="section-title">
+        <h2>Targeting</h2>
+        <small id="targetCount">0 targets</small>
       </div>
-    </div>
+      <div class="scroll">
+        <section class="panel">
+          <h2>Network sweep</h2>
+          <div class="grid">
+            <div class="field">
+              <label for="subnet">Subnet base (/24)</label>
+              <input type="text" id="subnet" value="192.168.1" inputmode="numeric" autocomplete="off" placeholder="192.168.1" />
+              <small>First three octets only.</small>
+            </div>
+            <div class="field">
+              <label for="ports">Ports</label>
+              <input type="text" id="ports" value="1234" autocomplete="off" />
+              <small>Comma-separated. LM Studio defaults to <code>1234</code>.</small>
+            </div>
+            <div class="field">
+              <label for="rangeStart">Host start</label>
+              <input type="number" id="rangeStart" value="1" min="0" max="255" />
+            </div>
+            <div class="field">
+              <label for="rangeEnd">Host end</label>
+              <input type="number" id="rangeEnd" value="254" min="0" max="255" />
+            </div>
+            <div class="field">
+              <label for="timeout">Timeout (ms)</label>
+              <input type="number" id="timeout" value="800" min="100" max="10000" step="100" />
+            </div>
+            <div class="field">
+              <label for="concurrency">Concurrency</label>
+              <input type="number" id="concurrency" value="32" min="1" max="128" />
+            </div>
+          </div>
+          <div class="field checkbox" style="margin-top: 0.8rem;">
+            <input type="checkbox" id="includeLocalhost" checked />
+            <label for="includeLocalhost">Also probe localhost and 127.0.0.1</label>
+          </div>
+        </section>
 
-    <div class="hint">
-      <strong>How detection works.</strong> The browser can only read an LM Studio response when that node has
-      <em>Enable CORS</em> switched on. Such nodes show as <b>online</b> with full model details. Hosts that
-      answer but block cross-origin reads are reported as <b>detected (CORS off)</b> — likely LM Studio, but you
-      must enable CORS on that machine to interrogate it. Browsers cannot perform raw TCP/port scans, so closed
-      ports and CORS-blocked nodes can look similar; treat <b>detected</b> as a strong hint, not a guarantee.
-    </div>
-  </section>
+        <section class="panel">
+          <h2>Manual targets</h2>
+          <div class="field">
+            <label for="manual">Extra targets (one per line)</label>
+            <textarea id="manual" spellcheck="false" autocomplete="off" placeholder="http://10.0.0.5:1234&#10;192.168.0.42:1234&#10;my-gpu-host.local:1234"></textarea>
+            <small>Accepts <code>host</code>, <code>host:port</code>, or <code>http(s)://host:port</code>. Credentials and unsupported schemes are rejected.</small>
+          </div>
+          <div class="field" style="margin-top: 0.8rem;">
+            <label for="token">Authorization token for this run</label>
+            <input type="text" id="token" autocomplete="off" placeholder="optional bearer token" />
+            <small>Used in memory only; never saved to history or exports.</small>
+          </div>
+          <div class="actions">
+            <button class="btn-ghost" id="detectBtn">Detect subnet</button>
+            <button class="btn-ghost" id="copyBtn" disabled>Copy JSON</button>
+            <button class="btn-ghost btn-danger wide" id="clearBtn">Clear current results</button>
+          </div>
+        </section>
 
-  <section class="panel" id="resultsPanel" hidden>
-    <h2>Results</h2>
-    <div class="summary" id="summary"></div>
-    <div class="results" id="results"></div>
-  </section>
+        <section class="panel">
+          <h2>CORS playbook</h2>
+          <div class="hint">
+            <strong>About “detected”.</strong> A node like <code>http://192.168.1.225:1234</code> can answer the browser but block readable responses. That means the scanner can prove there is an HTTP responder, but cannot safely read models until the owner enables CORS.
+            <ul>
+              <li>On the LM Studio host, enable <strong>Serve on Local Network</strong> and <strong>Enable CORS</strong>.</li>
+              <li>For headless runs, use the local equivalent of <code>lms server start --cors --port 1234</code>.</li>
+              <li>Pair CORS with auth on untrusted networks; this page only scans targets you configure.</li>
+            </ul>
+          </div>
+        </section>
 
-  <footer>
-    lmstudio-vampire · Private AI compute, offered through LM Studio, wherever the owner allows it.
-  </footer>
-</main>
+        <section class="panel">
+          <h2>Saved scans</h2>
+          <div class="history-list" id="historyList"></div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="mainstage" aria-label="Scan results">
+      <div class="status-strip" id="summary" aria-live="polite"></div>
+      <div class="progress-wrap" id="progressWrap" hidden>
+        <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-meta">
+          <span id="progressText">0 / 0</span>
+          <span id="progressFound">0 found</span>
+          <span id="progressMode">idle</span>
+        </div>
+      </div>
+      <div class="results-toolbar">
+        <div class="toolbar-left">
+          <span class="pill" id="runLabel">No active scan</span>
+          <span class="pill" id="lastSaved">Not saved</span>
+        </div>
+        <div class="toolbar-left">
+          <button class="btn-ghost btn-small" id="showLiveBtn">Live only</button>
+          <button class="btn-ghost btn-small" id="showAllBtn">Include offline</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <div class="results" id="results"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
   "use strict";
 
+  const STORAGE_KEY = "lmstudio-vampire.scanner.history.v1";
+  const SETTINGS_KEY = "lmstudio-vampire.scanner.settings.v1";
+  const MAX_HISTORY = 25;
+  const MAX_TARGETS = 4096;
+  const PROBE_PATHS = ["/api/v1/models", "/api/v0/models", "/v1/models"];
+  const REACHABILITY_PATHS = ["/v1/models", "/api/v0/models", "/api/v1/models", "/"];
+
   const $ = (id) => document.getElementById(id);
   const els = {
-    subnet: $("subnet"), rangeStart: $("rangeStart"), rangeEnd: $("rangeEnd"),
-    ports: $("ports"), timeout: $("timeout"), concurrency: $("concurrency"),
-    token: $("token"), includeLocalhost: $("includeLocalhost"), manual: $("manual"),
-    scanBtn: $("scanBtn"), stopBtn: $("stopBtn"), detectBtn: $("detectBtn"), exportBtn: $("exportBtn"),
-    progressWrap: $("progressWrap"), progressBar: $("progressBar"),
-    progressText: $("progressText"), progressFound: $("progressFound"),
-    resultsPanel: $("resultsPanel"), summary: $("summary"), results: $("results"),
+    subnet: $("subnet"), rangeStart: $("rangeStart"), rangeEnd: $("rangeEnd"), ports: $("ports"),
+    timeout: $("timeout"), concurrency: $("concurrency"), token: $("token"), manual: $("manual"),
+    includeLocalhost: $("includeLocalhost"), scanBtn: $("scanBtn"), stopBtn: $("stopBtn"), saveBtn: $("saveBtn"),
+    exportBtn: $("exportBtn"), copyBtn: $("copyBtn"), clearBtn: $("clearBtn"), detectBtn: $("detectBtn"),
+    progressWrap: $("progressWrap"), progressBar: $("progressBar"), progressText: $("progressText"),
+    progressFound: $("progressFound"), progressMode: $("progressMode"), summary: $("summary"), results: $("results"),
+    historyList: $("historyList"), targetCount: $("targetCount"), runLabel: $("runLabel"), lastSaved: $("lastSaved"),
+    showLiveBtn: $("showLiveBtn"), showAllBtn: $("showAllBtn"), toast: $("toast"),
   };
 
-  // LM Studio model-listing surfaces, in order of richness.
-  const PROBE_PATHS = ["/api/v1/models", "/api/v0/models", "/v1/models"];
-
-  let abort = null;          // AbortController-like flag object for the whole run
+  let abort = null;
   let lastResults = [];
+  let lastTargets = [];
+  let lastRun = null;
+  let history = [];
+  let showOffline = false;
+  let toastTimer = null;
 
-  // ---- target expansion -------------------------------------------------
-  function parsePorts(raw) {
-    return raw.split(",")
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => Number.isInteger(n) && n > 0 && n < 65536);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
+  }[c]));
+
+  function toast(message) {
+    clearTimeout(toastTimer);
+    els.toast.textContent = message;
+    els.toast.classList.add("show");
+    toastTimer = setTimeout(() => els.toast.classList.remove("show"), 3200);
   }
 
-  function normaliseManual(line, ports) {
-    line = line.trim();
-    if (!line) return [];
-    // Full URL provided.
-    if (/^https?:\/\//i.test(line)) {
-      try { const u = new URL(line); return [u.origin]; } catch { return []; }
+  function safeJsonParse(raw, fallback) {
+    try { return JSON.parse(raw); } catch { return fallback; }
+  }
+
+  function readHistory() {
+    const data = safeJsonParse(localStorage.getItem(STORAGE_KEY), []);
+    return Array.isArray(data) ? data.filter((item) => item && item.id && item.payload).slice(0, MAX_HISTORY) : [];
+  }
+
+  function writeHistory() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  }
+
+  function currentSettings() {
+    return {
+      subnet: els.subnet.value.trim(),
+      ports: els.ports.value.trim(),
+      rangeStart: els.rangeStart.value,
+      rangeEnd: els.rangeEnd.value,
+      timeout: els.timeout.value,
+      concurrency: els.concurrency.value,
+      includeLocalhost: els.includeLocalhost.checked,
+      manual: els.manual.value,
+    };
+  }
+
+  function saveSettings() {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(currentSettings()));
+  }
+
+  function loadSettings() {
+    const settings = safeJsonParse(localStorage.getItem(SETTINGS_KEY), null);
+    if (!settings || typeof settings !== "object") return;
+    for (const [key, value] of Object.entries(settings)) {
+      if (!(key in els) || key === "token") continue;
+      if (els[key].type === "checkbox") els[key].checked = !!value;
+      else els[key].value = String(value || "");
     }
-    // host:port
-    const m = line.match(/^([^\s/:]+):(\d+)$/);
-    if (m) return [`http://${m[1]}:${m[2]}`];
-    // bare host -> expand across configured ports
-    return ports.map((p) => `http://${line}:${p}`);
+  }
+
+  function parsePorts(raw) {
+    const ports = raw.split(",")
+      .map((s) => Number.parseInt(s.trim(), 10))
+      .filter((n) => Number.isInteger(n) && n > 0 && n < 65536);
+    return [...new Set(ports)];
+  }
+
+  function validSubnetBase(base) {
+    const parts = base.trim().split(".");
+    if (parts.length !== 3) return false;
+    return parts.every((part) => /^\d{1,3}$/.test(part) && Number(part) >= 0 && Number(part) <= 255);
+  }
+
+  function normalizeOrigin(raw, fallbackPorts) {
+    const line = raw.trim();
+    if (!line) return [];
+    const candidates = /^https?:\/\//i.test(line) ? [line] : fallbackPorts.map((port) => {
+      if (/^\[[^\]]+\]:\d+$/.test(line) || /^[^\s/:]+:\d+$/.test(line)) return `http://${line}`;
+      return `http://${line}:${port}`;
+    });
+
+    const out = [];
+    for (const candidate of candidates) {
+      try {
+        const url = new URL(candidate);
+        if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+        if (url.username || url.password) continue;
+        if (!url.hostname || /[\s<>"'`]/.test(url.hostname)) continue;
+        if (url.port && (!/^\d+$/.test(url.port) || Number(url.port) < 1 || Number(url.port) > 65535)) continue;
+        out.push(url.origin);
+      } catch {
+        // Ignore malformed manual target lines.
+      }
+    }
+    return out;
   }
 
   function buildTargets() {
     const ports = parsePorts(els.ports.value);
-    if (!ports.length) throw new Error("Provide at least one valid port.");
+    if (!ports.length) throw new Error("Provide at least one valid TCP port.");
 
     const seen = new Set();
     const targets = [];
     const add = (origin) => {
-      if (origin && !seen.has(origin)) { seen.add(origin); targets.push(origin); }
+      if (!origin || seen.has(origin)) return;
+      if (targets.length >= MAX_TARGETS) throw new Error(`Target limit exceeded (${MAX_TARGETS}). Narrow the subnet or ports.`);
+      seen.add(origin);
+      targets.push(origin);
     };
 
     if (els.includeLocalhost.checked) {
-      for (const p of ports) { add(`http://localhost:${p}`); add(`http://127.0.0.1:${p}`); }
+      for (const port of ports) {
+        add(`http://localhost:${port}`);
+        add(`http://127.0.0.1:${port}`);
+      }
     }
 
     const subnet = els.subnet.value.trim();
-    const start = parseInt(els.rangeStart.value, 10);
-    const end = parseInt(els.rangeEnd.value, 10);
-    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(subnet) &&
-        Number.isInteger(start) && Number.isInteger(end) && start <= end) {
-      for (let host = Math.max(0, start); host <= Math.min(255, end); host++) {
-        for (const p of ports) add(`http://${subnet}.${host}:${p}`);
+    const start = Number.parseInt(els.rangeStart.value, 10);
+    const end = Number.parseInt(els.rangeEnd.value, 10);
+    if (subnet || els.rangeStart.value || els.rangeEnd.value) {
+      if (!validSubnetBase(subnet)) throw new Error("Subnet must be three IPv4 octets, for example 192.168.1.");
+      if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 255 || start > end) {
+        throw new Error("Host range must be between 0 and 255, with start less than or equal to end.");
+      }
+      for (let host = start; host <= end; host++) {
+        for (const port of ports) add(`http://${subnet}.${host}:${port}`);
       }
     }
 
     for (const line of els.manual.value.split("\n")) {
-      for (const origin of normaliseManual(line, ports)) add(origin);
+      for (const origin of normalizeOrigin(line, ports)) add(origin);
     }
 
     return targets;
   }
 
-  // ---- probing ----------------------------------------------------------
   function authHeaders() {
     const token = els.token.value.trim();
     const scheme = "Bea" + "rer ";
     return token ? { Authorization: scheme + token } : {};
   }
 
-  // Best-effort reachability check that ignores CORS. A `no-cors` fetch that
-  // resolves means something accepted the TCP connection and answered; a
-  // rejection generally means the port is closed / unreachable.
-  async function reachable(origin, timeoutMs) {
+  async function timedFetch(url, options, timeoutMs) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      await fetch(`${origin}/v1/models`, { mode: "no-cors", signal: ctrl.signal, cache: "no-store" });
-      return true;
-    } catch {
-      return false;
+      return await fetch(url, { ...options, signal: ctrl.signal, cache: "no-store", redirect: "follow" });
     } finally {
       clearTimeout(timer);
     }
   }
 
-  // Try to actually read an LM Studio listing (needs CORS enabled on the node).
+  async function reachable(origin, timeoutMs) {
+    for (const path of REACHABILITY_PATHS) {
+      try {
+        await timedFetch(`${origin}${path}`, { mode: "no-cors", method: "GET" }, timeoutMs);
+        return { up: true, path };
+      } catch {
+        // Try the next endpoint before declaring the origin unreachable.
+      }
+    }
+    return { up: false, path: "" };
+  }
+
   async function interrogate(origin, timeoutMs) {
     for (const path of PROBE_PATHS) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
-        const res = await fetch(`${origin}${path}`, {
-          method: "GET", mode: "cors", cache: "no-store",
-          signal: ctrl.signal, headers: authHeaders(),
-        });
-        clearTimeout(timer);
+        const res = await timedFetch(`${origin}${path}`, {
+          method: "GET",
+          mode: "cors",
+          headers: authHeaders(),
+        }, timeoutMs);
         if (!res.ok) {
-          // Server answered (e.g. 401/403) — it is an HTTP server, surface it.
-          if (res.status === 401 || res.status === 403) {
-            return { ok: true, status: res.status, path, models: [], auth: true };
-          }
+          if (res.status === 401 || res.status === 403) return { ok: true, status: res.status, path, models: [], auth: true };
           continue;
         }
         let body;
         try { body = await res.json(); } catch { continue; }
-        const data = Array.isArray(body && body.data) ? body.data
-                   : Array.isArray(body) ? body : null;
-        if (!data) continue;
-        if (looksLikeLmStudio(data)) {
-          return { ok: true, status: res.status, path, models: data };
-        }
-      } catch (err) {
-        clearTimeout(timer);
-        // CORS / network error — try the next path, then fall back to no-cors.
+        const data = Array.isArray(body && body.data) ? body.data : Array.isArray(body) ? body : null;
+        if (data && looksLikeLmStudio(data)) return { ok: true, status: res.status, path, models: data };
+      } catch {
+        // CORS, TLS, timeout, or network failure. Fall back to no-cors reachability after readable probes.
       }
     }
     return null;
   }
 
   function looksLikeLmStudio(data) {
-    if (!data.length) return true; // empty model list is still a valid response
-    return data.every((m) => m && typeof m === "object" && (typeof m.id === "string" || typeof m.key === "string"));
+    if (!data.length) return true;
+    return data.every((model) => model && typeof model === "object" && (typeof model.id === "string" || typeof model.key === "string"));
+  }
+
+  function simplifyModel(model) {
+    return {
+      id: model.id || model.key || "(unknown)",
+      type: model.type || model.object || "",
+      state: model.state || (Array.isArray(model.loaded_instances) && model.loaded_instances.length ? "loaded" : ""),
+      arch: model.arch || model.architecture || "",
+      ctx: model.max_context_length || (model.config && model.config.context_length) || "",
+    };
   }
 
   async function probe(origin, timeoutMs) {
     const t0 = performance.now();
     const interrogated = await interrogate(origin, timeoutMs);
-    const latency = Math.round(performance.now() - t0);
     if (interrogated) {
       return {
-        origin, status: "online", latency,
+        origin,
+        status: "online",
+        latency: Math.round(performance.now() - t0),
         path: interrogated.path,
         auth: !!interrogated.auth,
         models: (interrogated.models || []).map(simplifyModel),
-        note: interrogated.auth ? "Server requires authentication — supply a token to read models." : "",
+        note: interrogated.auth ? "Server requires authentication. Add a run token to read model details." : "Readable LM Studio-compatible model surface.",
       };
     }
-    // Could not read; check whether anything is listening at all.
-    const isUp = await reachable(origin, timeoutMs);
-    if (isUp) {
+
+    const reached = await reachable(origin, timeoutMs);
+    if (reached.up) {
       return {
-        origin, status: "detected", latency: Math.round(performance.now() - t0), models: [],
+        origin,
+        status: "detected",
+        latency: Math.round(performance.now() - t0),
+        path: reached.path,
+        auth: false,
+        models: [],
         note: "A server responded but blocked cross-origin reads. Enable CORS on this node to interrogate it.",
       };
     }
-    return { origin, status: "offline", latency: Math.round(performance.now() - t0), models: [] };
+    return { origin, status: "offline", latency: Math.round(performance.now() - t0), path: "", auth: false, models: [], note: "" };
   }
 
-  function simplifyModel(m) {
-    return {
-      id: m.id || m.key || "(unknown)",
-      type: m.type || m.object || "",
-      state: m.state || (Array.isArray(m.loaded_instances) && m.loaded_instances.length ? "loaded" : ""),
-      arch: m.arch || m.architecture || "",
-      ctx: m.max_context_length || (m.config && m.config.context_length) || "",
-    };
-  }
-
-  // ---- run loop ---------------------------------------------------------
   async function runPool(targets, concurrency, timeoutMs, onResult) {
-    let index = 0, found = 0, done = 0;
+    let index = 0;
+    let found = 0;
+    let done = 0;
     const worker = async () => {
       while (!abort.cancelled) {
         const i = index++;
@@ -505,171 +724,335 @@
         onResult(result, done, found, targets.length);
       }
     };
-    const pool = Array.from({ length: Math.min(concurrency, targets.length) }, worker);
-    await Promise.all(pool);
+    await Promise.all(Array.from({ length: Math.min(concurrency, targets.length) }, worker));
     return { done, found };
   }
 
-  // ---- rendering --------------------------------------------------------
-  function statusRank(s) { return s === "online" ? 0 : s === "detected" ? 1 : 2; }
+  function statusRank(status) {
+    return status === "online" ? 0 : status === "detected" ? 1 : 2;
+  }
 
-  function render() {
-    const live = lastResults.filter((r) => r.status !== "offline")
-      .sort((a, b) => statusRank(a.status) - statusRank(b.status) || a.latency - b.latency);
+  function payloadFromCurrentRun() {
+    const live = lastResults.filter((result) => result.status !== "offline");
+    return {
+      object: "vampire.scan_result",
+      generated_at: lastRun ? lastRun.startedAt : new Date().toISOString(),
+      saved_at: new Date().toISOString(),
+      scanner: "html-toolkit/scanner.html",
+      settings: currentSettings(),
+      totals: summarize(lastResults),
+      targets: lastTargets,
+      nodes: live,
+      offline: lastResults.filter((result) => result.status === "offline"),
+    };
+  }
 
-    const online = live.filter((r) => r.status === "online").length;
-    const detected = live.filter((r) => r.status === "detected").length;
+  function summarize(results) {
+    const live = results.filter((result) => result.status !== "offline");
     const models = new Set();
-    live.forEach((r) => r.models.forEach((m) => models.add(m.id)));
+    for (const result of live) for (const model of result.models) models.add(model.id);
+    return {
+      scanned: results.length,
+      online: live.filter((result) => result.status === "online").length,
+      detected: live.filter((result) => result.status === "detected").length,
+      offline: results.filter((result) => result.status === "offline").length,
+      distinct_models: models.size,
+    };
+  }
 
+  function renderSummary() {
+    const totals = summarize(lastResults);
+    const targetTotal = lastTargets.length;
     els.summary.innerHTML = `
-      <div class="stat"><b>${online}</b> online</div>
-      <div class="stat"><b>${detected}</b> detected (CORS off)</div>
-      <div class="stat"><b>${models.size}</b> distinct models</div>`;
+      <div class="stat"><b>${totals.online}</b><span>Online</span></div>
+      <div class="stat"><b>${totals.detected}</b><span>CORS blocked</span></div>
+      <div class="stat"><b>${totals.distinct_models}</b><span>Models</span></div>
+      <div class="stat"><b>${totals.scanned}</b><span>Scanned</span></div>
+      <div class="stat"><b>${targetTotal}</b><span>Targets</span></div>`;
+    els.targetCount.textContent = `${targetTotal || previewTargetCount()} targets`;
+    const hasResults = lastResults.length > 0;
+    const hasLive = totals.online + totals.detected > 0;
+    els.saveBtn.disabled = !hasResults;
+    els.exportBtn.disabled = !hasResults;
+    els.copyBtn.disabled = !hasResults;
+  }
 
-    if (!live.length) {
-      els.results.innerHTML = `<p class="empty">No LM Studio interfaces found yet.</p>`;
+  function renderResults() {
+    renderSummary();
+    const display = lastResults
+      .filter((result) => showOffline || result.status !== "offline")
+      .sort((a, b) => statusRank(a.status) - statusRank(b.status) || a.latency - b.latency || a.origin.localeCompare(b.origin));
+
+    if (!display.length) {
+      els.results.innerHTML = `<p class="empty">No readable or detected LM Studio interfaces yet. Start a scan, or choose “Include offline” to inspect every attempted target.</p>`;
       return;
     }
-
-    els.results.innerHTML = live.map(nodeCard).join("");
+    els.results.innerHTML = display.map(nodeCard).join("");
   }
 
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  }
-
-  function nodeCard(r) {
-    const surfaces = r.path ? `<span class="surface">${esc(r.path)}</span>` : "";
-    const note = r.note ? `<div class="node-note">${esc(r.note)}</div>` : "";
+  function nodeCard(result) {
+    const surfaces = result.path ? `<span class="surface">${esc(result.path)}</span>` : "";
+    const note = result.note ? `<div class="node-note">${esc(result.note)}</div>` : "";
+    const corsHelp = result.status === "detected" ? `
+      <div class="node-actions">
+        <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(result.origin)}">Copy origin</button>
+        <button class="btn-ghost btn-small" data-action="copy-cors" data-origin="${esc(result.origin)}">Copy CORS fix</button>
+      </div>` : `
+      <div class="node-actions">
+        <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(result.origin)}">Copy origin</button>
+      </div>`;
     let modelsBlock = "";
-    if (r.models.length) {
-      const items = r.models.map((m) => `
-        <li><span>${esc(m.id)}</span>
-        <span class="tag">${[m.type, m.state, m.arch, m.ctx ? m.ctx + " ctx" : ""].filter(Boolean).map(esc).join(" · ")}</span></li>`).join("");
-      modelsBlock = `<details class="models" open>
-        <summary>${r.models.length} model${r.models.length === 1 ? "" : "s"}</summary>
-        <ul class="model-list">${items}</ul></details>`;
+    if (result.models.length) {
+      const items = result.models.map((model) => `
+        <li><span>${esc(model.id)}</span><span class="tag">${[model.type, model.state, model.arch, model.ctx ? `${model.ctx} ctx` : ""].filter(Boolean).map(esc).join(" · ")}</span></li>`).join("");
+      modelsBlock = `<details class="models" open><summary>${result.models.length} model${result.models.length === 1 ? "" : "s"}</summary><ul class="model-list">${items}</ul></details>`;
     }
-    return `<article class="node">
+    return `<article class="node ${esc(result.status)}">
       <div class="node-head">
         <div>
-          <div class="node-id">${esc(r.origin)}</div>
-          <div class="node-meta">${r.latency} ms${r.auth ? " · auth required" : ""}</div>
+          <div class="node-id">${esc(result.origin)}</div>
+          <div class="node-meta">${esc(result.latency)} ms${result.auth ? " · auth required" : ""}</div>
         </div>
-        <span class="badge ${r.status}">${r.status === "detected" ? "detected" : r.status}</span>
+        <span class="badge ${esc(result.status)}">${result.status === "detected" ? "CORS blocked" : esc(result.status)}</span>
       </div>
       <div class="surfaces">${surfaces}</div>
       ${note}
       ${modelsBlock}
+      ${corsHelp}
     </article>`;
   }
 
-  // ---- subnet detection (best-effort, via WebRTC ICE candidates) --------
-  function detectSubnet() {
-    els.detectBtn.disabled = true;
-    els.detectBtn.textContent = "Detecting…";
-    const reset = () => { els.detectBtn.disabled = false; els.detectBtn.textContent = "Detect my subnet"; };
+  function renderHistory() {
+    if (!history.length) {
+      els.historyList.innerHTML = `<p class="microcopy">No saved scans yet. Run a scan, then choose <strong>Save scan</strong>.</p>`;
+      return;
+    }
+    els.historyList.innerHTML = history.map((item) => {
+      const totals = item.payload.totals || summarize(item.payload.nodes || []);
+      return `<article class="history-item">
+        <strong>${esc(new Date(item.payload.saved_at || item.id).toLocaleString())}</strong>
+        <span>${esc(totals.online || 0)} online · ${esc(totals.detected || 0)} CORS blocked · ${esc(totals.scanned || 0)} scanned</span>
+        <div class="history-actions">
+          <button class="btn-ghost btn-small" data-action="load-history" data-id="${esc(item.id)}">Load</button>
+          <button class="btn-ghost btn-small" data-action="export-history" data-id="${esc(item.id)}">Export</button>
+          <button class="btn-ghost btn-small btn-danger" data-action="delete-history" data-id="${esc(item.id)}">Delete</button>
+        </div>
+      </article>`;
+    }).join("");
+  }
+
+  function previewTargetCount() {
+    try { return buildTargets().length; } catch { return 0; }
+  }
+
+  function updateTargetPreview() {
     try {
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      pc.createDataChannel("x");
-      const ipRe = /(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}/g;
-      let resolved = false;
-      pc.onicecandidate = (e) => {
-        if (!e || !e.candidate || resolved) return;
-        const text = e.candidate.candidate;
-        // Skip mDNS-obfuscated candidates (".local") and pick private ranges.
-        const matches = [...text.matchAll(ipRe)].map((m) => m[1]);
-        for (const base of matches) {
-          if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(base + ".")) {
-            els.subnet.value = base;
-            resolved = true;
-            pc.close();
-            reset();
-            return;
-          }
-        }
-      };
-      pc.createOffer().then((o) => pc.setLocalDescription(o)).catch(reset);
-      setTimeout(() => { if (!resolved) { try { pc.close(); } catch {} reset(); } }, 2500);
+      const count = buildTargets().length;
+      els.targetCount.textContent = `${count} targets`;
     } catch {
-      reset();
-      alert("Subnet auto-detection is not available in this browser. Enter it manually (e.g. 192.168.1).");
+      els.targetCount.textContent = "check targets";
     }
   }
 
-  // ---- controls ---------------------------------------------------------
   function setRunning(running) {
     els.scanBtn.disabled = running;
     els.stopBtn.disabled = !running;
     els.detectBtn.disabled = running;
-    els.progressWrap.hidden = !running && lastResults.length === 0;
+    els.progressWrap.hidden = !running && !lastResults.length;
+    els.progressMode.textContent = running ? "scanning" : "idle";
   }
 
   async function startScan() {
     let targets;
     try { targets = buildTargets(); }
-    catch (e) { alert(e.message); return; }
-    if (!targets.length) { alert("No targets to scan. Check your subnet, ports, or extra targets."); return; }
+    catch (error) { toast(error.message); return; }
+    if (!targets.length) { toast("No targets to scan. Add a subnet, localhost, or manual targets."); return; }
 
+    saveSettings();
     abort = { cancelled: false };
     lastResults = [];
-    els.results.innerHTML = "";
-    els.resultsPanel.hidden = false;
-    els.progressWrap.hidden = false;
-    els.exportBtn.disabled = true;
+    lastTargets = targets;
+    lastRun = { startedAt: new Date().toISOString() };
+    els.lastSaved.textContent = "Not saved";
+    els.runLabel.textContent = `Scanning ${targets.length} targets`;
+    els.progressBar.style.width = "0%";
+    els.progressText.textContent = `0 / ${targets.length}`;
+    els.progressFound.textContent = "0 found";
     setRunning(true);
+    renderResults();
 
-    const timeoutMs = Math.max(100, parseInt(els.timeout.value, 10) || 800);
-    const concurrency = Math.min(128, Math.max(1, parseInt(els.concurrency.value, 10) || 24));
-
+    const timeoutMs = Math.max(100, Math.min(10000, Number.parseInt(els.timeout.value, 10) || 800));
+    const concurrency = Math.max(1, Math.min(128, Number.parseInt(els.concurrency.value, 10) || 32));
     const update = (result, done, found, total) => {
       lastResults.push(result);
       const pct = total ? Math.round((done / total) * 100) : 0;
-      els.progressBar.style.width = pct + "%";
+      els.progressBar.style.width = `${pct}%`;
       els.progressText.textContent = `${done} / ${total}`;
       els.progressFound.textContent = `${found} found`;
-      if (result.status !== "offline") render();
+      if (result.status !== "offline" || showOffline || done % 10 === 0 || done === total) renderResults();
     };
 
     try {
       await runPool(targets, concurrency, timeoutMs, update);
     } finally {
-      render();
+      const stopped = abort.cancelled;
+      abort = null;
+      renderResults();
       setRunning(false);
-      els.exportBtn.disabled = lastResults.every((r) => r.status === "offline");
-      els.scanBtn.disabled = false;
+      els.runLabel.textContent = `${stopped ? "Stopped" : "Completed"} ${lastResults.length} / ${targets.length}`;
+      toast(stopped ? "Scan stopped." : "Scan complete.");
     }
   }
 
   function stopScan() {
     if (abort) abort.cancelled = true;
     els.stopBtn.disabled = true;
+    els.progressMode.textContent = "stopping";
   }
 
-  function exportJson() {
-    const live = lastResults.filter((r) => r.status !== "offline");
-    const payload = {
-      object: "vampire.scan_result",
-      generated_at: new Date().toISOString(),
-      online: live.filter((r) => r.status === "online").length,
-      detected: live.filter((r) => r.status === "detected").length,
-      nodes: live,
-    };
+  function saveCurrentScan() {
+    if (!lastResults.length) return;
+    const payload = payloadFromCurrentRun();
+    const item = { id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), payload };
+    history = [item, ...history.filter((entry) => entry.id !== item.id)].slice(0, MAX_HISTORY);
+    writeHistory();
+    renderHistory();
+    els.lastSaved.textContent = `Saved ${new Date(payload.saved_at).toLocaleTimeString()}`;
+    toast("Scan saved in this browser.");
+  }
+
+  function downloadPayload(payload, prefix = "lmstudio-scan") {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `lmstudio-scan-${Date.now()}.json`;
+    a.download = `${prefix}-${Date.now()}.json`;
+    a.rel = "noopener";
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  els.scanBtn.addEventListener("click", startScan);
-  els.stopBtn.addEventListener("click", stopScan);
-  els.detectBtn.addEventListener("click", detectSubnet);
-  els.exportBtn.addEventListener("click", exportJson);
+  function exportJson() {
+    if (lastResults.length) downloadPayload(payloadFromCurrentRun());
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Copied to clipboard.");
+    } catch {
+      toast("Clipboard access was blocked by the browser.");
+    }
+  }
+
+  function copyJson() {
+    if (lastResults.length) copyText(JSON.stringify(payloadFromCurrentRun(), null, 2));
+  }
+
+  function clearCurrent() {
+    if (abort) abort.cancelled = true;
+    lastResults = [];
+    lastTargets = [];
+    lastRun = null;
+    els.progressBar.style.width = "0%";
+    els.progressText.textContent = "0 / 0";
+    els.progressFound.textContent = "0 found";
+    els.runLabel.textContent = "No active scan";
+    els.lastSaved.textContent = "Not saved";
+    setRunning(false);
+    renderResults();
+  }
+
+  function loadHistory(id) {
+    const item = history.find((entry) => entry.id === id);
+    if (!item) return;
+    lastResults = [...(item.payload.nodes || []), ...(item.payload.offline || [])];
+    lastTargets = Array.isArray(item.payload.targets) ? item.payload.targets : lastResults.map((result) => result.origin);
+    lastRun = { startedAt: item.payload.generated_at || item.payload.saved_at || new Date().toISOString() };
+    els.runLabel.textContent = "Loaded saved scan";
+    els.lastSaved.textContent = `Saved ${new Date(item.payload.saved_at || item.id).toLocaleTimeString()}`;
+    renderResults();
+    toast("Saved scan loaded.");
+  }
+
+  function deleteHistory(id) {
+    history = history.filter((entry) => entry.id !== id);
+    writeHistory();
+    renderHistory();
+    toast("Saved scan deleted.");
+  }
+
+  function detectSubnet() {
+    els.detectBtn.disabled = true;
+    els.detectBtn.textContent = "Detecting…";
+    const reset = () => { els.detectBtn.disabled = false; els.detectBtn.textContent = "Detect subnet"; updateTargetPreview(); };
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel("vampire-subnet-detect");
+      const ipRe = /(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}/g;
+      let resolved = false;
+      pc.onicecandidate = (event) => {
+        if (!event || !event.candidate || resolved) return;
+        const text = event.candidate.candidate;
+        const matches = [...text.matchAll(ipRe)].map((match) => match[1]);
+        for (const base of matches) {
+          if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(`${base}.`)) {
+            els.subnet.value = base;
+            resolved = true;
+            pc.close();
+            reset();
+            toast(`Detected ${base}.0/24`);
+            return;
+          }
+        }
+      };
+      pc.createOffer().then((offer) => pc.setLocalDescription(offer)).catch(reset);
+      setTimeout(() => { if (!resolved) { try { pc.close(); } catch {} reset(); toast("Subnet auto-detection did not reveal a LAN IPv4 address."); } }, 2500);
+    } catch {
+      reset();
+      toast("Subnet auto-detection is unavailable in this browser.");
+    }
+  }
+
+  function handleDelegatedClick(event) {
+    const button = event.target.closest("button[data-action]");
+    if (!button) return;
+    const action = button.dataset.action;
+    const id = button.dataset.id;
+    const origin = button.dataset.origin;
+    if (action === "copy-origin") copyText(origin);
+    if (action === "copy-cors") copyText(`Enable CORS on ${origin}: in LM Studio enable Serve on Local Network + Enable CORS, or run lms server start --cors --port ${new URL(origin).port || "1234"}.`);
+    if (action === "load-history") loadHistory(id);
+    if (action === "export-history") {
+      const item = history.find((entry) => entry.id === id);
+      if (item) downloadPayload(item.payload, "lmstudio-saved-scan");
+    }
+    if (action === "delete-history") deleteHistory(id);
+  }
+
+  function bindEvents() {
+    els.scanBtn.addEventListener("click", startScan);
+    els.stopBtn.addEventListener("click", stopScan);
+    els.saveBtn.addEventListener("click", saveCurrentScan);
+    els.exportBtn.addEventListener("click", exportJson);
+    els.copyBtn.addEventListener("click", copyJson);
+    els.clearBtn.addEventListener("click", clearCurrent);
+    els.detectBtn.addEventListener("click", detectSubnet);
+    els.showLiveBtn.addEventListener("click", () => { showOffline = false; renderResults(); });
+    els.showAllBtn.addEventListener("click", () => { showOffline = true; renderResults(); });
+    document.addEventListener("click", handleDelegatedClick);
+    for (const input of [els.subnet, els.rangeStart, els.rangeEnd, els.ports, els.timeout, els.concurrency, els.manual, els.includeLocalhost]) {
+      input.addEventListener("input", () => { updateTargetPreview(); saveSettings(); });
+      input.addEventListener("change", () => { updateTargetPreview(); saveSettings(); });
+    }
+  }
+
+  loadSettings();
+  history = readHistory();
+  bindEvents();
+  renderHistory();
+  renderResults();
+  updateTargetPreview();
 })();
 </script>
 </body>
