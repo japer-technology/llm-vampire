@@ -361,6 +361,8 @@
   .badge.vampire { color: var(--vamp-hot); background: rgba(172, 67, 217, 0.16); border: 1px solid rgba(172, 67, 217, 0.4); }
   .badge.ports { color: var(--fog); background: rgba(255, 255, 255, 0.07); }
   .badge.ports::before { display: none; }
+  .badge.flavor { color: var(--fog); background: rgba(255, 255, 255, 0.07); }
+  .badge.flavor::before { display: none; }
   .surfaces, .node-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
   .surface { font-family: var(--mono); font-size: 0.7rem; padding: 0.22rem 0.5rem; border-radius: 7px; background: rgba(0,0,0,0.24); border: 1px solid var(--line-soft); color: var(--fog); }
   .surface.accent { color: var(--vamp-hot); border-color: rgba(172, 67, 217, 0.4); background: rgba(172, 67, 217, 0.1); }
@@ -388,6 +390,7 @@
   .fact span { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mute); }
   .gateway { margin-top: 0.75rem; border: 1px solid rgba(172, 67, 217, 0.32); background: rgba(172, 67, 217, 0.08); border-radius: 12px; padding: 0.65rem 0.7rem; }
   .gateway-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--vamp-hot); font-weight: 800; margin-bottom: 0.45rem; }
+  .gateway-hint { margin-top: 0.5rem; font-size: 0.68rem; color: var(--mute); font-style: italic; }
   .models { margin-top: 0.85rem; border-top: 1px solid var(--line-soft); padding-top: 0.75rem; }
   .models summary { cursor: pointer; font-size: 0.8rem; color: var(--fog); }
   .model-list { list-style: none; margin-top: 0.62rem; display: grid; gap: 0.36rem; }
@@ -672,6 +675,50 @@
   const PROBE_PATHS = ["/api/v0/models", "/api/v1/models", "/v1/models"];
   const REACHABILITY_PATHS = ["/v1/models", "/api/v0/models", "/api/v1/models", "/vampire/v1/status", "/"];
   const VAMPIRE_STATUS_PATH = "/vampire/v1/status";
+  // Vampire gateways stamp routed responses with X-Vampire-* headers. Seeing any
+  // of them (or "vampire" in the Server banner) identifies a gateway even when
+  // /vampire/v1/status is blocked by CORS.
+  const VAMPIRE_HEADER_PREFIX = "x-vampire-";
+
+  // Which API dialect answered tells LM Studio nodes apart from generic servers:
+  //   /api/...     -> LM Studio's own enhanced REST API (native)
+  //   /v1/...      -> OpenAI-compatible surface (LM Studio or any compatible host)
+  //   /vampire/... -> a Vampire gateway's control surface
+  function apiFlavor(path) {
+    if (!path) return "";
+    if (path.startsWith("/vampire/")) return "vampire";
+    if (path.startsWith("/api/")) return "lmstudio-native";
+    if (path.startsWith("/v1/")) return "openai-compatible";
+    return "";
+  }
+
+  // Best-effort identity pulled from response headers. Cross-origin reads only
+  // expose headers the server opts into via Access-Control-Expose-Headers, so
+  // these fields are a bonus signal and are simply omitted when unreadable.
+  function readServerIdentity(res) {
+    const identity = {};
+    try {
+      const server = res.headers.get("server");
+      if (server) identity.server = server;
+      const via = res.headers.get("via");
+      if (via) identity.via = via;
+      const vampireHeaders = {};
+      res.headers.forEach((value, key) => {
+        if (key.toLowerCase().startsWith(VAMPIRE_HEADER_PREFIX)) vampireHeaders[key.toLowerCase()] = value;
+      });
+      if (Object.keys(vampireHeaders).length) identity.vampire_headers = vampireHeaders;
+    } catch {
+      // Opaque or unreadable headers (no-cors / blocked). Leave identity empty.
+    }
+    return identity;
+  }
+
+  // True when response headers alone prove a Vampire gateway is in the path.
+  function headersIndicateVampire(identity) {
+    if (!identity) return false;
+    if (identity.vampire_headers && Object.keys(identity.vampire_headers).length) return true;
+    return typeof identity.server === "string" && /vampire/i.test(identity.server);
+  }
 
   const $ = (id) => document.getElementById(id);
   const els = {
@@ -890,13 +937,13 @@
           headers: authHeaders(),
         }, timeoutMs);
         if (!res.ok) {
-          if (res.status === 401 || res.status === 403) return { ok: true, status: res.status, path, models: [], auth: true };
+          if (res.status === 401 || res.status === 403) return { ok: true, status: res.status, path, models: [], auth: true, identity: readServerIdentity(res) };
           continue;
         }
         let body;
         try { body = await res.json(); } catch { continue; }
         const data = Array.isArray(body && body.data) ? body.data : Array.isArray(body) ? body : null;
-        if (data && looksLikeLmStudio(data)) return { ok: true, status: res.status, path, models: data };
+        if (data && looksLikeLmStudio(data)) return { ok: true, status: res.status, path, models: data, identity: readServerIdentity(res) };
       } catch {
         // CORS, TLS, timeout, or network failure. Fall back to no-cors reachability after readable probes.
       }
@@ -911,15 +958,25 @@
         mode: "cors",
         headers: authHeaders(),
       }, timeoutMs);
-      if (!res.ok) return null;
+      const identity = readServerIdentity(res);
+      if (!res.ok) {
+        // A gateway can refuse the read yet still reveal itself via headers.
+        return headersIndicateVampire(identity)
+          ? { version: "", nodes_total: null, nodes_online: null, instance: "", share: "", identity, headers_only: true }
+          : null;
+      }
       let body;
       try { body = await res.json(); } catch { return null; }
       if (!body || typeof body !== "object") return null;
       if (body.object !== "vampire.status" && body.version === undefined && body.nodes_total === undefined) return null;
+      const share = body.share && typeof body.share === "object" ? body.share.mode : body.share;
       return {
         version: typeof body.version === "string" ? body.version : "",
         nodes_total: Number.isFinite(body.nodes_total) ? body.nodes_total : null,
         nodes_online: Number.isFinite(body.nodes_online) ? body.nodes_online : null,
+        instance: typeof body.instance === "string" ? body.instance : (typeof body.id === "string" ? body.id : ""),
+        share: typeof share === "string" ? share : "",
+        identity,
       };
     } catch {
       return null;
@@ -966,15 +1023,24 @@
     const t0 = performance.now();
     const hunt = els.huntVampires.checked;
     const interrogated = await interrogate(origin, timeoutMs);
-    const vampire = hunt ? await huntVampire(origin, timeoutMs) : null;
+    let vampire = hunt ? await huntVampire(origin, timeoutMs) : null;
 
     if (interrogated) {
+      const identity = interrogated.identity || {};
+      // The model surface itself can betray a gateway via its response headers,
+      // even when /vampire/v1/status is unreadable from this origin.
+      if (!vampire && headersIndicateVampire(identity)) {
+        vampire = { version: "", nodes_total: null, nodes_online: null, instance: "", share: "", identity, headers_only: true };
+      }
       const models = (interrogated.models || []).map(simplifyModel);
       return {
         origin,
         status: "online",
         latency: Math.round(performance.now() - t0),
         path: interrogated.path,
+        flavor: apiFlavor(interrogated.path),
+        server: identity.server || "",
+        identity,
         auth: !!interrogated.auth,
         vampire,
         models,
@@ -991,6 +1057,9 @@
         status: "online",
         latency: Math.round(performance.now() - t0),
         path: VAMPIRE_STATUS_PATH,
+        flavor: "vampire",
+        server: (vampire.identity && vampire.identity.server) || "",
+        identity: vampire.identity || {},
         auth: false,
         vampire,
         models: [],
@@ -1006,6 +1075,9 @@
         status: "detected",
         latency: Math.round(performance.now() - t0),
         path: reached.path,
+        flavor: apiFlavor(reached.path),
+        server: "",
+        identity: {},
         auth: false,
         vampire: null,
         models: [],
@@ -1013,7 +1085,7 @@
         note: "A server responded but blocked cross-origin reads. Enable CORS on this node to interrogate it.",
       };
     }
-    return { origin, status: "offline", latency: Math.round(performance.now() - t0), path: "", auth: false, vampire: null, models: [], stats: summarizeModels([]), note: "" };
+    return { origin, status: "offline", latency: Math.round(performance.now() - t0), path: "", flavor: "", server: "", identity: {}, auth: false, vampire: null, models: [], stats: summarizeModels([]), note: "" };
   }
 
   async function runPool(targets, concurrency, timeoutMs, onResult) {
@@ -1079,6 +1151,8 @@
           latency: Infinity,
           auth: false,
           vampire: null,
+          flavors: new Set(),
+          server: "",
           endpoints: [],
           modelMap: new Map(),
           notes: new Set(),
@@ -1088,7 +1162,9 @@
       device.status = bestStatus(device.status, result.status);
       if (result.status !== "offline") device.latency = Math.min(device.latency, result.latency);
       if (result.auth) device.auth = true;
-      if (result.vampire && !device.vampire) device.vampire = result.vampire;
+      if (result.vampire && (!device.vampire || (device.vampire.headers_only && !result.vampire.headers_only))) device.vampire = result.vampire;
+      if (result.flavor) device.flavors.add(result.flavor);
+      if (result.server && !device.server) device.server = result.server;
       if (result.note) device.notes.add(result.note);
       device.endpoints.push({
         origin: result.origin,
@@ -1097,6 +1173,7 @@
         status: result.status,
         latency: result.latency,
         path: result.path,
+        flavor: result.flavor || "",
         vampire: !!result.vampire,
         modelCount: result.models.length,
       });
@@ -1113,12 +1190,28 @@
       const models = [...device.modelMap.values()];
       device.models = models;
       device.stats = summarizeModels(models);
+      device.flavor = primaryFlavor(device.flavors);
       device.endpoints.sort((a, b) => statusRank(a.status) - statusRank(b.status) || a.origin.localeCompare(b.origin));
       if (device.latency === Infinity) device.latency = 0;
       devices.push(device);
     }
     return devices;
   }
+
+  // Pick the most telling API dialect for a device: the native LM Studio REST
+  // surface is the strongest identifier, then OpenAI-compatible, then gateway.
+  function primaryFlavor(flavors) {
+    for (const preferred of ["lmstudio-native", "openai-compatible", "vampire"]) {
+      if (flavors.has(preferred)) return preferred;
+    }
+    return "";
+  }
+
+  const FLAVOR_LABELS = {
+    "lmstudio-native": "LM Studio (native API)",
+    "openai-compatible": "OpenAI-compatible",
+    "vampire": "Vampire gateway",
+  };
 
   function payloadFromCurrentRun() {
     const live = lastResults.filter((result) => result.status !== "offline");
@@ -1351,7 +1444,7 @@
 
     const endpointChips = device.endpoints.map((endpoint) => {
       const label = endpoint.host === device.host || device.local ? `:${endpoint.port}` : endpoint.origin.replace(/^https?:\/\//, "");
-      const tip = `${endpoint.origin} · ${endpoint.status === "detected" ? "CORS blocked" : endpoint.status} · ${endpoint.latency} ms${endpoint.path ? ` · ${endpoint.path}` : ""}${endpoint.vampire ? " · vampire gateway" : ""}`;
+      const tip = `${endpoint.origin} · ${endpoint.status === "detected" ? "CORS blocked" : endpoint.status} · ${endpoint.latency} ms${endpoint.path ? ` · ${endpoint.path}` : ""}${endpoint.flavor ? ` · ${FLAVOR_LABELS[endpoint.flavor] || endpoint.flavor}` : ""}${endpoint.vampire ? " · vampire gateway" : ""}`;
       return `<span class="endpoint ${esc(endpoint.status)}" title="${esc(tip)}">${esc(label)}</span>`;
     }).join("");
     const aliasNote = device.local
@@ -1360,16 +1453,20 @@
 
     const note = device.notes.size ? `<div class="node-note">${[...device.notes].map(esc).join("<br>")}</div>` : "";
 
+    const flavorLabel = FLAVOR_LABELS[device.flavor] || "";
     const badges = [
       device.endpoints.length > 1 ? `<span class="badge ports" title="${esc(device.endpoints.length)} reachable endpoint(s) on this computer">${device.endpoints.length}×</span>` : "",
-      vampire ? `<span class="badge vampire" title="Vampire gateway detected">vampire</span>` : "",
+      flavorLabel ? `<span class="badge flavor" title="API surface used to identify this computer">${esc(flavorLabel)}</span>` : "",
+      vampire ? `<span class="badge vampire" title="${vampire.headers_only ? "Identified as a Vampire gateway from its response headers" : "Vampire gateway detected"}">vampire</span>` : "",
       `<span class="badge ${esc(device.status)}" title="${device.status === "detected" ? "Responds but blocks cross-origin reads (enable CORS)" : esc(device.status)}">${device.status === "detected" ? "CORS blocked" : esc(device.status)}</span>`,
     ].filter(Boolean).join("");
 
     const typeSummary = Object.entries(stats.types || {}).map(([k, v]) => `${v} ${k}`).join(" · ");
-    const factsBlock = device.models.length ? `<div class="facts">
-      ${fact(device.models.length, "models offered", "Unique models this computer exposes")}
-      ${fact(stats.loaded || 0, "loaded now", "Models currently held in memory")}
+    const factsBlock = (device.models.length || flavorLabel || device.server) ? `<div class="facts">
+      ${flavorLabel ? fact(flavorLabel, "API surface", "Which API dialect answered: native LM Studio, OpenAI-compatible, or a Vampire gateway") : ""}
+      ${device.server ? fact(device.server, "server", "Server software reported in response headers (when exposed)") : ""}
+      ${device.models.length ? fact(device.models.length, "models offered", "Unique models this computer exposes") : ""}
+      ${device.models.length ? fact(stats.loaded || 0, "loaded now", "Models currently held in memory") : ""}
       ${stats.publishers ? fact(stats.publishers, "publishers", "Distinct model publishers") : ""}
       ${typeSummary ? fact(typeSummary, "model types", "Breakdown by model type") : ""}
     </div>` : "";
@@ -1378,9 +1475,12 @@
       <div class="gateway-title">Vampire gateway</div>
       <div class="facts">
         ${fact(vampire.version || "—", "version", "Reported gateway version")}
+        ${vampire.instance ? fact(vampire.instance, "instance", "Stable gateway instance id (survives address changes)") : ""}
+        ${vampire.share ? fact(vampire.share, "share mode", "Owner sharing mode advertised by this gateway") : ""}
         ${fact(vampire.nodes_total ?? "—", "nodes total", "Nodes registered with this gateway")}
         ${fact(vampire.nodes_online ?? "—", "nodes online", "Gateway nodes currently online")}
       </div>
+      ${vampire.headers_only ? `<div class="gateway-hint" title="Status body was not readable; identity came from X-Vampire-* response headers">Identified from response headers (status endpoint not readable here).</div>` : ""}
     </div>` : "";
 
     const focusDeviceBtn = focus && focus.type === "device" && focus.key === device.key
@@ -1417,6 +1517,7 @@
 
     const meta = [
       `${device.latency} ms`,
+      flavorLabel || "",
       device.endpoints.length > 1 ? `${device.endpoints.length} endpoints` : "",
       device.auth ? "auth required" : "",
       vampire ? "gateway" : "",
