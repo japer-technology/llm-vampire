@@ -2028,7 +2028,7 @@
     const s = Math.ceil(remaining / 1000);
     const mm = String(Math.floor(s / 60)).padStart(2, "0");
     const ss = String(s % 60).padStart(2, "0");
-    els.monitorNext.textContent = `Next scan in ${mm}:${ss} · scan now`;
+    els.monitorNext.textContent = `Next scan in ${mm}:${ss}`;
   }
 
   async function monitorCycle() {
