@@ -98,7 +98,8 @@ top once traffic flows.
 - Static SPA served from `/`: dashboard for nodes, models, health, cluster
   status, plus a prompt playground that calls the gateway.
 - Implemented: the plain static SPA drives the existing control API for status,
-  nodes, discovery, models, routes, metrics, and share state, and posts playground
+  nodes, discovery (with subnet/port/timeout/trusted-only options), models,
+  routes, metrics, and owner share state (read and set), and posts playground
   prompts to `/v1/chat/completions`. The `vampire dashboard` / `vampire ui`
   command prints or opens the served dashboard URL.
 
