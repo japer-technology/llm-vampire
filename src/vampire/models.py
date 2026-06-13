@@ -11,7 +11,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 OpenAIRole = Literal["system", "user", "assistant", "tool", "developer"]
 ModelKind = Literal["physical", "virtual"]
 

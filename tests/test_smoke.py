@@ -6,7 +6,13 @@ from fastapi.testclient import TestClient
 
 from vampire.app import create_app
 from vampire.config import Settings
-from vampire.models import ChatCompletionRequest, ModelCard, ModelListResponse, VirtualModel
+from vampire.models import (
+    ChatCompletionRequest,
+    ModelCard,
+    ModelListResponse,
+    OpenAIMessage,
+    VirtualModel,
+)
 
 
 def test_app_builds() -> None:
@@ -54,7 +60,7 @@ def test_virtual_model_shape() -> None:
 def test_openai_request_and_response_shapes() -> None:
     request = ChatCompletionRequest(
         model="local-model",
-        messages=[{"role": "user", "content": "hello"}],
+        messages=[OpenAIMessage(role="user", content="hello")],
         stream=True,
     )
     response = ModelListResponse(data=[ModelCard(id=request.model)])
