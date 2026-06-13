@@ -32,6 +32,7 @@ The compute behind an LM Studio endpoint may be local, remote, headless, GPU-bac
 
 ## Table of contents
 
+- [About LM Studio](#about-lm-studio)
 - [Why](#why)
 - [Features](#features)
 - [How it works](#how-it-works)
@@ -45,6 +46,98 @@ The compute behind an LM Studio endpoint may be local, remote, headless, GPU-bac
 - [Acknowledgements](#acknowledgements)
 
 ---
+
+## About LM Studio
+
+[LM Studio](https://lmstudio.ai/) is the platform `lmstudio-vampire` is built around — and
+the real star of this project. Every Vampire capability ultimately rests on a concrete LM
+Studio mechanism. Vampire does not run models, discover GPUs, or manage compute itself; it
+connects only to LM Studio servers an owner has deliberately exposed, interrogates what
+they offer, and routes approved requests behind one stable endpoint. Understanding LM
+Studio is therefore the key to understanding Vampire.
+
+This section is a high-level introduction. The [`lmstudio.ai/`](lmstudio.ai/) folder holds a
+deep, mechanism-by-mechanism technical reference sourced from LM Studio's official
+[documentation](https://lmstudio.ai/docs).
+
+### What LM Studio is
+
+LM Studio is a desktop application and developer platform for downloading and running
+open-weight LLMs **locally** — entirely on hardware the owner controls. It runs **GGUF**
+models through the llama.cpp engine on Mac, Windows, and Linux (CPU and GPU via CUDA,
+Vulkan, Metal, or ROCm), and **MLX** models through the MLX engine on Apple Silicon.
+Inference runtimes are versioned and managed independently of the app, and the engine
+supports modern features such as flash attention, KV-cache GPU offload, MoE expert
+configuration, and continuous batching.
+
+Crucially for Vampire, LM Studio is not a single binary but a **family of components**,
+any of which can stand behind an API endpoint:
+
+| Component | What it is |
+| --- | --- |
+| **LM Studio (desktop app)** | The GUI app for Mac/Windows/Linux, with a Developer tab that runs the local API server. The most common node type — the owner toggles the server on or off in the GUI. |
+| **llmster** | The core of LM Studio packaged as a standalone, server-native daemon with no GUI (LM Studio 0.4.0+). Ideal for headless Linux boxes, cloud servers, and GPU rigs. |
+| **`lms` CLI** | The MIT-licensed command-line utility that ships with LM Studio for scripting node behavior: starting the server, loading models, and managing links. |
+| **lmstudio-python / lmstudio-js** | Official SDKs speaking LM Studio's native protocol (Vampire primarily uses HTTP). |
+| **LM Link** | An end-to-end-encrypted device network (built on Tailscale) that lets a node use a remote model as if it were local. |
+
+### The local API server
+
+When an owner turns on the server, a running LM Studio instance (default
+`http://localhost:1234`) exposes several API families **on the same port**:
+
+| Surface | Base path | Notes |
+| --- | --- | --- |
+| OpenAI-compatible | `/v1/*` | The drop-in surface Vampire proxies transparently. |
+| Anthropic-compatible | `/v1/messages` | Anthropic-style messages endpoint. |
+| Native REST v1 | `/api/v1/*` | Rich model inventory and load/unload control (LM Studio 0.4.0+). |
+| Legacy REST v0 | `/api/v0/*` | Per-request stats such as tokens/sec and TTFT (LM Studio 0.3.6+). |
+
+The OpenAI-compatible `/v1/*` surface — covering routes such as `/v1/models`,
+`/v1/chat/completions`, `/v1/completions`, and `/v1/embeddings` — is what makes existing
+OpenAI clients work against local models simply by changing the base URL. This is the
+surface Vampire presents to clients and proxies to nodes.
+
+### The owner stays in control
+
+LM Studio is designed so the machine's owner decides exactly what is exposed. Through the
+server settings (and the `lms` CLI) the owner controls:
+
+- whether the server is running at all, and on which **port**;
+- the **bind address** — local only, or served on the local network;
+- **CORS** behavior;
+- whether **API-token authentication** is required, and which tokens are valid (0.4.0+);
+- **model lifecycle**: just-in-time (JIT) loading, idle TTL, and auto-evict;
+- **concurrency**: how many parallel requests a node will accept via continuous batching.
+
+Vampire respects all of these. It can only use what an LM Studio owner has chosen to
+offer — which is precisely why LM Studio's permission and authentication model is central
+to Vampire's governance layer.
+
+### Rich, machine-readable model metadata
+
+LM Studio's APIs report detailed, structured information that Vampire's inventory layer
+consumes directly during interrogation, including model `format` (`gguf`/`mlx`), runtime
+name and version, `quantization`, `params_string` (e.g. `"7B"`), `size_bytes`,
+`architecture`, `max_context_length`, and capability flags such as `vision`,
+`trained_for_tool_use`, and allowed `reasoning` effort options. This lets Vampire make
+model-aware, capability-aware routing decisions across heterogeneous nodes.
+
+### Version landmarks
+
+LM Studio evolves quickly, and Vampire must tolerate nodes at different versions:
+
+| LM Studio version | Capability introduced |
+| --- | --- |
+| 0.3.6 | REST API `/api/v0/*` with enhanced per-request stats. |
+| 0.4.0 | Native REST API `/api/v1/*`, API-token authentication, the llmster daemon, `lms daemon`, and LM Link. |
+
+A 0.3.x node offers `/v1/*` and `/api/v0/*` only, with no token authentication; a 0.4.0+
+node adds `/api/v1/*`, tokens, headless llmster operation, and LM Link remote routing.
+
+For the full treatment of each mechanism and how Vampire maps onto it, see the
+[`lmstudio.ai/`](lmstudio.ai/) reference — especially
+[12-vampire-integration.md](lmstudio.ai/12-vampire-integration.md).
 
 ## Why
 
