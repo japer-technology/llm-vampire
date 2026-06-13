@@ -13,21 +13,28 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Vampire runtime settings."""
+    """Vampire runtime settings loaded from defaults, ``.env``, and env vars.
+
+    Pydantic settings applies the ``VAMPIRE_`` prefix, so
+    ``VAMPIRE_LMSTUDIO_BASE_URL=http://host:1234`` overrides the default
+    downstream node without changing code.
+    """
 
     model_config = SettingsConfigDict(env_prefix="VAMPIRE_", env_file=".env")
 
-    # Address the gateway listens on.
+    # Address the gateway listens on when ``vampire serve`` starts Uvicorn.
     host: str = "127.0.0.1"
     port: int = 7777
 
     # Default downstream LM Studio node used by the Phase 1 transparent proxy.
     lmstudio_base_url: str = "http://localhost:1234"
 
-    # Logging verbosity for the gateway process.
+    # Logging verbosity for this gateway process; downstream LM Studio logging is
+    # controlled by the node owner, not by Vampire.
     log_level: str = "INFO"
 
-    # Local API key required on requests (Phase 6). Empty disables auth.
+    # Local API key required on requests once Phase 6 policy lands. Empty keeps
+    # Phase 1 drop-in OpenAI compatibility unauthenticated by default.
     auth_token: str = ""
 
 

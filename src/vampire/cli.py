@@ -15,6 +15,7 @@ from vampire.config import configure_logging, get_settings
 
 
 def _serve(args: argparse.Namespace) -> int:
+    """Run the gateway with CLI flags taking precedence over environment settings."""
     import uvicorn
 
     settings = get_settings()
@@ -26,12 +27,20 @@ def _serve(args: argparse.Namespace) -> int:
 
 
 def _todo(args: argparse.Namespace) -> int:
+    """Explain that a future-phase command exists in the CLI shape only."""
     print(f"`vampire {args.command}` is not implemented yet (design-stage scaffold).")
     print("See IMPLEMENTATION-PLAN.md for the roadmap.")
     return 1
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the ``vampire`` parser and bind subcommands to their handlers.
+
+    Phase 0 exposes the full CLI shape promised by METHOD-A so scripts and docs
+    can settle early. Only ``serve`` performs work in Phase 1; discovery,
+    registry-management, sharing, status, and routing commands are kept as
+    explicit stubs until their matching API phases land.
+    """
     parser = argparse.ArgumentParser(prog="vampire", description="LM Studio Vampire gateway.")
     parser.add_argument("--version", action="version", version=f"vampire {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)

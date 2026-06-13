@@ -12,10 +12,20 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 OpenAIRole = Literal["system", "user", "assistant", "tool", "developer"]
+"""Roles accepted by the LM Studio / OpenAI chat-compatible message format."""
+
 ModelKind = Literal["physical", "virtual"]
+"""Model catalogue categories: node-hosted models or Vampire virtual aliases."""
 
 
 class NodeCapabilities(BaseModel):
+    """Capabilities Vampire records for an owner-approved LM Studio endpoint.
+
+    Phase 0 supplies the shape. Phase 2 will populate it by interrogating each
+    node, and Phase 3 routing can use it to avoid sending embeddings, tools, or
+    vision requests to nodes that cannot serve them.
+    """
+
     chat: bool = True
     responses: bool = False
     completions: bool = True
@@ -26,7 +36,13 @@ class NodeCapabilities(BaseModel):
 
 
 class Node(BaseModel):
-    """A machine running LM Studio (DESIGN-API.md §4.1)."""
+    """A machine running an owner-approved LM Studio API endpoint (§4.1).
+
+    ``lmstudio_base_url`` is the OpenAI-compatible endpoint Vampire proxies to in
+    Phase 1. ``agent_base_url`` is reserved for the optional node agent deferred
+    beyond MVP. ``trusted`` and ``tags`` are carried from day one because later
+    routing and policy phases use them without changing the public node shape.
+    """
 
     id: str
     name: str | None = None
@@ -40,7 +56,13 @@ class Node(BaseModel):
 
 
 class VirtualModel(BaseModel):
-    """A model alias exposed by Vampire (DESIGN-API.md §4.2)."""
+    """A model alias exposed by Vampire instead of a single physical model (§4.2).
+
+    ``targets`` names candidate node/model pairs for the alias, ``policy_id``
+    links to future policy controls, and ``metadata`` gives later phases a safe
+    extension point without breaking clients that already understand the base
+    object.
+    """
 
     id: str
     type: ModelKind = "virtual"
@@ -51,12 +73,19 @@ class VirtualModel(BaseModel):
 
 
 class RouteTarget(BaseModel):
+    """A concrete node/model pair that can satisfy a route policy."""
+
     node: str
     model: str
 
 
 class RoutePolicy(BaseModel):
-    """A virtual-model routing rule (DESIGN-API.md §4.3 / §16)."""
+    """A virtual-model routing rule (DESIGN-API.md §4.3 / §16).
+
+    Phase 0 defines the durable API shape. Phase 3 implements strategy
+    execution, while Phase 6 expands ``constraints`` with trust, realm, token,
+    and owner-policy requirements.
+    """
 
     id: str
     virtual_model: str
@@ -67,7 +96,13 @@ class RoutePolicy(BaseModel):
 
 
 class OpenAIMessage(BaseModel):
-    """OpenAI-compatible chat message shape."""
+    """OpenAI-compatible chat message shape.
+
+    Extra fields are preserved so LM Studio extensions pass through unchanged.
+    Tool-call fields are included even before Phase 6 policy because modern
+    OpenAI-compatible clients may send or receive them on the transparent
+    passthrough surface.
+    """
 
     role: OpenAIRole
     content: str | list[dict[str, Any]] | None = None
@@ -79,7 +114,11 @@ class OpenAIMessage(BaseModel):
 
 
 class OpenAIRequestBase(BaseModel):
-    """Shared OpenAI-compatible request fields accepted by LM Studio."""
+    """Shared OpenAI-compatible request fields accepted by LM Studio.
+
+    The optional ``vampire`` object is ignored by the Phase 1 transparent proxy
+    and becomes an opt-in routing/policy control in later phases.
+    """
 
     model: str
     stream: bool = False

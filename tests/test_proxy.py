@@ -47,11 +47,46 @@ def _mock_lmstudio() -> FastAPI:
 
         return StreamingResponse(events(), media_type="text/event-stream")
 
+    @app.post("/v1/completions")
+    async def completions(request: Request) -> JSONResponse:
+        payload = await request.json()
+        return JSONResponse(
+            {
+                "id": "cmpl-1",
+                "object": "text_completion",
+                "model": payload["model"],
+                "choices": [{"index": 0, "text": "hello"}],
+            }
+        )
+
+    @app.post("/v1/responses")
+    async def responses(request: Request) -> JSONResponse:
+        payload = await request.json()
+        return JSONResponse(
+            {
+                "id": "resp-1",
+                "object": "response",
+                "model": payload["model"],
+                "output_text": "hi",
+            }
+        )
+
     @app.post("/v1/embeddings")
     async def embeddings(request: Request) -> JSONResponse:
         await request.body()
         return JSONResponse(
             {"object": "list", "data": [{"object": "embedding", "embedding": [0.1, 0.2]}]}
+        )
+
+    @app.api_route("/v1/echo/{path:path}", methods=["GET", "POST", "PATCH"])
+    async def echo(path: str, request: Request) -> JSONResponse:
+        return JSONResponse(
+            {
+                "path": path,
+                "query": dict(request.query_params),
+                "x_client_marker": request.headers.get("x-client-marker"),
+                "x_vampire_route": request.headers.get("x-vampire-route"),
+            }
         )
 
     return app
@@ -108,3 +143,29 @@ def test_embeddings_passthrough(client: TestClient) -> None:
     resp = client.post("/v1/embeddings", json={"model": "local-model", "input": "hello"})
     assert resp.status_code == 200
     assert resp.json()["data"][0]["embedding"] == [0.1, 0.2]
+
+
+def test_completions_passthrough(client: TestClient) -> None:
+    resp = client.post("/v1/completions", json={"model": "local-model", "prompt": "hello"})
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["text"] == "hello"
+
+
+def test_responses_passthrough(client: TestClient) -> None:
+    resp = client.post("/v1/responses", json={"model": "local-model", "input": "hello"})
+    assert resp.status_code == 200
+    assert resp.json()["object"] == "response"
+
+
+def test_catch_all_preserves_query_and_end_to_end_headers(client: TestClient) -> None:
+    resp = client.patch(
+        "/v1/echo/custom/path?alpha=one&beta=two",
+        headers={"X-Client-Marker": "kept", "X-Vampire-Route": "future-control"},
+        json={"ignored": True},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["path"] == "custom/path"
+    assert body["query"] == {"alpha": "one", "beta": "two"}
+    assert body["x_client_marker"] == "kept"
+    assert body["x_vampire_route"] == "future-control"
