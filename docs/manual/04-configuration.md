@@ -14,7 +14,7 @@ flowchart LR
     envvars --> flags["CLI flags<br/>(serve --host / --port)"]
     flags --> effective["✅ Effective configuration"]
 
-    classDef win fill:#e8f5e9,stroke:#43a047;
+    classDef win stroke:#43a047;
     class effective win;
 ```
 

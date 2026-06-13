@@ -20,8 +20,8 @@ flowchart LR
     family --> business["business<br/>workplace"]
     business --> event["event<br/>a room / occasion"]
 
-    classDef closed fill:#ffebee,stroke:#e53935;
-    classDef openw fill:#e8f5e9,stroke:#43a047;
+    classDef closed stroke:#e53935;
+    classDef openw stroke:#43a047;
     class off closed;
     class event openw;
 ```
