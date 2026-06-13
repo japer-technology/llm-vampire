@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>lmstudio-vampire — Private AI compute, wherever it is allowed</title>
-<meta name="description" content="lmstudio-vampire turns idle LM Studio-compatible GPUs on a local network into one governed, private AI service." />
+<title>lmstudio-vampire — OpenAI-compatible gateway for LM Studio</title>
+<meta name="description" content="lmstudio-vampire runs today as a FastAPI gateway with LM Studio proxying, node registry, discovery, routing, and a browser dashboard." />
 <style>
   :root {
     --bg: #07050a;
@@ -299,7 +299,7 @@
     LM Studio <em>Vampire</em>
   </a>
   <div class="nav-links">
-    <a href="#features">Features</a>
+    <a href="#features">Implemented</a>
     <a href="#how">How it works</a>
     <a href="#quickstart">Quickstart</a>
     <a class="nav-cta" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">GitHub →</a>
@@ -309,19 +309,19 @@
 <main id="top">
   <!-- HERO -->
   <header class="hero">
-    <span class="eyebrow"><span class="pulse"></span> Design-stage · LAN-native AI orchestration</span>
+    <span class="eyebrow"><span class="pulse"></span> Phase 4 runnable scaffold · LM Studio gateway</span>
     <h1 id="hero-title">
-      <span class="line">Wake the idle GPUs.</span><br />
-      <span class="line blood-text">Drain nothing but latency.</span>
+      <span class="line">Govern LM Studio nodes.</span><br />
+      <span class="line blood-text">Route through one endpoint.</span>
     </h1>
     <p class="sub" id="hero-sub">
-      <strong>lmstudio-vampire</strong> turns idle, LM Studio-compatible GPUs on your local
-      network into one governed, private AI service — discovered, verified, routed, and
-      fused behind a single OpenAI-compatible endpoint.
+      <strong>lmstudio-vampire</strong> now runs as one FastAPI process serving an
+      OpenAI-compatible proxy, a Vampire control API, virtual-model routing, and a
+      browser dashboard for owner-approved LM Studio endpoints.
     </p>
     <div class="cta-row" id="hero-cta">
-      <a class="btn btn-primary" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">Read the design ↗</a>
-      <a class="btn btn-ghost" href="#quickstart">See the intended CLI</a>
+      <a class="btn btn-primary" href="#quickstart">Run the gateway</a>
+      <a class="btn btn-ghost" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">View on GitHub ↗</a>
     </div>
     <div class="scroll-hint" id="hero-hint">
       <span>Descend</span>
@@ -332,9 +332,9 @@
   <!-- STATS -->
   <section aria-label="Highlights">
     <div class="stats">
-      <div class="stat reveal"><div class="big" data-count="1">0</div><div class="label">Stable endpoint</div></div>
-      <div class="stat reveal"><div class="big" data-count="3">0</div><div class="label">Fusion modes</div></div>
-      <div class="stat reveal"><div class="big" data-count="100" data-suffix="%">0</div><div class="label">Local &amp; private</div></div>
+      <div class="stat reveal"><div class="big" data-count="1">0</div><div class="label">Gateway process</div></div>
+      <div class="stat reveal"><div class="big" data-count="4">0</div><div class="label">Phases shipped</div></div>
+      <div class="stat reveal"><div class="big" data-count="5">0</div><div class="label">Routing strategies</div></div>
       <div class="stat reveal"><div class="big" data-count="0">0</div><div class="label">Cloud required</div></div>
     </div>
   </section>
@@ -342,20 +342,21 @@
   <!-- FEATURES -->
   <section id="features">
     <div class="section-head">
-      <span class="kicker reveal">Powers of the night</span>
-      <h2 class="reveal">Everything between your clients<br />and your GPUs</h2>
-      <p class="reveal">Model execution already exists — LM Studio provides it. The missing layer
-      is discovery, permission, routing, policy, and coordination. That layer is the vampire.</p>
+      <span class="kicker reveal">Implemented now</span>
+      <h2 class="reveal">Proxy, registry, routing,<br />and dashboard</h2>
+      <p class="reveal">Model execution stays inside LM Studio. Vampire currently adds the
+      gateway layer around owner-approved endpoints: transparent proxying, node
+      management, discovery, model aggregation, route policies, and a browser UI.</p>
     </div>
     <div class="grid">
-      <article class="card reveal"><div class="icon">🧛</div><h3>Discovery</h3><p>Wakes on the LAN and finds approved LM Studio-compatible endpoints automatically.</p></article>
-      <article class="card reveal"><div class="icon">🔌</div><h3>Drop-in compatibility</h3><p>A stable OpenAI-compatible API — existing clients only change their base URL.</p></article>
-      <article class="card reveal"><div class="icon">🧭</div><h3>Smart routing</h3><p>Model-aware and load-aware routing with automatic failover across nodes.</p></article>
-      <article class="card reveal"><div class="icon">🤝</div><h3>Request coalescing</h3><p>Collapses concurrent identical prompts into a single inference run.</p></article>
-      <article class="card reveal"><div class="icon">⚡</div><h3>Caching</h3><p>Serves repeated requests instantly from an exact result cache.</p></article>
-      <article class="card reveal"><div class="icon">🧩</div><h3>Fusion modes</h3><p>Parallel, race, and judge/refiner strategies that combine multiple machines.</p></article>
-      <article class="card reveal"><div class="icon">🔐</div><h3>Owner control</h3><p>Respects tokens, realms, and policy before routing a single request.</p></article>
-      <article class="card reveal"><div class="icon">🏠</div><h3>Local-first &amp; private</h3><p>Prompts stay on trusted, nearby compute. Nothing leaves your network.</p></article>
+      <article class="card reveal"><div class="icon">🔌</div><h3>Transparent proxy</h3><p>Forwards `/v1/*` requests to LM Studio, preserving streaming responses and OpenAI-style errors.</p></article>
+      <article class="card reveal"><div class="icon">📇</div><h3>Node registry</h3><p>Registers, refreshes, updates, drains, and removes owner-approved LM Studio endpoints.</p></article>
+      <article class="card reveal"><div class="icon">🧛</div><h3>Static discovery</h3><p>Scans configured base URLs, ports, or development subnets for reachable LM Studio APIs.</p></article>
+      <article class="card reveal"><div class="icon">🧾</div><h3>Model inventory</h3><p>Aggregates physical models from registered nodes and exposes virtual Vampire models.</p></article>
+      <article class="card reveal"><div class="icon">🧭</div><h3>Virtual routing</h3><p>Routes opt-in requests with round-robin, least-busy, least-latency, affinity, or trusted-only policies.</p></article>
+      <article class="card reveal"><div class="icon">📊</div><h3>Dashboard SPA</h3><p>Serves a browser UI for status, nodes, discovery, models, routes, metrics, sharing, and prompts.</p></article>
+      <article class="card reveal"><div class="icon">🤝</div><h3>Owner share state</h3><p>Records sharing modes through the control API and CLI, ready for later policy enforcement.</p></article>
+      <article class="card reveal"><div class="icon">🏠</div><h3>Local-first</h3><p>Vampire only talks to LM Studio endpoints that owners deliberately expose.</p></article>
     </div>
   </section>
 
@@ -364,54 +365,60 @@
     <div class="section-head">
       <span class="kicker reveal">The ritual</span>
       <h2 class="reveal">How it works</h2>
-      <p class="reveal">A transparent proxy in front of one or more LM Studio nodes,
-      adding opt-in orchestration without breaking a single existing client.</p>
+      <p class="reveal">One process serves the OpenAI-compatible API, Vampire control API,
+      and static dashboard while keeping advanced orchestration opt-in.</p>
     </div>
     <div class="flow">
-      <article class="card step reveal"><span class="num"></span><h3>Wake</h3><p>The vampire wakes on the local network and scans for LM Studio-compatible inference endpoints.</p></article>
-      <article class="card step reveal"><span class="num"></span><h3>Verify</h3><p>Each node's models, capabilities, owner tokens, and policy are checked before it joins the registry.</p></article>
-      <article class="card step reveal"><span class="num"></span><h3>Route</h3><p>Requests are routed by model and load, coalesced, cached, and failed-over across nodes.</p></article>
-      <article class="card step reveal"><span class="num"></span><h3>Fuse</h3><p>Optional fusion runs parallel, race, or judge/refiner strategies across many machines at once.</p></article>
+      <article class="card step reveal"><span class="num"></span><h3>Serve</h3><p>`vampire serve` starts the gateway on `http://localhost:7777` with `/v1/*`, `/vampire/v1/*`, and `/` mounted.</p></article>
+      <article class="card step reveal"><span class="num"></span><h3>Register</h3><p>Add trusted LM Studio URLs manually or discover configured addresses, then refresh their health and model metadata.</p></article>
+      <article class="card step reveal"><span class="num"></span><h3>Route</h3><p>Create virtual-model policies and opt in per request with `vampire` JSON or `X-Vampire-*` headers.</p></article>
+      <article class="card step reveal"><span class="num"></span><h3>Monitor</h3><p>Use the dashboard or CLI to inspect status, nodes, models, routes, metrics, share mode, and prompt responses.</p></article>
     </div>
   </section>
 
   <!-- QUICKSTART -->
   <section id="quickstart">
     <div class="section-head">
-      <span class="kicker reveal">Intended experience</span>
-      <h2 class="reveal">One command. One endpoint.</h2>
-      <p class="reveal">The early build steps (proxy, registry, discovery, routing, and dashboard) are runnable today; the CLI below documents the intended end-to-end experience.</p>
+      <span class="kicker reveal">Runnable today</span>
+      <h2 class="reveal">Start the gateway, add nodes, route requests.</h2>
+      <p class="reveal">The current CLI manages the Phase 4 gateway, registry, discovery,
+      routes, sharing state, metrics, and dashboard URL.</p>
     </div>
-    <div class="terminal reveal" role="img" aria-label="Terminal showing the intended vampire CLI usage">
+    <div class="terminal reveal" role="img" aria-label="Terminal showing runnable vampire CLI usage">
       <div class="terminal-bar">
         <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
         <span>~ / lair</span>
       </div>
-      <pre><code><span class="c-dim">$</span> <span class="c-cmd">vampire wake</span> <span class="c-flag">--lan</span>
-<span class="c-blood">🧛 vampire</span> <span class="c-dim">rising…</span>
-<span class="c-ok">✔</span> discovered <span class="c-cmd">3</span> LM Studio nodes on 192.168.1.0/24
-<span class="c-ok">✔</span> verified models · capabilities · owner policy
-<span class="c-ok">✔</span> gateway listening on <span class="c-cmd">http://localhost:9483/v1</span>
+      <pre><code><span class="c-dim">$</span> <span class="c-cmd">vampire serve</span> <span class="c-flag">--host 127.0.0.1 --port 7777</span>
+<span class="c-ok">✔</span> gateway serves <span class="c-cmd">/v1/*</span>, <span class="c-cmd">/vampire/v1/*</span>, and dashboard <span class="c-cmd">/</span>
 
-<span class="c-dim">$</span> <span class="c-cmd">curl http://localhost:9483/v1/chat/completions</span> <span class="c-flag">\</span>
-    <span class="c-flag">-d</span> <span class="c-dim">'{"model":"auto","messages":[{"role":"user","content":"hello"}]}'</span>
-<span class="c-dim">→ routed to fastest healthy node · cached · coalesced</span></code></pre>
+<span class="c-dim">$</span> <span class="c-cmd">vampire nodes add home-gpu http://localhost:1234</span> <span class="c-flag">--trusted</span>
+<span class="c-ok">✔</span> registered owner-approved LM Studio node
+
+<span class="c-dim">$</span> <span class="c-cmd">vampire route add route-auto vampire:auto</span> <span class="c-flag">--target home-gpu:local-model</span>
+<span class="c-ok">✔</span> route policy ready for opt-in requests
+
+<span class="c-dim">$</span> <span class="c-cmd">curl http://localhost:7777/v1/chat/completions</span> <span class="c-flag">\</span>
+    <span class="c-flag">-H</span> <span class="c-dim">'content-type: application/json'</span> <span class="c-flag">\</span>
+    <span class="c-flag">-d</span> <span class="c-dim">'{"model":"vampire:auto","vampire":{"route":"route-auto"},"messages":[{"role":"user","content":"hello"}]}'</span>
+<span class="c-dim">→ proxied or routed through the selected healthy LM Studio node</span></code></pre>
     </div>
   </section>
 
   <!-- FINAL CTA -->
   <section>
     <div class="final-cta reveal">
-      <h2>Private AI compute,<br /><span class="blood-text" style="background:linear-gradient(120deg,#d986ff,var(--blood) 45%,#5b176f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">wherever it is allowed.</span></h2>
-      <p>One strong GPU can serve many approved users, devices, rooms, families, teams,
-      and events — without the owner surrendering control.</p>
-      <a class="btn btn-primary" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">Join the design on GitHub ↗</a>
+      <h2>Private AI compute,<br /><span class="blood-text" style="background:linear-gradient(120deg,#d986ff,var(--blood) 45%,#5b176f);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">offered through LM Studio.</span></h2>
+      <p>The scaffold is pre-alpha but runnable: proxying, registry, discovery, routing,
+      metrics, sharing state, and the dashboard are in place; coalescing, cache,
+      auth policy, and fusion remain future phases.</p>
+      <a class="btn btn-primary" href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">Review the implementation ↗</a>
     </div>
   </section>
 </main>
 
 <footer>
-  <p>🧛 <strong>lmstudio-vampire</strong> · early runnable scaffold ·
+  <p>🧛 <strong>lmstudio-vampire</strong> · Phase 4 runnable scaffold ·
     <a href="https://github.com/japer-technology/lmstudio-vampire" target="_blank" rel="noopener">japer-technology/lmstudio-vampire</a></p>
 </footer>
 
