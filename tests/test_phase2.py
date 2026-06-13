@@ -125,3 +125,36 @@ def test_metrics_include_node_counts_health_and_latency(client: TestClient) -> N
     assert metrics["nodes"][0]["health"] == "online"
     assert metrics["nodes"][0]["requests_total"] == 1
     assert metrics["nodes"][0]["avg_latency_ms"] is not None
+
+
+def test_node_delete_removes_registration_and_unknown_nodes_404(client: TestClient) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+
+    assert client.delete("/vampire/v1/nodes/node-a").json() == {
+        "id": "node-a",
+        "status": "removed",
+    }
+    assert client.get("/vampire/v1/nodes/node-a").status_code == 404
+    assert client.patch("/vampire/v1/nodes/missing", json={"trusted": True}).status_code == 404
+    assert client.delete("/vampire/v1/nodes/missing").status_code == 404
+
+
+def test_share_control_endpoint_updates_required_cli_command_state(client: TestClient) -> None:
+    default = client.get("/vampire/v1/share").json()
+    assert default == {
+        "object": "vampire.share",
+        "mode": "off",
+        "enabled": False,
+        "duration": None,
+        "model": None,
+    }
+
+    updated = client.post(
+        "/vampire/v1/share",
+        json={"mode": "family", "enabled": True, "model": "family-model"},
+    ).json()
+    assert updated["mode"] == "family"
+    assert updated["enabled"] is True
+    assert updated["model"] == "family-model"

@@ -247,3 +247,43 @@ def test_x_vampire_headers_control_physical_model_routing(client: TestClient) ->
     assert resp.status_code == 200
     assert resp.json()["model"] == "node-a-model"
     assert resp.headers["x-vampire-strategy"] == "model_affinity"
+
+
+def test_route_fallback_uses_secondary_policy_when_primary_has_no_online_targets(
+    client: TestClient,
+) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-b", "lmstudio_base_url": "http://node-b:1234"}
+    )
+    client.post(
+        "/vampire/v1/routes",
+        json={
+            "id": "route-primary",
+            "virtual_model": "vampire:auto",
+            "targets": [{"node": "missing", "model": "missing-model"}],
+            "strategy": "round_robin",
+            "fallback": "vampire:backup",
+        },
+    )
+    client.post(
+        "/vampire/v1/routes",
+        json={
+            "id": "route-backup",
+            "virtual_model": "vampire:backup",
+            "targets": [{"node": "node-b", "model": "node-b-model"}],
+            "strategy": "least_latency",
+        },
+    )
+
+    resp = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "vampire:auto",
+            "messages": [{"role": "user", "content": "hello"}],
+            "vampire": {"mode": "fallback"},
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["node"] == "node-b"
+    assert resp.headers["x-vampire-route"] == "route-backup"
