@@ -30,9 +30,9 @@ flowchart LR
     route --> r_get["get"]
     route --> r_delete["delete"]
 
-    classDef local fill:#e3f2fd,stroke:#1e88e5;
-    classDef remote fill:#fff3e0,stroke:#fb8c00;
-    classDef utility fill:#ede7f6,stroke:#5e35b1;
+    classDef local stroke:#1e88e5;
+    classDef remote stroke:#fb8c00;
+    classDef utility stroke:#5e35b1;
     class serve local;
     class status,discover,share,nodes,models,metrics,route remote;
     class dashboard utility;
