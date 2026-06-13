@@ -1,5 +1,11 @@
 # The Maths of LM Studio Vampire
 
+<p align="center">
+  <picture>
+    <img src="https://raw.githubusercontent.com/japer-technology/lmstudio-vampire/main/LOGO-3.png" alt="LM Studio Vampire" width="500">
+  </picture>
+</p>
+
 This document describes the mathematics behind the `lmstudio-vampire` mechanism:
 a gateway that aggregates owner-approved LM Studio endpoints into one governed,
 OpenAI-compatible service, and routes, coalesces, caches, races, and fuses
