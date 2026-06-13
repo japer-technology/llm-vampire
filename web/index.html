@@ -192,6 +192,17 @@
             <label class="inline"><input name="trusted" type="checkbox" style="width:auto" /> Trusted route target</label>
             <button type="submit">Register node</button>
           </form>
+          <form id="discover-form" class="stack">
+            <h3>Discover LM Studio nodes</h3>
+            <div class="form-grid">
+              <label>Subnets<input name="subnets" placeholder="192.168.1.0/24" /></label>
+              <label>Ports<input name="ports" placeholder="1234,1235" /></label>
+              <label>Base URLs<input name="base_urls" placeholder="http://192.168.1.50:1234" /></label>
+              <label>Timeout (ms)<input name="timeout_ms" type="number" placeholder="1500" /></label>
+            </div>
+            <label class="inline"><input name="trusted_only" type="checkbox" style="width:auto" /> Trusted only</label>
+            <button type="submit" class="secondary">Run discovery</button>
+          </form>
         </article>
 
         <article class="card stack">
@@ -266,6 +277,26 @@
         <article class="card stack">
           <h2>Owner share mode</h2>
           <div id="share" class="stack"><p class="empty">Share state not loaded.</p></div>
+          <form id="share-form" class="stack">
+            <h3>Set share mode</h3>
+            <div class="form-grid">
+              <label>
+                Mode
+                <select name="mode">
+                  <option>off</option>
+                  <option>local</option>
+                  <option>personal</option>
+                  <option>family</option>
+                  <option>business</option>
+                  <option>event</option>
+                </select>
+              </label>
+              <label>Duration<input name="duration" placeholder="2h" /></label>
+              <label>Model<input name="model" placeholder="vampire:auto" /></label>
+            </div>
+            <label class="inline"><input name="enabled" type="checkbox" style="width:auto" checked /> Enabled</label>
+            <button type="submit">Apply share mode</button>
+          </form>
         </article>
       </section>
     </main>
@@ -454,6 +485,13 @@
         share.append(pill(`${state.share.mode} · ${state.share.enabled ? "enabled" : "disabled"}`, state.share.enabled ? "ok" : "warn"));
         if (state.share.duration) share.append(pill(`duration ${state.share.duration}`));
         if (state.share.model) share.append(pill(`model ${state.share.model}`));
+        const form = $("share-form");
+        if (form) {
+          form.elements.mode.value = state.share.mode;
+          form.elements.enabled.checked = Boolean(state.share.enabled);
+          form.elements.duration.value = state.share.duration || "";
+          form.elements.model.value = state.share.model || "";
+        }
       }
 
       function renderAll() {
@@ -556,6 +594,44 @@
         await api("/vampire/v1/routes", { method: "POST", body: JSON.stringify(body) });
         event.currentTarget.reset();
         await refreshCluster();
+      });
+
+      $("share-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const body = {
+          mode: String(form.get("mode")),
+          enabled: form.get("enabled") === "on",
+        };
+        const duration = String(form.get("duration") || "").trim();
+        if (duration) body.duration = duration;
+        const model = String(form.get("model") || "").trim();
+        if (model) body.model = model;
+        await api("/vampire/v1/share", { method: "POST", body: JSON.stringify(body) });
+        await refreshCluster();
+      });
+
+      $("discover-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const splitList = (name) =>
+          String(form.get(name) || "")
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+        const body = { methods: ["static"], subnets: splitList("subnets"), base_urls: splitList("base_urls") };
+        const ports = splitList("ports")
+          .map((value) => Number.parseInt(value, 10))
+          .filter((value) => Number.isFinite(value));
+        if (ports.length) body.ports = ports;
+        const timeout = Number.parseInt(String(form.get("timeout_ms") || ""), 10);
+        if (Number.isFinite(timeout)) body.timeout_ms = timeout;
+        body.trusted_only = form.get("trusted_only") === "on";
+        const button = event.currentTarget.querySelector("button");
+        setBusy(button, true);
+        await api("/vampire/v1/discover", { method: "POST", body: JSON.stringify(body) });
+        await refreshCluster();
+        setBusy(button, false);
       });
 
       $("prompt-form").addEventListener("submit", async (event) => {
