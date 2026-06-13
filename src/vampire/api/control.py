@@ -93,7 +93,10 @@ async def discover(request: DiscoveryRequest | None = None) -> dict[str, Any]:
 async def list_vampire_models() -> dict[str, Any]:
     """Aggregate a detailed physical model inventory across registered nodes (§15)."""
     nodes = await refresh_registered_nodes()
-    return {"object": "list", "data": [model.model_dump() for model in physical_model_inventory(nodes)]}
+    return {
+        "object": "list",
+        "data": [model.model_dump() for model in physical_model_inventory(nodes)],
+    }
 
 
 @router.get("/metrics")

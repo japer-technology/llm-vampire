@@ -69,7 +69,9 @@ def test_node_registration_interrogates_health_and_models(client: TestClient) ->
 
 
 def test_patch_node_updates_and_refreshes(client: TestClient) -> None:
-    client.post("/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"})
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
 
     resp = client.patch("/vampire/v1/nodes/node-a", json={"tags": ["gpu"], "trusted": True})
     assert resp.status_code == 200
@@ -80,8 +82,12 @@ def test_patch_node_updates_and_refreshes(client: TestClient) -> None:
 
 
 def test_registered_nodes_aggregate_openai_and_vampire_models(client: TestClient) -> None:
-    client.post("/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"})
-    client.post("/vampire/v1/nodes", json={"id": "node-b", "lmstudio_base_url": "http://node-b:1234"})
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-b", "lmstudio_base_url": "http://node-b:1234"}
+    )
 
     openai_models = client.get("/v1/models").json()
     assert openai_models["object"] == "list"
@@ -106,7 +112,9 @@ def test_discover_static_base_urls_registers_online_nodes(client: TestClient) ->
 
 
 def test_metrics_include_node_counts_health_and_latency(client: TestClient) -> None:
-    client.post("/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"})
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
 
     metrics = client.get("/vampire/v1/metrics").json()
     assert metrics["object"] == "vampire.metrics"

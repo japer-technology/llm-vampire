@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from time import perf_counter
 from urllib.parse import urlparse
 
@@ -18,7 +18,7 @@ from vampire.registry import registry
 
 def _now() -> str:
     """Return an ISO-8601 UTC timestamp for node health metadata."""
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _node_id_for_url(base_url: str) -> str:
@@ -88,7 +88,9 @@ async def refresh_registered_nodes(*, timeout_ms: int | None = None) -> list[Nod
     nodes = registry.list()
     if not nodes:
         return []
-    return list(await asyncio.gather(*(refresh_node(node, timeout_ms=timeout_ms) for node in nodes)))
+    return list(
+        await asyncio.gather(*(refresh_node(node, timeout_ms=timeout_ms) for node in nodes))
+    )
 
 
 def aggregate_model_cards(nodes: list[Node]) -> ModelListResponse:

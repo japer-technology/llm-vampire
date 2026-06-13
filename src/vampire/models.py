@@ -244,4 +244,3 @@ class OpenAIErrorResponse(BaseModel):
     """OpenAI-compatible error response envelope."""
 
     error: OpenAIError
-
