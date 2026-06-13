@@ -225,7 +225,7 @@ def test_cli_models_metrics_and_dashboard_commands(
 ) -> None:
     seen = _mock_cli_client(monkeypatch, lambda request: httpx.Response(200, json={"ok": True}))
     opened: list[str] = []
-    monkeypatch.setattr(cli.webbrowser, "open", opened.append)
+    monkeypatch.setattr("vampire.cli.webbrowser.open", opened.append)
 
     assert cli.main(["models"]) == 0
     assert cli.main(["metrics", "--gateway", "http://gateway:7777/"]) == 0
