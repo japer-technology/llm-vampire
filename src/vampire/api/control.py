@@ -24,6 +24,7 @@ from vampire.registry import registry, route_registry, share_registry
 from vampire.router import MVP_STRATEGIES
 
 router = APIRouter(prefix="/vampire/v1", tags=["vampire-control"])
+MANUAL_UNAVAILABLE_STATUSES = {"draining", "disabled", "maintenance"}
 
 
 @router.get("/status")
@@ -72,6 +73,8 @@ async def patch_node(node_id: str, patch: NodeUpdate) -> dict[str, Any]:
     node = registry.update(node_id, patch)
     if node is None:
         raise HTTPException(status_code=404, detail="node not found")
+    if patch.status in MANUAL_UNAVAILABLE_STATUSES:
+        return node.model_dump()
     return (await refresh_node(node)).model_dump()
 
 

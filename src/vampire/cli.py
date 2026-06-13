@@ -121,6 +121,7 @@ def _nodes_update(args: argparse.Namespace) -> int:
         "host",
         "lmstudio_base_url",
         "agent_base_url",
+        "status",
         "trusted",
         "tags",
         "active_requests",
@@ -136,6 +137,17 @@ def _nodes_update(args: argparse.Namespace) -> int:
 def _nodes_delete(args: argparse.Namespace) -> int:
     """Remove a registered node."""
     return _control_request(args, "DELETE", f"/vampire/v1/nodes/{args.node_id}")
+
+
+def _nodes_drain(args: argparse.Namespace) -> int:
+    """Mark a node unavailable for routing, or restore it to health-checked service."""
+    status = "online" if args.state == "off" else "draining"
+    return _control_request(
+        args,
+        "PATCH",
+        f"/vampire/v1/nodes/{args.node_id}",
+        json_body={"status": status},
+    )
 
 
 def _models(args: argparse.Namespace) -> int:
@@ -291,12 +303,18 @@ def build_parser() -> argparse.ArgumentParser:
     node_update.add_argument("--host")
     node_update.add_argument("--lmstudio-base-url")
     node_update.add_argument("--agent-base-url")
+    node_update.add_argument("--status")
     node_update.add_argument("--trusted", action="store_true", default=None)
     node_update.add_argument("--tag", dest="tags", action="append")
     node_update.add_argument("--active-requests", type=int)
     node_update.add_argument("--queue-depth", type=int)
     node_update.add_argument("--tokens-per-second", type=float)
     node_update.set_defaults(func=_nodes_update)
+
+    node_drain = node_sub.add_parser("drain", help="Drain or restore a node for routing.")
+    node_drain.add_argument("node_id")
+    node_drain.add_argument("state", nargs="?", choices=["on", "off"], default="on")
+    node_drain.set_defaults(func=_nodes_drain)
 
     node_delete = node_sub.add_parser("delete", help="Remove a registered node.")
     node_delete.add_argument("node_id")

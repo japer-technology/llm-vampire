@@ -225,7 +225,7 @@ represented in code and exercised by the test suite:
 | --- | --- |
 | **Phase 0 — Scaffolding & foundations** | Implemented: installable Python package, `vampire` console script, FastAPI app factory, settings with `VAMPIRE_*` overrides, core Pydantic models, browser UI, pytest coverage, Ruff formatting/linting, mypy strict mode, and CI-oriented validation commands. |
 | **Phase 1 — Transparent proxy** | Implemented: `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/responses`, and a compatibility catch-all forward to one configured LM Studio node while preserving query strings, end-to-end headers, JSON responses, streaming responses, and OpenAI-style error envelopes for unreachable upstream nodes. |
-| **Phase 2 — Node registry + discovery** | Implemented: in-memory node registry CRUD including `PATCH`/`DELETE`, manual registration with `/v1/models` health/model interrogation, static/dev-subnet discovery, registered-node aggregation for `/v1/models` and `/vampire/v1/models`, and basic per-node metrics. |
+| **Phase 2 — Node registry + discovery** | Implemented: in-memory node registry CRUD including `PATCH`/`DELETE`, manual registration with `/v1/models` health/model interrogation, CLI node draining/restoration, static/dev-subnet discovery, registered-node aggregation for `/v1/models` and `/vampire/v1/models`, and basic per-node metrics. |
 | **Phase 3 — Routing** | Implemented: virtual models (`vampire:auto`, configured routes), the MVP router strategies (`round_robin`, `least_busy`, `least_latency`, `model_affinity`, `trusted_only`) with `fallback`, `GET/POST/DELETE /vampire/v1/routes`, opt-in routing via the `vampire` request object and `X-Vampire-*` headers, and `X-Vampire-*` response metadata. |
 | **Phase 4 — Browser dashboard** | Implemented: a static SPA served from `/` that drives the control API for status, nodes, discovery, models, routes, metrics, and owner share mode, plus a prompt playground that calls `/v1/chat/completions`; the `vampire dashboard` / `vampire ui` command prints or opens the dashboard URL. |
 | **Phase 5+** | Planned: cache/coalescing, auth/policy/token vault, and advanced fusion modes. |
@@ -301,6 +301,15 @@ vampire ui --open
 
 The dashboard shows nodes, models, health, routes, metrics, owner share mode, and
 a prompt playground that calls the gateway's `/v1/chat/completions` endpoint.
+
+POSSIBILITIES.md calls out manual node draining as the next command-level node
+management surface. Drain a registered node out of routing, then restore it after
+maintenance, with:
+
+```bash
+vampire nodes drain home-gpu
+vampire nodes drain home-gpu off
+```
 
 For development validation, run the same checks used by the Phase 0 scaffold:
 
