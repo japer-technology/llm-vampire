@@ -37,11 +37,13 @@ def test_node_registration_roundtrip() -> None:
     assert any(n["id"] == "node-test" for n in listed["data"])
 
 
-def test_openai_route_present_but_stubbed() -> None:
+def test_openai_route_proxies_upstream_error_when_node_unreachable() -> None:
     client = TestClient(create_app())
     resp = client.get("/v1/models")
-    assert resp.status_code == 501
-    assert resp.json()["error"]["code"] == "not_implemented"
+    # With no reachable downstream LM Studio node the proxy returns an
+    # OpenAI-compatible error envelope (DESIGN-API.md §23) rather than crashing.
+    assert resp.status_code == 502
+    assert resp.json()["error"]["code"] == "upstream_unavailable"
 
 
 def test_default_settings_match_phase_zero_ports() -> None:
