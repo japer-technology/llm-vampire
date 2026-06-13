@@ -1,6 +1,6 @@
 # Feature Request: Native Multi-Node Gateway ("LM Studio Fleet")
 
-> **TL;DR** — Add a first-party mode to LM Studio that lets one instance act as a
+> Add a first-party mode to LM Studio that lets one instance act as a
 > governed gateway in front of **many** owner-approved LM Studio servers, exposing
 > a single, stable OpenAI-compatible endpoint that interrogates, routes,
 > load-balances, and fails over across the fleet. This is the mechanism that the
