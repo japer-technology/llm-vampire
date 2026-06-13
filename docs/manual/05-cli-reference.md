@@ -22,6 +22,7 @@ flowchart LR
     nodes --> n_add["add"]
     nodes --> n_get["get"]
     nodes --> n_update["update"]
+    nodes --> n_drain["drain"]
     nodes --> n_delete["delete"]
 
     route --> r_list["list"]
@@ -31,12 +32,15 @@ flowchart LR
 
     classDef local fill:#e3f2fd,stroke:#1e88e5;
     classDef remote fill:#fff3e0,stroke:#fb8c00;
+    classDef utility fill:#ede7f6,stroke:#5e35b1;
     class serve local;
     class status,discover,share,nodes,models,metrics,route remote;
+    class dashboard utility;
 ```
 
 > **Blue** (`serve`) starts the server in this process. **Orange** commands are
-> control-plane clients: they send HTTP requests to a running gateway.
+> control-plane clients: they send HTTP requests to a running gateway. **Purple**
+> commands are local CLI utilities.
 
 ## How control commands reach the gateway
 
@@ -62,6 +66,32 @@ Every control command accepts `--gateway URL` to target a non-default gateway
 | --- | --- | --- |
 | `--version` | `vampire` | Print the version and exit. |
 | `--gateway URL` | all control commands | Base URL of the running gateway. Default `http://127.0.0.1:7777`. |
+
+## Full command index
+
+| Command | Purpose | Calls / behavior |
+| --- | --- | --- |
+| `vampire --version` | Print the installed `vampire` version. | Local argparse version output. |
+| `vampire serve [--host HOST] [--port PORT]` | Run the OpenAI-compatible gateway. | Starts Uvicorn with `vampire.app:create_app`. |
+| `vampire status [--gateway URL]` | Show gateway and cluster status. | `GET /vampire/v1/status` |
+| `vampire discover [--gateway URL] [--method M]... [--subnet CIDR]... [--port N]... [--timeout-ms MS] [--trusted-only] [--base-url URL]...` | Discover reachable LM Studio nodes. | `POST /vampire/v1/discover` |
+| `vampire nodes [--gateway URL]` | List registered nodes. | Defaults to `vampire nodes list`. |
+| `vampire nodes [--gateway URL] list` | List registered nodes. | `GET /vampire/v1/nodes` |
+| `vampire nodes [--gateway URL] add NODE_ID LMSTUDIO_BASE_URL [--name NAME] [--host HOST] [--agent-base-url URL] [--trusted] [--tag TAG]...` | Register an owner-approved LM Studio node. | `POST /vampire/v1/nodes` |
+| `vampire nodes [--gateway URL] get NODE_ID` | Show one registered node. | `GET /vampire/v1/nodes/{id}` |
+| `vampire nodes [--gateway URL] update NODE_ID [--name N] [--host H] [--lmstudio-base-url URL] [--agent-base-url URL] [--status STATUS] [--trusted] [--tag TAG]... [--active-requests N] [--queue-depth N] [--tokens-per-second F]` | Patch mutable node metadata. | `PATCH /vampire/v1/nodes/{id}` |
+| `vampire nodes [--gateway URL] drain NODE_ID [on\|off]` | Mark a node draining, or restore it to online service. | `PATCH /vampire/v1/nodes/{id}` |
+| `vampire nodes [--gateway URL] delete NODE_ID` | Remove a registered node. | `DELETE /vampire/v1/nodes/{id}` |
+| `vampire models [--gateway URL]` | List aggregated physical models. | `GET /vampire/v1/models` |
+| `vampire metrics [--gateway URL]` | Show the dashboard metrics snapshot. | `GET /vampire/v1/metrics` |
+| `vampire route [--gateway URL]` | List virtual-model route policies. | Defaults to `vampire route list`. |
+| `vampire route [--gateway URL] list` | List virtual-model route policies. | `GET /vampire/v1/routes` |
+| `vampire route [--gateway URL] add ROUTE_ID VIRTUAL_MODEL --target node:model [--target node:model]... [--strategy STRATEGY] [--fallback VIRTUAL_MODEL]` | Create or replace a route policy. | `POST /vampire/v1/routes` |
+| `vampire route [--gateway URL] get ROUTE_ID` | Show one route policy. | `GET /vampire/v1/routes/{id}` |
+| `vampire route [--gateway URL] delete ROUTE_ID` | Remove a route policy. | `DELETE /vampire/v1/routes/{id}` |
+| `vampire share [--gateway URL] MODE [on\|off] [--duration DURATION] [--model MODEL]` | Set the owner sharing mode. | `POST /vampire/v1/share` |
+| `vampire dashboard [--gateway URL] [--open]` | Print or open the browser dashboard URL. | Prints the gateway URL; optionally opens it locally. |
+| `vampire ui [--gateway URL] [--open]` | Alias for `vampire dashboard`. | Prints the gateway URL; optionally opens it locally. |
 
 ## `vampire serve`
 
@@ -124,6 +154,7 @@ vampire nodes [--gateway URL] [SUBCOMMAND]
 | `add NODE_ID LMSTUDIO_BASE_URL [...]` | `POST /vampire/v1/nodes` | Register an owner-approved node. |
 | `get NODE_ID` | `GET /vampire/v1/nodes/{id}` | Show one node. |
 | `update NODE_ID [...]` | `PATCH /vampire/v1/nodes/{id}` | Patch mutable node metadata. |
+| `drain NODE_ID [on\|off]` | `PATCH /vampire/v1/nodes/{id}` | Mark a node draining, or restore it to online service. |
 | `delete NODE_ID` | `DELETE /vampire/v1/nodes/{id}` | Remove a node. |
 
 ### `vampire nodes add`
@@ -148,11 +179,19 @@ vampire nodes add NODE_ID LMSTUDIO_BASE_URL \
 ```bash
 vampire nodes update NODE_ID \
   [--name N] [--host H] [--lmstudio-base-url URL] [--agent-base-url URL] \
-  [--trusted] [--tag TAG]... \
+  [--status STATUS] [--trusted] [--tag TAG]... \
   [--active-requests N] [--queue-depth N] [--tokens-per-second F]
 ```
 
 Only the flags you pass are sent in the `PATCH` body.
+
+### `vampire nodes drain`
+
+```bash
+vampire nodes drain NODE_ID [on|off]
+```
+
+`on` marks the node as `draining`; `off` restores it to `online`.
 
 ## `vampire models`
 
