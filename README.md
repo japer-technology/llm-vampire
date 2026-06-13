@@ -286,6 +286,17 @@ to that single configured downstream node. Override it with:
 VAMPIRE_LMSTUDIO_BASE_URL=http://lm-studio-host:1234 vampire serve
 ```
 
+The same process serves the Phase 4 browser dashboard at `http://localhost:7777/`.
+Open it directly or print/open the URL with:
+
+```bash
+vampire dashboard
+vampire ui --open
+```
+
+The dashboard shows nodes, models, health, routes, metrics, owner share mode, and
+a prompt playground that calls the gateway's `/v1/chat/completions` endpoint.
+
 For development validation, run the same checks used by the Phase 0 scaffold:
 
 ```bash
@@ -329,7 +340,7 @@ The recommended build order (from [METHOD-A](METHOD-A.md)) is:
 1. **Proxy** — forward `/v1/*` to a single LM Studio node.
 2. **Registry + discovery** — manual registration, then mDNS discovery and health checks.
 3. **Routing** — round-robin and failover, then model-aware and load-aware routing.
-4. **UI** — dashboard for nodes, models, and health, plus a prompt playground.
+4. **UI** — dashboard for nodes, models, and health, plus a prompt playground. ✅
 5. **Coalescing + cache** — in-flight deduplication, then an exact result cache.
 6. **Policy + tokens** — owner modes, realms, token vault, and allowlists.
 7. **Fusion** — parallel, race, and judge/refiner modes via `/vampire/v1/fusion`.

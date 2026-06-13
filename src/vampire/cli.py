@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import webbrowser
 from typing import Any
 
 import httpx
@@ -137,6 +138,16 @@ def _nodes_delete(args: argparse.Namespace) -> int:
     return _control_request(args, "DELETE", f"/vampire/v1/nodes/{args.node_id}")
 
 
+def _models(args: argparse.Namespace) -> int:
+    """List the gateway's aggregated model inventory."""
+    return _control_request(args, "GET", "/vampire/v1/models")
+
+
+def _metrics(args: argparse.Namespace) -> int:
+    """Show the dashboard metrics snapshot."""
+    return _control_request(args, "GET", "/vampire/v1/metrics")
+
+
 def _routes_list(args: argparse.Namespace) -> int:
     """List virtual-model route policies."""
     return _control_request(args, "GET", "/vampire/v1/routes")
@@ -201,6 +212,15 @@ def _share(args: argparse.Namespace) -> int:
     return _control_request(args, "POST", "/vampire/v1/share", json_body=body)
 
 
+def _dashboard(args: argparse.Namespace) -> int:
+    """Print or open the Phase 4 browser dashboard URL."""
+    url = _gateway_url(args)
+    if args.open:
+        webbrowser.open(url)
+    print(url)
+    return 0
+
+
 def _todo(args: argparse.Namespace) -> int:
     """Explain that a future-phase command exists in the CLI shape only."""
     print(f"`vampire {args.command}` is not implemented yet (design-stage scaffold).")
@@ -212,7 +232,8 @@ def build_parser() -> argparse.ArgumentParser:
     """Create the ``vampire`` parser and bind subcommands to their handlers.
 
     Phase 0 exposes the console-script; Phases 2 and 3 wire the CLI to the
-    control API for discovery, node registry, status, and route management.
+    control API for discovery, node registry, status, models, metrics, and
+    route management. Phase 4 adds the dashboard launcher command.
     """
     parser = argparse.ArgumentParser(prog="vampire", description="LM Studio Vampire gateway.")
     parser.add_argument("--version", action="version", version=f"vampire {__version__}")
@@ -281,6 +302,12 @@ def build_parser() -> argparse.ArgumentParser:
     node_delete.add_argument("node_id")
     node_delete.set_defaults(func=_nodes_delete)
 
+    models = sub.add_parser("models", parents=[gateway_parent], help="List aggregated models.")
+    models.set_defaults(func=_models)
+
+    metrics = sub.add_parser("metrics", parents=[gateway_parent], help="Show cluster metrics.")
+    metrics.set_defaults(func=_metrics)
+
     route = sub.add_parser("route", parents=[gateway_parent], help="Inspect or set routing rules.")
     route_sub = route.add_subparsers(dest="route_command")
     route.set_defaults(func=_routes_list)
@@ -317,6 +344,15 @@ def build_parser() -> argparse.ArgumentParser:
     share.add_argument("--duration")
     share.add_argument("--model")
     share.set_defaults(func=_share)
+
+    dashboard = sub.add_parser(
+        "dashboard",
+        parents=[gateway_parent],
+        aliases=["ui"],
+        help="Print or open the browser dashboard URL.",
+    )
+    dashboard.add_argument("--open", action="store_true", help="Open the dashboard in a browser.")
+    dashboard.set_defaults(func=_dashboard)
 
     return parser
 

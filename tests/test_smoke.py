@@ -31,6 +31,15 @@ def test_status_route() -> None:
     assert body["object"] == "vampire.status"
 
 
+def test_phase4_dashboard_is_served_from_root() -> None:
+    client = TestClient(create_app())
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert "Phase 4 dashboard + playground" in resp.text
+    assert "/vampire/v1/models" in resp.text
+    assert "/v1/chat/completions" in resp.text
+
+
 def test_node_registration_roundtrip() -> None:
     client = TestClient(create_app())
     node = {"id": "node-test", "lmstudio_base_url": "http://localhost:1234"}

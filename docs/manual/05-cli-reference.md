@@ -13,7 +13,10 @@ flowchart LR
     root --> discover["discover"]
     root --> share["share"]
     root --> nodes["nodes"]
+    root --> models["models"]
+    root --> metrics["metrics"]
     root --> route["route"]
+    root --> dashboard["dashboard / ui"]
 
     nodes --> n_list["list"]
     nodes --> n_add["add"]
@@ -29,7 +32,7 @@ flowchart LR
     classDef local fill:#e3f2fd,stroke:#1e88e5;
     classDef remote fill:#fff3e0,stroke:#fb8c00;
     class serve local;
-    class status,discover,share,nodes,route remote;
+    class status,discover,share,nodes,models,metrics,route remote;
 ```
 
 > **Blue** (`serve`) starts the server in this process. **Orange** commands are
@@ -151,6 +154,27 @@ vampire nodes update NODE_ID \
 
 Only the flags you pass are sent in the `PATCH` body.
 
+## `vampire models`
+
+List the gateway's aggregated physical model inventory, matching the browser
+dashboard's Models panel.
+
+```bash
+vampire models [--gateway URL]
+```
+
+Calls `GET /vampire/v1/models`.
+
+## `vampire metrics`
+
+Show the dashboard metrics snapshot for cluster and per-node health.
+
+```bash
+vampire metrics [--gateway URL]
+```
+
+Calls `GET /vampire/v1/metrics`.
+
 ## `vampire route`
 
 Inspect or set virtual-model routing rules. With no subcommand, defaults to
@@ -202,6 +226,18 @@ vampire share MODE [on|off] [--duration DURATION] [--model MODEL]
 
 `on` is normalised to `local`; `stop` is normalised to `off`. See
 [Sharing modes](08-sharing-modes.md).
+
+## `vampire dashboard` / `vampire ui`
+
+Print or open the Phase 4 browser dashboard served by `vampire serve`.
+
+```bash
+vampire dashboard [--gateway URL] [--open]
+vampire ui [--gateway URL] [--open]
+```
+
+This command does not call the control API. It prints the dashboard URL and, with
+`--open`, asks the local desktop browser to open it.
 
 ## Exit codes
 
