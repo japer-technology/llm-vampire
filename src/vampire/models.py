@@ -18,6 +18,31 @@ ModelKind = Literal["physical", "virtual"]
 """Model catalogue categories: node-hosted models or Vampire virtual aliases."""
 
 
+class ModelCard(BaseModel):
+    """OpenAI-compatible model listing item."""
+
+    id: str
+    object: Literal["model"] = "model"
+    owned_by: str = "lmstudio-vampire"
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ModelListResponse(BaseModel):
+    """OpenAI-compatible model list response."""
+
+    object: Literal["list"] = "list"
+    data: list[ModelCard] = Field(default_factory=list)
+
+    @field_validator("data")
+    @classmethod
+    def keep_model_ids_unique(cls, data: list[ModelCard]) -> list[ModelCard]:
+        ids = [model.id for model in data]
+        if len(ids) != len(set(ids)):
+            raise ValueError("model ids must be unique")
+        return data
+
+
 class NodeCapabilities(BaseModel):
     """Capabilities Vampire records for an owner-approved LM Studio endpoint.
 
@@ -53,6 +78,55 @@ class Node(BaseModel):
     trusted: bool = False
     capabilities: NodeCapabilities = Field(default_factory=NodeCapabilities)
     tags: list[str] = Field(default_factory=list)
+    models: list[ModelCard] = Field(default_factory=list)
+    request_count: int = 0
+    error_count: int = 0
+    active_requests: int = 0
+    queue_depth: int = 0
+    latency_ms: float | None = None
+    tokens_per_second: float | None = None
+    last_checked_at: str | None = None
+    last_error: str | None = None
+
+
+class NodeUpdate(BaseModel):
+    """Partial update for a registered LM Studio node (§14)."""
+
+    name: str | None = None
+    host: str | None = None
+    lmstudio_base_url: str | None = None
+    agent_base_url: str | None = None
+    status: str | None = None
+    trusted: bool | None = None
+    capabilities: NodeCapabilities | None = None
+    tags: list[str] | None = None
+    active_requests: int | None = None
+    queue_depth: int | None = None
+    tokens_per_second: float | None = None
+
+
+class DiscoveryRequest(BaseModel):
+    """Discovery request body (DESIGN-API.md §12)."""
+
+    methods: list[str] = Field(default_factory=lambda: ["static"])
+    subnets: list[str] = Field(default_factory=list)
+    ports: list[int] = Field(default_factory=lambda: [1234])
+    timeout_ms: int = 1500
+    trusted_only: bool = False
+    base_urls: list[str] = Field(default_factory=list)
+
+
+class PhysicalModel(BaseModel):
+    """Detailed model inventory item exposed by ``/vampire/v1/models`` (§15)."""
+
+    node: str
+    model: str
+    loaded: bool = True
+    owned_by: str = "lmstudio-vampire"
+    context_window: int | None = None
+    tokens_per_second: float | None = None
+
+    model_config = ConfigDict(extra="allow")
 
 
 class VirtualModel(BaseModel):
@@ -170,28 +244,3 @@ class OpenAIErrorResponse(BaseModel):
     """OpenAI-compatible error response envelope."""
 
     error: OpenAIError
-
-
-class ModelCard(BaseModel):
-    """OpenAI-compatible model listing item."""
-
-    id: str
-    object: Literal["model"] = "model"
-    owned_by: str = "lmstudio-vampire"
-
-    model_config = ConfigDict(extra="allow")
-
-
-class ModelListResponse(BaseModel):
-    """OpenAI-compatible model list response."""
-
-    object: Literal["list"] = "list"
-    data: list[ModelCard] = Field(default_factory=list)
-
-    @field_validator("data")
-    @classmethod
-    def keep_model_ids_unique(cls, data: list[ModelCard]) -> list[ModelCard]:
-        ids = [model.id for model in data]
-        if len(ids) != len(set(ids)):
-            raise ValueError("model ids must be unique")
-        return data

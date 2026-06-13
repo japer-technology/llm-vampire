@@ -11,16 +11,22 @@ clients work unchanged by only swapping their base URL.
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
+from vampire.cluster import aggregate_model_cards, refresh_registered_nodes
 from vampire.proxy import proxy_request
+from vampire.registry import registry
 
 router = APIRouter(prefix="/v1", tags=["openai-compatible"])
 
 
 @router.get("/models")
 async def list_models(request: Request) -> Response:
-    """Proxy ``GET /v1/models`` to the configured LM Studio node unchanged."""
+    """Return registered-node model aggregation, falling back to Phase 1 passthrough."""
+    if registry.list():
+        nodes = await refresh_registered_nodes()
+        return JSONResponse(aggregate_model_cards(nodes).model_dump())
     return await proxy_request(request)
 
 

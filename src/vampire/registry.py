@@ -6,7 +6,7 @@ memory; a SQLite (``aiosqlite``) persistence seam is planned per METHOD-A.md.
 
 from __future__ import annotations
 
-from vampire.models import Node
+from vampire.models import Node, NodeUpdate
 
 
 class NodeRegistry:
@@ -26,6 +26,16 @@ class NodeRegistry:
         self._nodes[node.id] = node
         return node
 
+    def update(self, node_id: str, patch: NodeUpdate) -> Node | None:
+        """Apply a partial update to a registered node."""
+        node = self.get(node_id)
+        if node is None:
+            return None
+
+        updated = node.model_copy(update=patch.model_dump(exclude_unset=True, exclude_none=True))
+        self._nodes[node_id] = updated
+        return updated
+
     def get(self, node_id: str) -> Node | None:
         """Return a node by id, or ``None`` when it is not registered."""
         return self._nodes.get(node_id)
@@ -37,6 +47,10 @@ class NodeRegistry:
     def list(self) -> list[Node]:
         """Return registered nodes in insertion order as a snapshot list."""
         return list(self._nodes.values())
+
+    def clear(self) -> None:
+        """Remove all process-local registrations."""
+        self._nodes.clear()
 
 
 # Process-wide registry instance used by the control API.
