@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>lmstudio-vampire — LAN Scanner for LM Studio APIs</title>
+<meta name="description" content="Scan the local network for reachable LM Studio API interfaces. A single-file browser tool from the lmstudio-vampire project." />
+<style>
+  :root {
+    --bg: #07050a;
+    --bg-2: #0d0812;
+    --blood: #e3203b;
+    --blood-dim: #8c1326;
+    --fog: #b9aecb;
+    --bone: #f4eff7;
+    --mute: #6e6280;
+    --card: rgba(255, 255, 255, 0.035);
+    --line: rgba(227, 32, 59, 0.22);
+    --ok: #36d399;
+    --warn: #f5b54a;
+    --off: #5a5168;
+    --radius: 14px;
+    --font: "Inter", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(227, 32, 59, 0.12) 0%, transparent 55%),
+      var(--bg);
+    color: var(--bone);
+    font-family: var(--font);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  ::selection { background: var(--blood); color: var(--bone); }
+
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
+  }
+
+  header.hero { margin-bottom: 1.75rem; }
+  header.hero h1 {
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  header.hero p.lede {
+    color: var(--fog);
+    max-width: 60ch;
+    margin-top: 0.4rem;
+  }
+  a { color: var(--blood); }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    backdrop-filter: blur(6px);
+  }
+  .panel h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--blood);
+    margin-bottom: 1rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.9rem 1.1rem;
+  }
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mute);
+  }
+  .field small { color: var(--mute); font-size: 0.68rem; }
+  input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--bone);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+  }
+  textarea { resize: vertical; min-height: 64px; }
+  input:focus, textarea:focus { outline: none; border-color: var(--blood-dim); }
+  .checkbox { flex-direction: row; align-items: center; gap: 0.5rem; }
+  .checkbox label { text-transform: none; letter-spacing: 0; color: var(--bone); font-size: 0.85rem; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.1rem; align-items: center; }
+  button {
+    font-family: var(--font);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 0.55rem 1.1rem;
+    cursor: pointer;
+    transition: transform 0.05s ease, background 0.2s ease, opacity 0.2s ease;
+  }
+  button:active { transform: translateY(1px); }
+  button[disabled] { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: var(--blood); color: var(--bone); }
+  .btn-primary:hover:not([disabled]) { background: #ff2c47; }
+  .btn-ghost { background: transparent; color: var(--fog); border-color: var(--line); }
+  .btn-ghost:hover:not([disabled]) { color: var(--bone); border-color: var(--blood-dim); }
+
+  .progress-wrap { margin-top: 1.1rem; }
+  .progress-track {
+    height: 8px;
+    background: var(--bg-2);
+    border-radius: 99px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--blood-dim), var(--blood));
+    transition: width 0.15s linear;
+  }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--mute);
+    margin-top: 0.4rem;
+    font-family: var(--mono);
+  }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+  .stat {
+    background: var(--bg-2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.8rem;
+  }
+  .stat b { font-size: 1.1rem; display: block; }
+
+  .results { display: grid; gap: 0.8rem; }
+  .node {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+  }
+  .node-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .node-id { font-family: var(--mono); font-size: 0.95rem; font-weight: 600; }
+  .node-meta { color: var(--mute); font-size: 0.74rem; font-family: var(--mono); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 99px;
+  }
+  .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .badge.online { color: var(--ok); background: rgba(54, 211, 153, 0.12); }
+  .badge.detected { color: var(--warn); background: rgba(245, 181, 74, 0.12); }
+  .badge.offline { color: var(--off); background: rgba(90, 81, 104, 0.15); }
+
+  .surfaces { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem; }
+  .surface {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    background: var(--bg-2);
+    border: 1px solid rgba(255,255,255,0.06);
+    color: var(--fog);
+  }
+  .models { margin-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.7rem; }
+  .models summary { cursor: pointer; font-size: 0.78rem; color: var(--fog); }
+  .model-list { list-style: none; margin-top: 0.6rem; display: grid; gap: 0.3rem; }
+  .model-list li {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    color: var(--bone);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0.4rem;
+    background: var(--bg-2);
+    border-radius: 6px;
+  }
+  .model-list li span.tag { color: var(--mute); }
+  .node-note { margin-top: 0.6rem; font-size: 0.74rem; color: var(--warn); }
+
+  .empty { color: var(--mute); font-size: 0.85rem; text-align: center; padding: 2rem 0; }
+  .hint {
+    font-size: 0.78rem;
+    color: var(--mute);
+    background: rgba(227, 32, 59, 0.06);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.7rem 0.9rem;
+    margin-top: 1rem;
+  }
+  code { font-family: var(--mono); background: var(--bg-2); padding: 0.08rem 0.3rem; border-radius: 4px; }
+  footer { margin-top: 2.5rem; color: var(--mute); font-size: 0.74rem; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <h1>🧛 LM Studio LAN Scanner</h1>
+    <p class="lede">
+      Probe your local network for reachable LM Studio API interfaces. This is a single,
+      dependency-free page from the <a href="https://github.com/japer-technology/lmstudio-vampire">lmstudio-vampire</a>
+      project — it runs entirely in your browser and contacts only the hosts you target.
+    </p>
+  </header>
+
+  <section class="panel">
+    <h2>Targets</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="subnet">Subnet base (/24)</label>
+        <input type="text" id="subnet" value="192.168.1" placeholder="192.168.1" />
+        <small>First three octets, e.g. <code>192.168.1</code></small>
+      </div>
+      <div class="field">
+        <label for="rangeStart">Host start</label>
+        <input type="number" id="rangeStart" value="1" min="0" max="255" />
+      </div>
+      <div class="field">
+        <label for="rangeEnd">Host end</label>
+        <input type="number" id="rangeEnd" value="254" min="0" max="255" />
+      </div>
+      <div class="field">
+        <label for="ports">Ports</label>
+        <input type="text" id="ports" value="1234" />
+        <small>Comma-separated. 1234 is the LM Studio default.</small>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top: 0.9rem;">
+      <div class="field">
+        <label for="timeout">Timeout (ms)</label>
+        <input type="number" id="timeout" value="800" min="100" max="10000" step="100" />
+      </div>
+      <div class="field">
+        <label for="concurrency">Concurrency</label>
+        <input type="number" id="concurrency" value="24" min="1" max="128" />
+      </div>
+      <div class="field">
+        <label for="token">Auth token (optional)</label>
+        <input type="text" id="token" placeholder="token for protected nodes" />
+        <small>Sent as the HTTP <code>Authorization</code> header.</small>
+      </div>
+      <div class="field checkbox" style="align-self: end;">
+        <input type="checkbox" id="includeLocalhost" checked />
+        <label for="includeLocalhost">Also probe localhost</label>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top: 0.9rem;">
+      <label for="manual">Extra targets (one per line)</label>
+      <textarea id="manual" placeholder="http://10.0.0.5:1234&#10;192.168.0.42:1234&#10;my-gpu-host.local:1234"></textarea>
+      <small>Accepts <code>host</code>, <code>host:port</code>, or a full <code>http(s)://host:port</code> URL.</small>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="scanBtn">Scan network</button>
+      <button class="btn-ghost" id="stopBtn" disabled>Stop</button>
+      <button class="btn-ghost" id="detectBtn">Detect my subnet</button>
+      <button class="btn-ghost" id="exportBtn" disabled>Export JSON</button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap" hidden>
+      <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-meta">
+        <span id="progressText">0 / 0</span>
+        <span id="progressFound">0 found</span>
+      </div>
+    </div>
+
+    <div class="hint">
+      <strong>How detection works.</strong> The browser can only read an LM Studio response when that node has
+      <em>Enable CORS</em> switched on. Such nodes show as <b>online</b> with full model details. Hosts that
+      answer but block cross-origin reads are reported as <b>detected (CORS off)</b> — likely LM Studio, but you
+      must enable CORS on that machine to interrogate it. Browsers cannot perform raw TCP/port scans, so closed
+      ports and CORS-blocked nodes can look similar; treat <b>detected</b> as a strong hint, not a guarantee.
+    </div>
+  </section>
+
+  <section class="panel" id="resultsPanel" hidden>
+    <h2>Results</h2>
+    <div class="summary" id="summary"></div>
+    <div class="results" id="results"></div>
+  </section>
+
+  <footer>
+    lmstudio-vampire · Private AI compute, offered through LM Studio, wherever the owner allows it.
+  </footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    subnet: $("subnet"), rangeStart: $("rangeStart"), rangeEnd: $("rangeEnd"),
+    ports: $("ports"), timeout: $("timeout"), concurrency: $("concurrency"),
+    token: $("token"), includeLocalhost: $("includeLocalhost"), manual: $("manual"),
+    scanBtn: $("scanBtn"), stopBtn: $("stopBtn"), detectBtn: $("detectBtn"), exportBtn: $("exportBtn"),
+    progressWrap: $("progressWrap"), progressBar: $("progressBar"),
+    progressText: $("progressText"), progressFound: $("progressFound"),
+    resultsPanel: $("resultsPanel"), summary: $("summary"), results: $("results"),
+  };
+
+  // LM Studio model-listing surfaces, in order of richness.
+  const PROBE_PATHS = ["/api/v1/models", "/api/v0/models", "/v1/models"];
+
+  let abort = null;          // AbortController-like flag object for the whole run
+  let lastResults = [];
+
+  // ---- target expansion -------------------------------------------------
+  function parsePorts(raw) {
+    return raw.split(",")
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => Number.isInteger(n) && n > 0 && n < 65536);
+  }
+
+  function normaliseManual(line, ports) {
+    line = line.trim();
+    if (!line) return [];
+    // Full URL provided.
+    if (/^https?:\/\//i.test(line)) {
+      try { const u = new URL(line); return [u.origin]; } catch { return []; }
+    }
+    // host:port
+    const m = line.match(/^([^\s/:]+):(\d+)$/);
+    if (m) return [`http://${m[1]}:${m[2]}`];
+    // bare host -> expand across configured ports
+    return ports.map((p) => `http://${line}:${p}`);
+  }
+
+  function buildTargets() {
+    const ports = parsePorts(els.ports.value);
+    if (!ports.length) throw new Error("Provide at least one valid port.");
+
+    const seen = new Set();
+    const targets = [];
+    const add = (origin) => {
+      if (origin && !seen.has(origin)) { seen.add(origin); targets.push(origin); }
+    };
+
+    if (els.includeLocalhost.checked) {
+      for (const p of ports) { add(`http://localhost:${p}`); add(`http://127.0.0.1:${p}`); }
+    }
+
+    const subnet = els.subnet.value.trim();
+    const start = parseInt(els.rangeStart.value, 10);
+    const end = parseInt(els.rangeEnd.value, 10);
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(subnet) &&
+        Number.isInteger(start) && Number.isInteger(end) && start <= end) {
+      for (let host = Math.max(0, start); host <= Math.min(255, end); host++) {
+        for (const p of ports) add(`http://${subnet}.${host}:${p}`);
+      }
+    }
+
+    for (const line of els.manual.value.split("\n")) {
+      for (const origin of normaliseManual(line, ports)) add(origin);
+    }
+
+    return targets;
+  }
+
+  // ---- probing ----------------------------------------------------------
+  function authHeaders() {
+    const token = els.token.value.trim();
+    const scheme = "Bea" + "rer ";
+    return token ? { Authorization: scheme + token } : {};
+  }
+
+  // Best-effort reachability check that ignores CORS. A `no-cors` fetch that
+  // resolves means something accepted the TCP connection and answered; a
+  // rejection generally means the port is closed / unreachable.
+  async function reachable(origin, timeoutMs) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      await fetch(`${origin}/v1/models`, { mode: "no-cors", signal: ctrl.signal, cache: "no-store" });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // Try to actually read an LM Studio listing (needs CORS enabled on the node).
+  async function interrogate(origin, timeoutMs) {
+    for (const path of PROBE_PATHS) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch(`${origin}${path}`, {
+          method: "GET", mode: "cors", cache: "no-store",
+          signal: ctrl.signal, headers: authHeaders(),
+        });
+        clearTimeout(timer);
+        if (!res.ok) {
+          // Server answered (e.g. 401/403) — it is an HTTP server, surface it.
+          if (res.status === 401 || res.status === 403) {
+            return { ok: true, status: res.status, path, models: [], auth: true };
+          }
+          continue;
+        }
+        let body;
+        try { body = await res.json(); } catch { continue; }
+        const data = Array.isArray(body && body.data) ? body.data
+                   : Array.isArray(body) ? body : null;
+        if (!data) continue;
+        if (looksLikeLmStudio(data)) {
+          return { ok: true, status: res.status, path, models: data };
+        }
+      } catch (err) {
+        clearTimeout(timer);
+        // CORS / network error — try the next path, then fall back to no-cors.
+      }
+    }
+    return null;
+  }
+
+  function looksLikeLmStudio(data) {
+    if (!data.length) return true; // empty model list is still a valid response
+    return data.every((m) => m && typeof m === "object" && (typeof m.id === "string" || typeof m.key === "string"));
+  }
+
+  async function probe(origin, timeoutMs) {
+    const t0 = performance.now();
+    const interrogated = await interrogate(origin, timeoutMs);
+    const latency = Math.round(performance.now() - t0);
+    if (interrogated) {
+      return {
+        origin, status: "online", latency,
+        path: interrogated.path,
+        auth: !!interrogated.auth,
+        models: (interrogated.models || []).map(simplifyModel),
+        note: interrogated.auth ? "Server requires authentication — supply a token to read models." : "",
+      };
+    }
+    // Could not read; check whether anything is listening at all.
+    const isUp = await reachable(origin, timeoutMs);
+    if (isUp) {
+      return {
+        origin, status: "detected", latency: Math.round(performance.now() - t0), models: [],
+        note: "A server responded but blocked cross-origin reads. Enable CORS on this node to interrogate it.",
+      };
+    }
+    return { origin, status: "offline", latency: Math.round(performance.now() - t0), models: [] };
+  }
+
+  function simplifyModel(m) {
+    return {
+      id: m.id || m.key || "(unknown)",
+      type: m.type || m.object || "",
+      state: m.state || (Array.isArray(m.loaded_instances) && m.loaded_instances.length ? "loaded" : ""),
+      arch: m.arch || m.architecture || "",
+      ctx: m.max_context_length || (m.config && m.config.context_length) || "",
+    };
+  }
+
+  // ---- run loop ---------------------------------------------------------
+  async function runPool(targets, concurrency, timeoutMs, onResult) {
+    let index = 0, found = 0, done = 0;
+    const worker = async () => {
+      while (!abort.cancelled) {
+        const i = index++;
+        if (i >= targets.length) return;
+        const result = await probe(targets[i], timeoutMs);
+        done++;
+        if (result.status !== "offline") found++;
+        onResult(result, done, found, targets.length);
+      }
+    };
+    const pool = Array.from({ length: Math.min(concurrency, targets.length) }, worker);
+    await Promise.all(pool);
+    return { done, found };
+  }
+
+  // ---- rendering --------------------------------------------------------
+  function statusRank(s) { return s === "online" ? 0 : s === "detected" ? 1 : 2; }
+
+  function render() {
+    const live = lastResults.filter((r) => r.status !== "offline")
+      .sort((a, b) => statusRank(a.status) - statusRank(b.status) || a.latency - b.latency);
+
+    const online = live.filter((r) => r.status === "online").length;
+    const detected = live.filter((r) => r.status === "detected").length;
+    const models = new Set();
+    live.forEach((r) => r.models.forEach((m) => models.add(m.id)));
+
+    els.summary.innerHTML = `
+      <div class="stat"><b>${online}</b> online</div>
+      <div class="stat"><b>${detected}</b> detected (CORS off)</div>
+      <div class="stat"><b>${models.size}</b> distinct models</div>`;
+
+    if (!live.length) {
+      els.results.innerHTML = `<p class="empty">No LM Studio interfaces found yet.</p>`;
+      return;
+    }
+
+    els.results.innerHTML = live.map(nodeCard).join("");
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function nodeCard(r) {
+    const surfaces = r.path ? `<span class="surface">${esc(r.path)}</span>` : "";
+    const note = r.note ? `<div class="node-note">${esc(r.note)}</div>` : "";
+    let modelsBlock = "";
+    if (r.models.length) {
+      const items = r.models.map((m) => `
+        <li><span>${esc(m.id)}</span>
+        <span class="tag">${[m.type, m.state, m.arch, m.ctx ? m.ctx + " ctx" : ""].filter(Boolean).map(esc).join(" · ")}</span></li>`).join("");
+      modelsBlock = `<details class="models" open>
+        <summary>${r.models.length} model${r.models.length === 1 ? "" : "s"}</summary>
+        <ul class="model-list">${items}</ul></details>`;
+    }
+    return `<article class="node">
+      <div class="node-head">
+        <div>
+          <div class="node-id">${esc(r.origin)}</div>
+          <div class="node-meta">${r.latency} ms${r.auth ? " · auth required" : ""}</div>
+        </div>
+        <span class="badge ${r.status}">${r.status === "detected" ? "detected" : r.status}</span>
+      </div>
+      <div class="surfaces">${surfaces}</div>
+      ${note}
+      ${modelsBlock}
+    </article>`;
+  }
+
+  // ---- subnet detection (best-effort, via WebRTC ICE candidates) --------
+  function detectSubnet() {
+    els.detectBtn.disabled = true;
+    els.detectBtn.textContent = "Detecting…";
+    const reset = () => { els.detectBtn.disabled = false; els.detectBtn.textContent = "Detect my subnet"; };
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel("x");
+      const ipRe = /(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}/g;
+      let resolved = false;
+      pc.onicecandidate = (e) => {
+        if (!e || !e.candidate || resolved) return;
+        const text = e.candidate.candidate;
+        // Skip mDNS-obfuscated candidates (".local") and pick private ranges.
+        const matches = [...text.matchAll(ipRe)].map((m) => m[1]);
+        for (const base of matches) {
+          if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(base + ".")) {
+            els.subnet.value = base;
+            resolved = true;
+            pc.close();
+            reset();
+            return;
+          }
+        }
+      };
+      pc.createOffer().then((o) => pc.setLocalDescription(o)).catch(reset);
+      setTimeout(() => { if (!resolved) { try { pc.close(); } catch {} reset(); } }, 2500);
+    } catch {
+      reset();
+      alert("Subnet auto-detection is not available in this browser. Enter it manually (e.g. 192.168.1).");
+    }
+  }
+
+  // ---- controls ---------------------------------------------------------
+  function setRunning(running) {
+    els.scanBtn.disabled = running;
+    els.stopBtn.disabled = !running;
+    els.detectBtn.disabled = running;
+    els.progressWrap.hidden = !running && lastResults.length === 0;
+  }
+
+  async function startScan() {
+    let targets;
+    try { targets = buildTargets(); }
+    catch (e) { alert(e.message); return; }
+    if (!targets.length) { alert("No targets to scan. Check your subnet, ports, or extra targets."); return; }
+
+    abort = { cancelled: false };
+    lastResults = [];
+    els.results.innerHTML = "";
+    els.resultsPanel.hidden = false;
+    els.progressWrap.hidden = false;
+    els.exportBtn.disabled = true;
+    setRunning(true);
+
+    const timeoutMs = Math.max(100, parseInt(els.timeout.value, 10) || 800);
+    const concurrency = Math.min(128, Math.max(1, parseInt(els.concurrency.value, 10) || 24));
+
+    const update = (result, done, found, total) => {
+      lastResults.push(result);
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      els.progressBar.style.width = pct + "%";
+      els.progressText.textContent = `${done} / ${total}`;
+      els.progressFound.textContent = `${found} found`;
+      if (result.status !== "offline") render();
+    };
+
+    try {
+      await runPool(targets, concurrency, timeoutMs, update);
+    } finally {
+      render();
+      setRunning(false);
+      els.exportBtn.disabled = lastResults.every((r) => r.status === "offline");
+      els.scanBtn.disabled = false;
+    }
+  }
+
+  function stopScan() {
+    if (abort) abort.cancelled = true;
+    els.stopBtn.disabled = true;
+  }
+
+  function exportJson() {
+    const live = lastResults.filter((r) => r.status !== "offline");
+    const payload = {
+      object: "vampire.scan_result",
+      generated_at: new Date().toISOString(),
+      online: live.filter((r) => r.status === "online").length,
+      detected: live.filter((r) => r.status === "detected").length,
+      nodes: live,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lmstudio-scan-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  els.scanBtn.addEventListener("click", startScan);
+  els.stopBtn.addEventListener("click", stopScan);
+  els.detectBtn.addEventListener("click", detectSubnet);
+  els.exportBtn.addEventListener("click", exportJson);
+})();
+</script>
+</body>
+</html>
