@@ -4,7 +4,7 @@ _Portable GPU Collaboration System_
 
 <p align="center">
   <picture>
-    <img src="https://raw.githubusercontent.com/japer-technology/lmstudio-vampire/main/LOGO-3.png" alt="LM Studio Vampire" width="500">
+    <img src="https://raw.githubusercontent.com/japer-technology/lmstudio-vampire/main/LOGO-4.png" alt="LM Studio Vampire" width="500">
   </picture>
 </p>
 
