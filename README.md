@@ -334,6 +334,7 @@ pytest
 | [docs/vampire.md](docs/vampire.md) | The consent & contribution design thesis, in the project's vampire/folklore register. |
 | [docs/startrek.md](docs/startrek.md) | The same thesis retold in a Star Trek register. |
 | [docs/security-design-thesis.md](docs/security-design-thesis.md) | The rigorous, metaphor-free security treatment: consent, `vampire<NN>` tiers, metering, enforcement. |
+| [tools/README.md](tools/README.md) | Standalone single-file HTML apps (e.g. the [`vampire-scanner.html`](tools/vampire-scanner.html) LAN discovery deck), run straight from disk. |
 
 ## Construction methods
 
