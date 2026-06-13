@@ -1,0 +1,157 @@
+"""CLI coverage for Phase 2/3 control-plane commands."""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Callable
+
+import httpx
+from pytest import CaptureFixture, MonkeyPatch
+
+import vampire.cli as cli
+
+
+def _mock_cli_client(
+    monkeypatch: MonkeyPatch,
+    handler: Callable[[httpx.Request], httpx.Response],
+) -> list[dict[str, object]]:
+    """Patch the CLI HTTP seam and record outgoing requests."""
+    seen: list[dict[str, object]] = []
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        seen.append(
+            {
+                "method": request.method,
+                "url": str(request.url),
+                "json": json.loads(request.content) if request.content else None,
+            }
+        )
+        return handler(request)
+
+    def _build() -> httpx.Client:
+        return httpx.Client(transport=httpx.MockTransport(_handler))
+
+    monkeypatch.setattr(cli, "build_sync_client", _build)
+    return seen
+
+
+def test_cli_status_calls_gateway_control_api(
+    monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    seen = _mock_cli_client(
+        monkeypatch,
+        lambda request: httpx.Response(200, json={"object": "vampire.status", "nodes_total": 0}),
+    )
+
+    assert cli.main(["status", "--gateway", "http://gateway:7777"]) == 0
+
+    assert seen == [
+        {
+            "method": "GET",
+            "url": "http://gateway:7777/vampire/v1/status",
+            "json": None,
+        }
+    ]
+    assert json.loads(capsys.readouterr().out)["object"] == "vampire.status"
+
+
+def test_cli_discover_sends_static_discovery_request(
+    monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    seen = _mock_cli_client(
+        monkeypatch,
+        lambda request: httpx.Response(
+            200, json={"object": "vampire.discovery_result", "nodes": []}
+        ),
+    )
+
+    assert (
+        cli.main(
+            [
+                "discover",
+                "--base-url",
+                "http://node-a:1234",
+                "--subnet",
+                "192.168.1.0/24",
+                "--port",
+                "7778",
+                "--timeout-ms",
+                "250",
+                "--trusted-only",
+            ]
+        )
+        == 0
+    )
+
+    body = seen[0]["json"]
+    assert isinstance(body, dict)
+    assert body["methods"] == ["static"]
+    assert body["base_urls"] == ["http://node-a:1234"]
+    assert body["subnets"] == ["192.168.1.0/24"]
+    assert body["ports"] == [1234, 7778]
+    assert body["timeout_ms"] == 250
+    assert body["trusted_only"] is True
+    assert json.loads(capsys.readouterr().out)["object"] == "vampire.discovery_result"
+
+
+def test_cli_nodes_add_and_route_add_shape_phase_api_requests(
+    monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    seen = _mock_cli_client(monkeypatch, lambda request: httpx.Response(200, json={"ok": True}))
+
+    assert (
+        cli.main(
+            [
+                "nodes",
+                "add",
+                "node-a",
+                "http://node-a:1234",
+                "--trusted",
+                "--tag",
+                "gpu",
+            ]
+        )
+        == 0
+    )
+    assert (
+        cli.main(
+            [
+                "route",
+                "add",
+                "route-auto",
+                "vampire:auto",
+                "--target",
+                "node-a:qwen",
+                "--strategy",
+                "least_latency",
+                "--fallback",
+                "vampire:fast",
+            ]
+        )
+        == 0
+    )
+
+    node_body = seen[0]["json"]
+    assert isinstance(node_body, dict)
+    assert seen[0]["method"] == "POST"
+    assert seen[0]["url"] == "http://127.0.0.1:7777/vampire/v1/nodes"
+    assert node_body["id"] == "node-a"
+    assert node_body["lmstudio_base_url"] == "http://node-a:1234"
+    assert node_body["trusted"] is True
+    assert node_body["tags"] == ["gpu"]
+
+    route_body = seen[1]["json"]
+    assert isinstance(route_body, dict)
+    assert seen[1]["method"] == "POST"
+    assert seen[1]["url"] == "http://127.0.0.1:7777/vampire/v1/routes"
+    assert route_body["id"] == "route-auto"
+    assert route_body["virtual_model"] == "vampire:auto"
+    assert route_body["targets"] == [{"node": "node-a", "model": "qwen"}]
+    assert route_body["strategy"] == "least_latency"
+    assert route_body["fallback"] == "vampire:fast"
+    assert capsys.readouterr().out.count('"ok": true') == 2
+
+
+def test_cli_route_add_rejects_invalid_target(capsys: CaptureFixture[str]) -> None:
+    assert cli.main(["route", "add", "route-bad", "vampire:auto", "--target", "missing-model"]) == 2
+    assert "targets must use node:model" in capsys.readouterr().err
