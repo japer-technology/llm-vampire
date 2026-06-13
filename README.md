@@ -20,16 +20,19 @@ Vampire can only use what LM Studio offers. It interrogates reachable endpoints,
 
 The compute behind an LM Studio endpoint may be local, remote, headless, GPU-backed, CPU-backed, or routed through LM Studio’s own link layer. Vampire does not need to know where the GPU is. LM Studio provides the connection; Vampire provides governance, routing, policy, and aggregation.
 
-![Status: Phase 1 proxy scaffold](https://img.shields.io/badge/status-phase%201%20proxy%20scaffold-orange)
+![Status: Phase 4 routing + dashboard](https://img.shields.io/badge/status-phase%204%20routing%20%2B%20dashboard-orange)
 ![Docs: design papers + runnable scaffold](https://img.shields.io/badge/docs-design%20%2B%20scaffold-blue)
 ![License: TBD](https://img.shields.io/badge/license-TBD-lightgrey)
 
 > [!IMPORTANT]
-> This repository now contains the **Phase 0 scaffold** and **Phase 1 transparent
-> proxy** from [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md). The broader
-> orchestration system is still pre-alpha: discovery, routing, policy, fusion,
-> and the production dashboard remain future phases. See
-> [Project status](#project-status) for what works today.
+> This repository now contains build steps **Phase 0 — scaffolding** through
+> **Phase 4 — browser dashboard** from
+> [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md): the transparent proxy, node
+> registry with static/dev-subnet discovery, virtual-model routing, and the
+> dashboard SPA all run today. The broader orchestration system is still
+> pre-alpha: request coalescing/cache, auth/policy, and advanced fusion modes
+> remain future phases. See [Project status](#project-status) for what works
+> today.
 
 ---
 
@@ -215,15 +218,17 @@ See [DESIGN-API.md](DESIGN-API.md) for the full API specification.
 ## Project status
 
 This project is in an **early runnable scaffold** state. The design papers still define
-the product direction, but the first two METHOD-A build steps are now represented in
-code:
+the product direction, but the first five METHOD-A build steps (Phases 0–4) are now
+represented in code and exercised by the test suite:
 
 | IMPLEMENTATION-PLAN.md phase | Current state |
 | --- | --- |
-| **Phase 0 — Scaffolding & foundations** | Implemented: installable Python package, `vampire` console script, FastAPI app factory, settings with `VAMPIRE_*` overrides, core Pydantic models, placeholder browser UI, pytest coverage, Ruff formatting/linting, mypy strict mode, and CI-oriented validation commands. |
+| **Phase 0 — Scaffolding & foundations** | Implemented: installable Python package, `vampire` console script, FastAPI app factory, settings with `VAMPIRE_*` overrides, core Pydantic models, browser UI, pytest coverage, Ruff formatting/linting, mypy strict mode, and CI-oriented validation commands. |
 | **Phase 1 — Transparent proxy** | Implemented: `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/responses`, and a compatibility catch-all forward to one configured LM Studio node while preserving query strings, end-to-end headers, JSON responses, streaming responses, and OpenAI-style error envelopes for unreachable upstream nodes. |
 | **Phase 2 — Node registry + discovery** | Implemented: in-memory node registry CRUD including `PATCH`/`DELETE`, manual registration with `/v1/models` health/model interrogation, static/dev-subnet discovery, registered-node aggregation for `/v1/models` and `/vampire/v1/models`, and basic per-node metrics. |
-| **Phase 3+** | Planned: routing, dashboard, cache/coalescing, auth/policy, and advanced fusion modes. |
+| **Phase 3 — Routing** | Implemented: virtual models (`vampire:auto`, configured routes), the MVP router strategies (`round_robin`, `least_busy`, `least_latency`, `model_affinity`, `trusted_only`) with `fallback`, `GET/POST/DELETE /vampire/v1/routes`, opt-in routing via the `vampire` request object and `X-Vampire-*` headers, and `X-Vampire-*` response metadata. |
+| **Phase 4 — Browser dashboard** | Implemented: a static SPA served from `/` that drives the control API for status, nodes, discovery, models, routes, metrics, and owner share mode, plus a prompt playground that calls `/v1/chat/completions`; the `vampire dashboard` / `vampire ui` command prints or opens the dashboard URL. |
+| **Phase 5+** | Planned: cache/coalescing, auth/policy/token vault, and advanced fusion modes. |
 
 The project is **not affiliated with LM Studio** unless explicitly adopted by that team.
 Track and shape the direction through the documents below and the repository's issues
@@ -231,9 +236,9 @@ and pull requests.
 
 ## Intended usage
 
-> The local development path below works for the Phase 0/1 scaffold. The
-> single-command installers and full multi-node experience remain planned future
-> deliverables.
+> The local development path below works for the current Phase 0–4 scaffold
+> (proxy, registry, discovery, routing, and dashboard). The single-command
+> installers remain planned future deliverables.
 
 #### Most desired installation path
 
@@ -279,8 +284,8 @@ http://localhost:7777/v1
 ```
 
 Point any OpenAI-compatible client at that base URL instead of a single LM Studio
-instance (commonly `http://localhost:1234/v1`). In Phase 1, Vampire forwards requests
-to that single configured downstream node. Override it with:
+instance (commonly `http://localhost:1234/v1`). With no nodes registered, Vampire
+forwards requests to that single configured downstream node. Override it with:
 
 ```bash
 VAMPIRE_LMSTUDIO_BASE_URL=http://lm-studio-host:1234 vampire serve
@@ -337,9 +342,10 @@ Several candidate architectures have been evaluated. Each is independently descr
 
 The recommended build order (from [METHOD-A](METHOD-A.md)) is:
 
-1. **Proxy** — forward `/v1/*` to a single LM Studio node.
-2. **Registry + discovery** — manual registration, then mDNS discovery and health checks.
-3. **Routing** — round-robin and failover, then model-aware and load-aware routing.
+1. **Proxy** — forward `/v1/*` to a single LM Studio node. ✅
+2. **Registry + discovery** — manual registration and static/dev-subnet discovery
+   with health checks (mDNS discovery is still planned). ✅
+3. **Routing** — round-robin and failover, then model-aware and load-aware routing. ✅
 4. **UI** — dashboard for nodes, models, and health, plus a prompt playground. ✅
 5. **Coalescing + cache** — in-flight deduplication, then an exact result cache.
 6. **Policy + tokens** — owner modes, realms, token vault, and allowlists.
@@ -352,12 +358,13 @@ feature area, is in [ASPIRATION.md](ASPIRATION.md), and
 
 ## Contributing
 
-Contributions, ideas, and design feedback are welcome. Because the project is still at
-the design stage, the most valuable contributions right now are:
+Contributions, ideas, and design feedback are welcome. With the early build steps
+(Phases 0–4) now running, the most valuable contributions right now are:
 
 - Reviewing and refining the design documents above.
 - Discussing the construction trade-offs in the method papers.
-- Prototyping the early steps of the [roadmap](#roadmap).
+- Building out the next [roadmap](#roadmap) steps — coalescing/cache, policy/tokens,
+  and fusion modes.
 
 Please open an issue to start a discussion before submitting larger changes, and keep
 pull requests focused.
