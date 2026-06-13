@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 # Headers that must not be copied verbatim between connections. ``host`` and
 # ``content-length`` are recomputed by httpx for the upstream request; the
 # remaining entries are hop-by-hop headers (RFC 9110 §7.6.1) that describe a
-# single transport connection rather than the end-to-end message.
+# single transport connection. Forwarding them would let client/gateway transfer
+# details leak into the gateway/node connection and can corrupt streaming.
 _HOP_BY_HOP_HEADERS = frozenset(
     {
         "connection",
@@ -57,15 +58,33 @@ def build_async_client() -> httpx.AsyncClient:
 
 
 def _filter_request_headers(headers: httpx.Headers) -> list[tuple[str, str]]:
+    """Return end-to-end request headers safe to forward upstream.
+
+    Custom client headers, including future ``X-Vampire-*`` controls, are
+    preserved. Only transport-specific headers that httpx must recompute or
+    manage itself are removed.
+    """
     return [(k, v) for k, v in headers.multi_items() if k.lower() not in _DROP_REQUEST_HEADERS]
 
 
 def _filter_response_headers(headers: httpx.Headers) -> list[tuple[str, str]]:
+    """Return end-to-end response headers safe to send back to the client.
+
+    Unlike request headers, ``content-length`` is retained when the upstream sent
+    one, but connection-specific hop-by-hop headers are stripped because Uvicorn
+    owns the client-side transport.
+    """
     return [(k, v) for k, v in headers.multi_items() if k.lower() not in _HOP_BY_HOP_HEADERS]
 
 
 def _upstream_error(message: str) -> JSONResponse:
-    """OpenAI-compatible error envelope for an unreachable node (§23)."""
+    """Build an OpenAI-compatible error envelope for an unreachable node (§23).
+
+    Network failures are the gateway's error, not LM Studio's response, so the
+    custom ``vampire_upstream_error`` type lets operators distinguish routing
+    connectivity from model-serving failures while keeping the familiar
+    ``{"error": ...}`` envelope expected by OpenAI-compatible clients.
+    """
     return JSONResponse(
         status_code=502,
         content={
@@ -83,7 +102,9 @@ async def proxy_request(request: Request, *, downstream_base_url: str | None = N
 
     The method, path, query string, headers and body are passed through
     unchanged so an existing OpenAI / LM Studio client works against the gateway
-    by only swapping its base URL.
+    by only swapping its base URL. The upstream response is consumed as an async
+    byte iterator and returned as a ``StreamingResponse`` so regular JSON,
+    chunked transfer, and Server-Sent Events all avoid full-body buffering.
     """
     settings = get_settings()
     base_url = (downstream_base_url or settings.lmstudio_base_url).rstrip("/")
@@ -109,6 +130,7 @@ async def proxy_request(request: Request, *, downstream_base_url: str | None = N
         return _upstream_error(f"Could not reach downstream LM Studio node at {base_url}.")
 
     async def body_stream() -> AsyncIterator[bytes]:
+        """Relay upstream bytes and close both sides of the upstream connection."""
         try:
             async for chunk in upstream.aiter_raw():
                 yield chunk

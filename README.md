@@ -20,15 +20,16 @@ Vampire can only use what LM Studio offers. It interrogates reachable endpoints,
 
 The compute behind an LM Studio endpoint may be local, remote, headless, GPU-backed, CPU-backed, or routed through LM Studio’s own link layer. Vampire does not need to know where the GPU is. LM Studio provides the connection; Vampire provides governance, routing, policy, and aggregation.
 
-![Status: design stage](https://img.shields.io/badge/status-design%20stage-orange)
-![Docs: design papers](https://img.shields.io/badge/docs-design%20papers-blue)
+![Status: Phase 1 proxy scaffold](https://img.shields.io/badge/status-phase%201%20proxy%20scaffold-orange)
+![Docs: design papers + runnable scaffold](https://img.shields.io/badge/docs-design%20%2B%20scaffold-blue)
 ![License: TBD](https://img.shields.io/badge/license-TBD-lightgrey)
 
 > [!IMPORTANT]
-> This repository is currently a **design-stage project**. It contains the
-> aspiration, API design, and candidate construction methods — not yet a runnable
-> implementation. The usage examples below describe the **intended** experience and
-> are documented here to guide implementation. See [Project status](#project-status).
+> This repository now contains the **Phase 0 scaffold** and **Phase 1 transparent
+> proxy** from [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md). The broader
+> orchestration system is still pre-alpha: discovery, routing, policy, fusion,
+> and the production dashboard remain future phases. See
+> [Project status](#project-status) for what works today.
 
 ---
 
@@ -213,23 +214,31 @@ See [DESIGN-API.md](DESIGN-API.md) for the full API specification.
 
 ## Project status
 
-This project is in the **design stage**. The repository captures the vision and the
-engineering plan; implementation has not yet started. Nothing here is installable yet,
-and the project is **not affiliated with LM Studio** unless explicitly adopted by that
-team.
+This project is in an **early runnable scaffold** state. The design papers still define
+the product direction, but the first two METHOD-A build steps are now represented in
+code:
 
+| IMPLEMENTATION-PLAN.md phase | Current state |
+| --- | --- |
+| **Phase 0 — Scaffolding & foundations** | Implemented: installable Python package, `vampire` console script, FastAPI app factory, settings with `VAMPIRE_*` overrides, core Pydantic models, placeholder browser UI, pytest coverage, Ruff formatting/linting, mypy strict mode, and CI-oriented validation commands. |
+| **Phase 1 — Transparent proxy** | Implemented: `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/responses`, and a compatibility catch-all forward to one configured LM Studio node while preserving query strings, end-to-end headers, JSON responses, streaming responses, and OpenAI-style error envelopes for unreachable upstream nodes. |
+| **Phase 2+** | Planned: node registry/discovery completion, model aggregation, routing, metrics, dashboard, cache/coalescing, auth/policy, and advanced fusion modes. |
+
+The project is **not affiliated with LM Studio** unless explicitly adopted by that team.
 Track and shape the direction through the documents below and the repository's issues
 and pull requests.
 
 ## Intended usage
 
-> The following describes the planned experience once the recommended construction
-> ([METHOD-A](METHOD-A.md)) is implemented. It does not work today.
+> The local development path below works for the Phase 0/1 scaffold. The
+> single-command installers and full multi-node experience remain planned future
+> deliverables.
 
 #### Most desired installation path
 
 The headline goal is a **single-command install** that works anywhere with no
 prerequisites — ideal for deploying on Linux boxes, cloud servers, or even in CI.
+These installers are still planned:
 
 **macOS / Linux**
 
@@ -248,29 +257,42 @@ manual build step required.
 
 #### Alternative: install via pip
 
-For Python environments, the package install remains available:
+For Python environments, install the current scaffold from a checkout:
 
 ```bash
-# install (planned)
-pip install lmstudio-vampire
+pip install -e ".[dev]"
 ```
 
 #### Run the gateway
 
+Start LM Studio's local server first, commonly on `http://localhost:1234`, then run:
+
 ```bash
-# run the gateway (planned)
 vampire serve
 ```
 
-Once running, the gateway is intended to listen on:
+The gateway listens on:
 
 ```text
 http://localhost:7777/v1
 ```
 
 Point any OpenAI-compatible client at that base URL instead of a single LM Studio
-instance (commonly `http://localhost:1234/v1`), and requests are discovered, governed,
-and routed across approved nodes.
+instance (commonly `http://localhost:1234/v1`). In Phase 1, Vampire forwards requests
+to that single configured downstream node. Override it with:
+
+```bash
+VAMPIRE_LMSTUDIO_BASE_URL=http://lm-studio-host:1234 vampire serve
+```
+
+For development validation, run the same checks used by the Phase 0 scaffold:
+
+```bash
+ruff format --check .
+ruff check .
+mypy
+pytest
+```
 
 ## Documentation
 

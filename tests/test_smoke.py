@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+from pytest import CaptureFixture
 
+from vampire import __version__
 from vampire.app import create_app
+from vampire.cli import main
 from vampire.config import Settings
 from vampire.models import (
     ChatCompletionRequest,
@@ -51,6 +54,15 @@ def test_default_settings_match_phase_zero_ports() -> None:
     assert settings.port == 7777
     assert settings.lmstudio_base_url == "http://localhost:1234"
     assert settings.log_level == "INFO"
+
+
+def test_cli_version_uses_phase_zero_console_entrypoint(capsys: CaptureFixture[str]) -> None:
+    try:
+        main(["--version"])
+    except SystemExit as exc:
+        assert exc.code == 0
+
+    assert f"vampire {__version__}" in capsys.readouterr().out
 
 
 def test_virtual_model_shape() -> None:
