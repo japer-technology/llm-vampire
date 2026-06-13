@@ -11,13 +11,14 @@ from __future__ import annotations
 import argparse
 
 from vampire import __version__
-from vampire.config import get_settings
+from vampire.config import configure_logging, get_settings
 
 
 def _serve(args: argparse.Namespace) -> int:
     import uvicorn
 
     settings = get_settings()
+    configure_logging(settings)
     host = args.host or settings.host
     port = args.port or settings.port
     uvicorn.run("vampire.app:create_app", host=host, port=port, factory=True)
@@ -56,7 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    return args.func(args)
+    result: int = args.func(args)
+    return result
 
 
 if __name__ == "__main__":
