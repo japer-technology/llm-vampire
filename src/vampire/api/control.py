@@ -19,8 +19,8 @@ from vampire.cluster import (
     refresh_node,
     refresh_registered_nodes,
 )
-from vampire.models import DiscoveryRequest, Node, NodeUpdate, RoutePolicy
-from vampire.registry import registry, route_registry
+from vampire.models import DiscoveryRequest, Node, NodeUpdate, RoutePolicy, ShareUpdate
+from vampire.registry import registry, route_registry, share_registry
 from vampire.router import MVP_STRATEGIES
 
 router = APIRouter(prefix="/vampire/v1", tags=["vampire-control"])
@@ -104,6 +104,18 @@ async def list_vampire_models() -> dict[str, Any]:
 async def metrics() -> dict[str, Any]:
     """Return basic per-node health, request-count, and latency metrics (§18)."""
     return metrics_snapshot()
+
+
+@router.get("/share")
+async def get_share() -> dict[str, Any]:
+    """Return the current owner sharing mode for the required CLI command."""
+    return share_registry.get().model_dump()
+
+
+@router.post("/share")
+async def set_share(update: ShareUpdate) -> dict[str, Any]:
+    """Set the owner sharing mode without enabling Phase 6 policy enforcement yet."""
+    return share_registry.set(update).model_dump()
 
 
 @router.get("/routes")

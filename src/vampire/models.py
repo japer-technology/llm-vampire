@@ -17,6 +17,9 @@ OpenAIRole = Literal["system", "user", "assistant", "tool", "developer"]
 ModelKind = Literal["physical", "virtual"]
 """Model catalogue categories: node-hosted models or Vampire virtual aliases."""
 
+ShareMode = Literal["off", "local", "personal", "family", "business", "event"]
+"""Owner sharing modes exposed by the required ``vampire share`` command."""
+
 
 class ModelCard(BaseModel):
     """OpenAI-compatible model listing item."""
@@ -167,6 +170,25 @@ class RoutePolicy(BaseModel):
     strategy: str = "round_robin"
     fallback: str | None = None
     constraints: dict[str, Any] = Field(default_factory=dict)
+
+
+class ShareStatus(BaseModel):
+    """Current owner sharing mode for the early CLI/control-plane seam."""
+
+    object: Literal["vampire.share"] = "vampire.share"
+    mode: ShareMode = "off"
+    enabled: bool = False
+    duration: str | None = None
+    model: str | None = None
+
+
+class ShareUpdate(BaseModel):
+    """Update payload for the owner sharing command surface."""
+
+    mode: ShareMode
+    enabled: bool
+    duration: str | None = None
+    model: str | None = None
 
 
 class OpenAIMessage(BaseModel):

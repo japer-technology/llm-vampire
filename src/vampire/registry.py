@@ -6,7 +6,7 @@ memory; a SQLite (``aiosqlite``) persistence seam is planned per METHOD-A.md.
 
 from __future__ import annotations
 
-from vampire.models import Node, NodeUpdate, RoutePolicy
+from vampire.models import Node, NodeUpdate, RoutePolicy, ShareStatus, ShareUpdate
 
 
 class NodeRegistry:
@@ -95,3 +95,28 @@ class RouteRegistry:
 
 # Process-wide route-policy registry used by Phase 3 routing and control API.
 route_registry = RouteRegistry()
+
+
+class ShareRegistry:
+    """In-memory owner share-mode state for the required CLI command seam."""
+
+    def __init__(self) -> None:
+        """Create the default non-sharing state."""
+        self._status = ShareStatus()
+
+    def get(self) -> ShareStatus:
+        """Return the current share mode snapshot."""
+        return self._status
+
+    def set(self, update: ShareUpdate) -> ShareStatus:
+        """Replace the current share mode with a validated update."""
+        self._status = ShareStatus(**update.model_dump())
+        return self._status
+
+    def clear(self) -> None:
+        """Reset sharing to the safe default off state."""
+        self._status = ShareStatus()
+
+
+# Process-wide owner sharing state used by the CLI/control API.
+share_registry = ShareRegistry()

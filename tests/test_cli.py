@@ -152,6 +152,75 @@ def test_cli_nodes_add_and_route_add_shape_phase_api_requests(
     assert capsys.readouterr().out.count('"ok": true') == 2
 
 
+def test_required_implementation_plan_commands_are_bound_to_handlers() -> None:
+    parser = cli.build_parser()
+    commands = [
+        ["serve"],
+        ["status"],
+        ["discover"],
+        ["nodes"],
+        ["route"],
+        ["share", "off"],
+    ]
+
+    for command in commands:
+        args = parser.parse_args(command)
+        assert args.func is not cli._todo
+
+
+def test_cli_nodes_update_get_delete_route_get_delete_and_share_call_control_api(
+    monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    seen = _mock_cli_client(monkeypatch, lambda request: httpx.Response(200, json={"ok": True}))
+
+    assert cli.main(["nodes", "update", "node-a", "--trusted", "--queue-depth", "3"]) == 0
+    assert cli.main(["nodes", "get", "node-a"]) == 0
+    assert cli.main(["nodes", "delete", "node-a"]) == 0
+    assert cli.main(["route", "get", "route-auto"]) == 0
+    assert cli.main(["route", "delete", "route-auto"]) == 0
+    assert (
+        cli.main(
+            [
+                "share",
+                "event",
+                "on",
+                "--duration",
+                "2h",
+                "--model",
+                "lmstudio-vampire/event-safe",
+            ]
+        )
+        == 0
+    )
+    assert cli.main(["share", "stop"]) == 0
+
+    assert [request["method"] for request in seen] == [
+        "PATCH",
+        "GET",
+        "DELETE",
+        "GET",
+        "DELETE",
+        "POST",
+        "POST",
+    ]
+    assert seen[0]["url"] == "http://127.0.0.1:7777/vampire/v1/nodes/node-a"
+    assert seen[0]["json"] == {"trusted": True, "queue_depth": 3}
+    assert seen[5]["url"] == "http://127.0.0.1:7777/vampire/v1/share"
+    assert seen[5]["json"] == {
+        "mode": "event",
+        "enabled": True,
+        "duration": "2h",
+        "model": "lmstudio-vampire/event-safe",
+    }
+    assert seen[6]["json"] == {"mode": "off", "enabled": False}
+    assert capsys.readouterr().out.count('"ok": true') == 7
+
+
+def test_cli_share_off_rejects_extra_state(capsys: CaptureFixture[str]) -> None:
+    assert cli.main(["share", "off", "on"]) == 2
+    assert "share off/stop do not accept" in capsys.readouterr().err
+
+
 def test_cli_route_add_rejects_invalid_target(capsys: CaptureFixture[str]) -> None:
     assert cli.main(["route", "add", "route-bad", "vampire:auto", "--target", "missing-model"]) == 2
     assert "targets must use node:model" in capsys.readouterr().err

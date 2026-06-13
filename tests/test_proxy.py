@@ -89,6 +89,19 @@ def _mock_lmstudio() -> FastAPI:
             }
         )
 
+    @app.get("/v1/rate-limited")
+    async def rate_limited() -> JSONResponse:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": {
+                    "message": "too many requests",
+                    "type": "rate_limit_error",
+                    "code": "rate_limit",
+                }
+            },
+        )
+
     return app
 
 
@@ -169,3 +182,10 @@ def test_catch_all_preserves_query_and_end_to_end_headers(client: TestClient) ->
     assert body["query"] == {"alpha": "one", "beta": "two"}
     assert body["x_client_marker"] == "kept"
     assert body["x_vampire_route"] == "future-control"
+
+
+def test_upstream_openai_error_status_and_body_passthrough(client: TestClient) -> None:
+    resp = client.get("/v1/rate-limited")
+
+    assert resp.status_code == 429
+    assert resp.json()["error"]["type"] == "rate_limit_error"

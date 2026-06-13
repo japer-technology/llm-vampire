@@ -183,6 +183,24 @@ def _routes_delete(args: argparse.Namespace) -> int:
     return _control_request(args, "DELETE", f"/vampire/v1/routes/{args.route_id}")
 
 
+def _share(args: argparse.Namespace) -> int:
+    """Set the owner sharing mode required by the METHOD-A CLI shape."""
+    if args.mode in {"off", "stop"} and args.state is not None:
+        print("share off/stop do not accept an on/off state", file=sys.stderr)
+        return 2
+
+    mode = "off" if args.mode in {"off", "stop"} else args.mode
+    if mode == "on":
+        mode = "local"
+    enabled = False if mode == "off" else args.state != "off"
+    body: dict[str, Any] = {"mode": mode, "enabled": enabled}
+    if args.duration is not None:
+        body["duration"] = args.duration
+    if args.model is not None:
+        body["model"] = args.model
+    return _control_request(args, "POST", "/vampire/v1/share", json_body=body)
+
+
 def _todo(args: argparse.Namespace) -> int:
     """Explain that a future-phase command exists in the CLI shape only."""
     print(f"`vampire {args.command}` is not implemented yet (design-stage scaffold).")
@@ -290,8 +308,15 @@ def build_parser() -> argparse.ArgumentParser:
     route_delete.add_argument("route_id")
     route_delete.set_defaults(func=_routes_delete)
 
-    share = sub.add_parser("share", help="Control owner sharing modes.")
-    share.set_defaults(func=_todo)
+    share = sub.add_parser("share", parents=[gateway_parent], help="Control owner sharing modes.")
+    share.add_argument(
+        "mode",
+        choices=["on", "off", "local", "personal", "family", "business", "event", "stop"],
+    )
+    share.add_argument("state", nargs="?", choices=["on", "off"])
+    share.add_argument("--duration")
+    share.add_argument("--model")
+    share.set_defaults(func=_share)
 
     return parser
 
