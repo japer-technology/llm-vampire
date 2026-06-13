@@ -85,6 +85,9 @@ top once traffic flows.
 - Basic read-only `GET /vampire/v1/metrics` (§18): per-node request counts,
   health, and latency. This completes the "Minimal MVP" control surface in
   DESIGN-API §24 and MVP.md; richer, policy-aware metrics arrive in Phase 6.
+- Manual node draining from POSSIBILITIES.md §14/§15 is exposed as
+  `vampire nodes drain NODE_ID [off]`, backed by node status updates that keep
+  drained nodes registered but unavailable to routing.
 
 ### Phase 3 — Routing (build step 3)
 - Virtual models (`vampire:auto`, `vampire:fast`, …) and a router.

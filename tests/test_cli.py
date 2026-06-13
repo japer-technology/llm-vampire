@@ -220,6 +220,29 @@ def test_cli_nodes_update_get_delete_route_get_delete_and_share_call_control_api
     assert capsys.readouterr().out.count('"ok": true') == 7
 
 
+def test_cli_nodes_drain_marks_node_unavailable_or_restored(
+    monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    seen = _mock_cli_client(monkeypatch, lambda request: httpx.Response(200, json={"ok": True}))
+
+    assert cli.main(["nodes", "drain", "node-a"]) == 0
+    assert cli.main(["nodes", "drain", "node-a", "off"]) == 0
+
+    assert seen == [
+        {
+            "method": "PATCH",
+            "url": "http://127.0.0.1:7777/vampire/v1/nodes/node-a",
+            "json": {"status": "draining"},
+        },
+        {
+            "method": "PATCH",
+            "url": "http://127.0.0.1:7777/vampire/v1/nodes/node-a",
+            "json": {"status": "online"},
+        },
+    ]
+    assert capsys.readouterr().out.count('"ok": true') == 2
+
+
 def test_cli_models_metrics_and_dashboard_commands(
     monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
 ) -> None:
