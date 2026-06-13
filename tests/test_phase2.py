@@ -113,6 +113,54 @@ def test_discover_static_base_urls_registers_online_nodes(client: TestClient) ->
     assert body["nodes"][0]["models"][0]["id"] == "node-c-model"
 
 
+def test_discover_collapses_local_access_aliases_to_lan_ip(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    monkeypatch.setattr(
+        "vampire.cluster._local_ip_addresses", lambda: {"127.0.0.1", "192.168.1.50"}
+    )
+
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={
+            "methods": ["static"],
+            "base_urls": [
+                "http://localhost:1234",
+                "http://127.0.0.1:1234",
+                "http://192.168.1.50:1234",
+            ],
+        },
+    )
+
+    assert resp.status_code == 200
+    nodes = resp.json()["nodes"]
+    assert len(nodes) == 1
+    assert nodes[0]["id"] == "node-192-168-1-50-1234"
+    assert nodes[0]["host"] == "192.168.1.50"
+    assert nodes[0]["models"][0]["id"] == "192.168.1.50-model"
+
+
+def test_discover_collapses_local_access_aliases_to_loopback(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    monkeypatch.setattr("vampire.cluster._local_ip_addresses", lambda: {"127.0.0.1"})
+
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={
+            "methods": ["static"],
+            "base_urls": ["http://localhost:1234", "http://127.0.0.1:1234"],
+        },
+    )
+
+    assert resp.status_code == 200
+    nodes = resp.json()["nodes"]
+    assert len(nodes) == 1
+    assert nodes[0]["id"] == "node-127-0-0-1-1234"
+    assert nodes[0]["host"] == "127.0.0.1"
+    assert nodes[0]["models"][0]["id"] == "127.0.0.1-model"
+
+
 def test_metrics_include_node_counts_health_and_latency(client: TestClient) -> None:
     client.post(
         "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
