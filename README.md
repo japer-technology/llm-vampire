@@ -222,7 +222,8 @@ code:
 | --- | --- |
 | **Phase 0 — Scaffolding & foundations** | Implemented: installable Python package, `vampire` console script, FastAPI app factory, settings with `VAMPIRE_*` overrides, core Pydantic models, placeholder browser UI, pytest coverage, Ruff formatting/linting, mypy strict mode, and CI-oriented validation commands. |
 | **Phase 1 — Transparent proxy** | Implemented: `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/responses`, and a compatibility catch-all forward to one configured LM Studio node while preserving query strings, end-to-end headers, JSON responses, streaming responses, and OpenAI-style error envelopes for unreachable upstream nodes. |
-| **Phase 2+** | Planned: node registry/discovery completion, model aggregation, routing, metrics, dashboard, cache/coalescing, auth/policy, and advanced fusion modes. |
+| **Phase 2 — Node registry + discovery** | Implemented: in-memory node registry CRUD including `PATCH`/`DELETE`, manual registration with `/v1/models` health/model interrogation, static/dev-subnet discovery, registered-node aggregation for `/v1/models` and `/vampire/v1/models`, and basic per-node metrics. |
+| **Phase 3+** | Planned: routing, dashboard, cache/coalescing, auth/policy, and advanced fusion modes. |
 
 The project is **not affiliated with LM Studio** unless explicitly adopted by that team.
 Track and shape the direction through the documents below and the repository's issues

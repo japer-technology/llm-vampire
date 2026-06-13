@@ -12,7 +12,14 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from vampire import __version__
-from vampire.models import Node
+from vampire.cluster import (
+    discover_nodes,
+    metrics_snapshot,
+    physical_model_inventory,
+    refresh_node,
+    refresh_registered_nodes,
+)
+from vampire.models import DiscoveryRequest, Node, NodeUpdate
 from vampire.registry import registry
 
 router = APIRouter(prefix="/vampire/v1", tags=["vampire-control"])
@@ -41,11 +48,12 @@ async def register_node(node: Node) -> dict[str, Any]:
     """Register or replace an owner-approved LM Studio node (§13).
 
     Pydantic validates required fields such as ``id`` and
-    ``lmstudio_base_url``. Health checks and automatic ``online`` status updates
-    are intentionally deferred to Phase 2.
+    ``lmstudio_base_url``. Phase 2 immediately interrogates ``/v1/models`` to
+    populate health and model metadata, while keeping offline nodes registered.
     """
     registry.add(node)
-    return {"id": node.id, "status": "registered", "trusted": node.trusted}
+    refreshed = await refresh_node(node)
+    return {"id": refreshed.id, "status": "registered", "trusted": refreshed.trusted}
 
 
 @router.get("/nodes/{node_id}")
@@ -57,9 +65,38 @@ async def get_node(node_id: str) -> dict[str, Any]:
     return node.model_dump()
 
 
+@router.patch("/nodes/{node_id}")
+async def patch_node(node_id: str, patch: NodeUpdate) -> dict[str, Any]:
+    """Partially update a registered node and refresh its health metadata."""
+    node = registry.update(node_id, patch)
+    if node is None:
+        raise HTTPException(status_code=404, detail="node not found")
+    return (await refresh_node(node)).model_dump()
+
+
 @router.delete("/nodes/{node_id}")
 async def delete_node(node_id: str) -> dict[str, Any]:
     """Remove an in-memory node registration or return 404 if it is absent."""
     if not registry.remove(node_id):
         raise HTTPException(status_code=404, detail="node not found")
     return {"id": node_id, "status": "removed"}
+
+
+@router.post("/discover")
+async def discover(request: DiscoveryRequest | None = None) -> dict[str, Any]:
+    """Run Phase 2 static/dev-subnet discovery for reachable LM Studio APIs (§12)."""
+    nodes = await discover_nodes(request or DiscoveryRequest())
+    return {"object": "vampire.discovery_result", "nodes": [node.model_dump() for node in nodes]}
+
+
+@router.get("/models")
+async def list_vampire_models() -> dict[str, Any]:
+    """Aggregate a detailed physical model inventory across registered nodes (§15)."""
+    nodes = await refresh_registered_nodes()
+    return {"object": "list", "data": [model.model_dump() for model in physical_model_inventory(nodes)]}
+
+
+@router.get("/metrics")
+async def metrics() -> dict[str, Any]:
+    """Return basic per-node health, request-count, and latency metrics (§18)."""
+    return metrics_snapshot()
