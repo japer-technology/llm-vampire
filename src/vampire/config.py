@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     # controlled by the node owner, not by Vampire.
     log_level: str = "INFO"
 
-    # Local API key required on requests once Phase 6 policy lands. Empty keeps
-    # Phase 1 drop-in OpenAI compatibility unauthenticated by default.
+    # Local API key required on API requests. Empty keeps Phase 1 drop-in OpenAI
+    # compatibility unauthenticated by default.
     auth_token: str = ""
 
 
