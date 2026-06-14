@@ -2,22 +2,28 @@
 
 Staff-engineer audit suggestions for the lmstudio-vampire gateway, one per run.
 
-_Generated: 2026-06-14 09:05 UTC_
+_Generated: 2026-06-14 20:04 UTC_
 
-18 total · 10 open · 8 taken · 0 declined
+24 total · 11 open · 13 taken · 0 declined
 
 | Date | Title | Severity | Category | Status | File |
 |------|-------|----------|----------|--------|------|
-| 2026-06-14 09:02 | Discovery auto-trusts every reachable node by default (`trusted = not request.trusted_only`) | High | security | Open | [link](2026-06-14_0902-discover-auto-trusts-every-node-by-default.md) |
+| 2026-06-14 20:04 | Transparent proxy collapses repeated query parameters (`dict(request.query_params)` drops all but last) | High | api-correctness | Open | [link](2026-06-14_2004-proxy-dict-query-params-drops-repeated-keys.md) |
+| 2026-06-14 19:01 | `model_affinity` routing pins 100% of traffic to the first replica — no load distribution across nodes hosting the same model | High | api-correctness | Open | [link](2026-06-14_1901-model-affinity-pins-all-traffic-first-replica.md) |
+| 2026-06-14 17:20 | `PATCH /vampire/v1/nodes/{id}` silently un-drains a node on any unrelated field update | High | api-correctness | Open | [link](2026-06-14_1720-patch-node-undrains-on-unrelated-field-update.md) |
+| 2026-06-14 10:00 | `refresh_node` lets `httpx.InvalidURL` escape its `except` — one malformed node URL 500s every cluster endpoint | High | error-handling | Open | [link](2026-06-14_1000-refresh-node-invalid-url-uncaught-500.md) |
+| 2026-06-14 09:40 | `least_busy` routing is a no-op in production — proxy never tracks in-flight requests | High | api-correctness | Open | [link](2026-06-14_0940-least-busy-no-inflight-tracking-degenerates.md) |
+| 2026-06-14 09:13 | Prompt playground output not announced to assistive tech (ARIA live region) | Medium | ux | Taken | [link](2026-06-14_0913-html-ux-playground-live-region.md) |
+| 2026-06-14 09:02 | Discovery auto-trusts every reachable node by default (`trusted = not request.trusted_only`) | High | security | Taken | [link](2026-06-14_0902-discover-auto-trusts-every-node-by-default.md) |
 | 2026-06-14 08:42 | NodeRegistry.update bypasses Pydantic validation, corrupting nested NodeCapabilities on PATCH | High | type-safety | Open | [link](2026-06-14_0842-node-update-model-copy-corrupts-capabilities.md) |
 | 2026-06-14 08:42 | `/v1/models` cards omit OpenAI-required `created` field | High | api-correctness | Open | [link](2026-06-14_0842-models-listing-omits-required-created-field.md) |
 | 2026-06-14 08:41 | `/v1/models` triggers uncoalesced full-cluster refresh — no TTL/single-flight/cap | High | performance | Open | [link](2026-06-14_0841-models-refresh-no-cache-no-singleflight-stampede.md) |
 | 2026-06-14 08:28 | SSRF: `base_urls`/`lmstudio_base_url` probed with no scheme or host validation | High | security | Open | [link](2026-06-14_0828-ssrf-unvalidated-base-urls-bypass-lan-scan-guard.md) |
 | 2026-06-14 08:28 | Blocking `.env` disk stat on the event loop via per-request `get_settings()` | High | concurrency | Open | [link](2026-06-14_0828-get-settings-blocking-env-stat-on-event-loop.md) |
 | 2026-06-14 08:27 | Mid-stream upstream failure silently truncates SSE body with no error frame | High | error-handling | Open | [link](2026-06-14_0827-streaming-proxy-midstream-failure-silently-truncates.md) |
-| 2026-06-14 08:26 | `Router._cursors` unbounded `defaultdict` keyed by client-controlled model strings | High | concurrency | Open | [link](2026-06-14_0826-router-cursor-unbounded-growth.md) |
-| 2026-06-14 08:08 | Proxy forwards gateway bearer token to untrusted upstreams | High | security | Open | [link](2026-06-14_0808-proxy-forwards-gateway-bearer-token-to-untrusted-upstreams.md) |
-| 2026-06-14 08:02 | `discover_nodes` permanently registers every scanned candidate IP (phantom nodes) | High | concurrency | Open | [link](2026-06-14_0802-discover-offline-phantom-node-pollution.md) |
+| 2026-06-14 08:26 | `Router._cursors` unbounded `defaultdict` keyed by client-controlled model strings | High | concurrency | Taken | [link](2026-06-14_0826-router-cursor-unbounded-growth.md) |
+| 2026-06-14 08:08 | Proxy forwards gateway bearer token to untrusted upstreams | High | security | Taken | [link](2026-06-14_0808-proxy-forwards-gateway-bearer-token-to-untrusted-upstreams.md) |
+| 2026-06-14 08:02 | `discover_nodes` permanently registers every scanned candidate IP (phantom nodes) | High | concurrency | Taken | [link](2026-06-14_0802-discover-offline-phantom-node-pollution.md) |
 | 2026-06-14 07:01 | Control-API bearer check uses non-constant-time comparison (timing side channel) | High | security | Taken | [link](2026-06-14_0701-control-auth-timing-side-channel.md) |
 | 2026-06-14 06:42 | `X-Vampire-Strategy` override accepted unvalidated; trace header lies | High | api-correctness | Taken | [link](2026-06-14_0642-strategy-override-unvalidated-trace-header-lies.md) |
 | 2026-06-14 06:33 | `discover_nodes` probes LAN-scan candidates sequentially; malformed subnet → 500 | High | performance | Taken | [link](2026-06-14_0633-discover-sequential-lan-scan-blocks.md) |
