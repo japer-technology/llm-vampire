@@ -100,12 +100,12 @@ async def _route_or_proxy(request: Request) -> Response:
 
     try:
         strategy = _strategy_override(request, payload)
-    except StrategyError as exc:
+    except StrategyError:
         return JSONResponse(
             status_code=400,
             content={
                 "error": {
-                    "message": str(exc),
+                    "message": "Unsupported routing strategy.",
                     "type": "vampire_routing_error",
                     "code": "unsupported_strategy",
                 }
