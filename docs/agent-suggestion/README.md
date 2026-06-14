@@ -4,17 +4,18 @@ Automated deep-audit suggestions for `lmstudio-vampire`, produced by the
 `vampire-suggestion` cron job (model: claude-opus-4-8). One file per run.
 This index is rebuilt from the directory contents on every run.
 
-_Generated: 2026-06-14 07:46 UTC · 8 total · 0 open · 8 taken · 0 declined_
+_Generated: 2026-06-14 08:02 UTC_
 
-**Status legend:** **Open** = not yet implemented · **Taken** = fix verified present in source · **Declined** = operator added a `> DECLINED:` note or a `.declined` marker. When implementation is unverified, status stays **Open** (never fabricated).
+9 total · 1 open · 8 taken · 0 declined
 
-| Date (UTC) | Title | Severity | Category | Status | File |
-|---|---|---|---|---|---|
-| 2026-06-14 07:01 | Control-API bearer check uses non-constant-time comparison, leaking the gateway token via timing | High | security | Taken | [0701-control-auth-timing-side-channel.md](./2026-06-14_0701-control-auth-timing-side-channel.md) |
-| 2026-06-14 06:42 | `X-Vampire-Strategy` override accepted unvalidated, coerced to round_robin, yet trace header reports the requested strategy — audit trail lies | High | api-correctness | Taken | [0642-strategy-override-unvalidated-trace-header-lies.md](./2026-06-14_0642-strategy-override-unvalidated-trace-header-lies.md) |
-| 2026-06-14 06:33 | `discover_nodes` probes LAN-scan candidates sequentially → multi-minute hang; malformed subnet crashes with bare 500 | High | performance | Taken | [0633-discover-sequential-lan-scan-blocks.md](./2026-06-14_0633-discover-sequential-lan-scan-blocks.md) |
-| 2026-06-14 06:29 | `# type: ignore[union-attr]` masks a TOCTOU None-deref in the hot routing path — node deregistered mid-request crashes with bare 500 | High | type-safety | Taken | [0629-route-node-deref-500-race.md](./2026-06-14_0629-route-node-deref-500-race.md) |
-| 2026-06-14 06:12 | A fresh `httpx.AsyncClient` is built/torn down per proxied request, defeating connection pooling | High | performance | Taken | [0612-per-request-httpx-client-no-pooling.md](./2026-06-14_0612-per-request-httpx-client-no-pooling.md) |
-| 2026-06-14 06:08 | `/v1/models` returns HTTP 500 when a virtual model id collides with a physical model id | High | error-handling | Taken | [0608-models-id-collision-500.md](./2026-06-14_0608-models-id-collision-500.md) |
-| 2026-06-14 06:02 | `refresh_node` unconditionally re-inserts, silently resurrecting a concurrently-deregistered node | High | concurrency | Taken | [0602-refresh-node-resurrects-deleted-nodes.md](./2026-06-14_0602-refresh-node-resurrects-deleted-nodes.md) |
-| 2026-06-14 05:48 | `auth_token` is a silently-ignored security control — no route enforces authentication | High | security | Taken | [0548-auth-token-never-enforced.md](./2026-06-14_0548-auth-token-never-enforced.md) |
+| Date | Title | Severity | Category | Status | File |
+| --- | --- | --- | --- | --- | --- |
+| 2026-06-14 0802 | `discover_nodes` permanently registers every scanned candidate IP, flooding the registry with un-reapable offline "phantom" nodes that sabotage `/v1/models` | High | concurrency / resource-leak | Open | [2026-06-14_0802-discover-offline-phantom-node-pollution.md](./2026-06-14_0802-discover-offline-phantom-node-pollution.md) |
+| 2026-06-14 0701 | Control-API bearer check uses non-constant-time comparison, leaking the gateway token via timing | High | security | Taken | [2026-06-14_0701-control-auth-timing-side-channel.md](./2026-06-14_0701-control-auth-timing-side-channel.md) |
+| 2026-06-14 0642 | Per-request `X-Vampire-Strategy` override accepted unvalidated and coerced, yet the trace header reports the strategy never applied | High | api-correctness | Taken | [2026-06-14_0642-strategy-override-unvalidated-trace-header-lies.md](./2026-06-14_0642-strategy-override-unvalidated-trace-header-lies.md) |
+| 2026-06-14 0633 | `discover_nodes` probes LAN-scan candidates sequentially, turning `/vampire/v1/discover` into a multi-minute hang; malformed subnet crashes with bare 500 | High | performance / error-handling | Taken | [2026-06-14_0633-discover-sequential-lan-scan-blocks.md](./2026-06-14_0633-discover-sequential-lan-scan-blocks.md) |
+| 2026-06-14 0629 | A `# type: ignore[union-attr]` masks a TOCTOU None-deref in the hot routing path: a node deregistered mid-request crashes with a bare 500 | High | type-safety / concurrency | Taken | [2026-06-14_0629-route-node-deref-500-race.md](./2026-06-14_0629-route-node-deref-500-race.md) |
+| 2026-06-14 0612 | A fresh `httpx.AsyncClient` is built and torn down per proxied request, defeating connection pooling | High | performance | Taken | [2026-06-14_0612-per-request-httpx-client-no-pooling.md](./2026-06-14_0612-per-request-httpx-client-no-pooling.md) |
+| 2026-06-14 0608 | `/v1/models` returns HTTP 500 when a virtual model id collides with a physical model id | High | error-handling / api-correctness | Taken | [2026-06-14_0608-models-id-collision-500.md](./2026-06-14_0608-models-id-collision-500.md) |
+| 2026-06-14 0602 | `refresh_node` unconditionally re-inserts into the registry, silently resurrecting a concurrently deregistered node | High | concurrency | Taken | [2026-06-14_0602-refresh-node-resurrects-deleted-nodes.md](./2026-06-14_0602-refresh-node-resurrects-deleted-nodes.md) |
+| 2026-06-14 0548 | `auth_token` is a silently-ignored security control: no route enforces authentication, leaving the control plane wide open | High | security | Taken | [2026-06-14_0548-auth-token-never-enforced.md](./2026-06-14_0548-auth-token-never-enforced.md) |
