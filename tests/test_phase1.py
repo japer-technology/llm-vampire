@@ -174,6 +174,44 @@ def test_chat_completion_streaming_passthrough(client: TestClient) -> None:
     assert "data: [DONE]" in resp.text
 
 
+def test_streaming_upstream_abort_emits_error_frame_and_done(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _AbortingStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            yield b'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n'
+            raise httpx.RemoteProtocolError("peer closed connection mid-stream")
+
+    class _AbortingTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                headers={"content-type": "text/event-stream"},
+                stream=_AbortingStream(),
+            )
+
+    def _build() -> httpx.AsyncClient:
+        return httpx.AsyncClient(transport=_AbortingTransport())
+
+    monkeypatch.setattr(proxy, "build_async_client", _build)
+
+    with TestClient(create_app()) as aborting_client:
+        resp = aborting_client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "local-model",
+                "messages": [{"role": "user", "content": "hello"}],
+                "stream": True,
+            },
+        )
+
+    assert resp.status_code == 200
+    assert '"delta"' in resp.text
+    assert "vampire_upstream_error" in resp.text
+    assert "upstream_stream_interrupted" in resp.text
+    assert resp.text.rstrip().endswith("data: [DONE]")
+
+
 def test_embeddings_passthrough(client: TestClient) -> None:
     resp = client.post("/v1/embeddings", json={"model": "local-model", "input": "hello"})
     assert resp.status_code == 200
