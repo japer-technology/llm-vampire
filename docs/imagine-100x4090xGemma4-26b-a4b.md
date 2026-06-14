@@ -1,6 +1,12 @@
-# Imagining 100 x 4090 (24Gb) running Gemma 4 26B A4B QAT
+# Imagine: 100 x 4090 (24Gb) running Gemma 4 26B A4B QAT
 
-**An aggregator layer in front of 100 RTX 4090s, each serving Gemma 4 26B A4B QAT**, I’d design it as a **single logical model endpoint backed by many independent replicas**, not as one 100-GPU tensor-parallel monster.
+All in takes is a LM Studio Vampire running on a network...
+
+- 100 school children bring their notebooks to school...
+- 100 workers login to LM Studio installed on their business desktops...
+- 100 vibe coders link the the wifi of a conference....
+
+The Vampire is an aggregator layer in front of the 100 RTX 4090s, each serving Gemma 4 26B A4B QAT**, I’d design it as a **single logical model endpoint backed by many independent replicas**, not as one 100-GPU tensor-parallel monster.
 
 Gemma 4 26B A4B is a MoE model: about **26B total parameters**, but only about **4B active parameters per token**. Google’s model docs list the Q4_0 load memory for Gemma 4 26B A4B at roughly **14.4 GB**, but explicitly warn that this excludes runtime overhead and KV cache, so context length is the real limiter on 24 GB cards. ([Google AI for Developers][1]) The RTX 4090 has **24 GB GDDR6X**, **16,384 CUDA cores**, about **83 TFLOPS FP32**, and **1,321 AI TOPS**, with NVIDIA listing **450 W TGP**. Across 100 cards, that is roughly **2.4 TB aggregate VRAM** and **45 kW GPU board power before CPUs, networking, storage, and cooling**. ([NVIDIA][2])
 
