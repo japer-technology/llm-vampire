@@ -307,21 +307,27 @@ async def discover_nodes(
     async def _probe(base_url: str) -> Node | None:
         node_id = _node_id_for_url(base_url)
         current = registry.get(node_id)
+        # Newly discovered nodes are UNTRUSTED by default, matching Node.trusted=False
+        # and POST /vampire/v1/nodes. Trust is owner-granted (DESIGN-API.md §13), never
+        # auto-assigned by reachability. An existing node keeps its established trust.
         node = current or Node(
             id=node_id,
             host=urlparse(base_url).hostname,
             lmstudio_base_url=base_url,
-            trusted=not request.trusted_only,
+            trusted=False,
         )
         async with semaphore:
             if client is not None:
                 refreshed = await refresh_node(node, timeout_ms=request.timeout_ms, client=client)
             else:
                 refreshed = await refresh_node(node, timeout_ms=request.timeout_ms)
-        if refreshed.status == "online" and (refreshed.trusted or not request.trusted_only):
-            registry.add(refreshed)
-            return refreshed
-        return None
+        if refreshed.status != "online":
+            return None
+        # trusted_only is a *filter* over results, not a grant of trust.
+        if request.trusted_only and not refreshed.trusted:
+            return None
+        registry.add(refreshed)
+        return refreshed
 
     results = await asyncio.gather(*(_probe(base_url) for base_url in _candidate_urls(request)))
     return [node for node in results if node is not None]

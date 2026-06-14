@@ -216,3 +216,5 @@ The first test asserts `node.trusted is False` — today it is `True`, so it fai
 ---
 
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · input ~436,531 tok · output ~14,022 tok · est. cost ~$7.60 (input 436531/1e6×$15 = $6.55 + output 14022/1e6×$75 = $1.05) · run started 09:00 finished 09:05. Estimated; input is the honest sum of per-call `in=` (cumulative context across 12 calls, low cache hit this run).
+
+> APPLIED 2026-06-14T09:28:11Z on branch vampire-fix/discover-auto-trusts-every-node-by-default: tests green (1 failed, 100 passed — the single failure is the known environmental flake test_openai_route_proxies_upstream_error_when_node_unreachable when LM Studio is live on :1234). Discovery no longer auto-grants trust (`trusted=False` default); `trusted_only` is now a result filter. Two regression tests added to tests/test_phase2.py. Awaiting review.
