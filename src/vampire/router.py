@@ -7,7 +7,7 @@ least_latency, model_affinity, trusted_only, plus fallback/failover.
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import OrderedDict
 from dataclasses import dataclass
 
 from vampire.models import Node, RoutePolicy, RouteTarget
@@ -20,6 +20,7 @@ MVP_STRATEGIES = (
     "model_affinity",
     "trusted_only",
 )
+_MAX_CURSORS = 4096
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class Router:
     def __init__(self, registry: NodeRegistry) -> None:
         """Bind the router to the registry that supplies candidate nodes."""
         self._registry = registry
-        self._cursors: defaultdict[str, int] = defaultdict(int)
+        self._cursors: OrderedDict[str, int] = OrderedDict()
 
     def select(
         self, policy: RoutePolicy, *, requested_model: str | None = None
@@ -108,9 +109,13 @@ class Router:
         return node
 
     def _round_robin(self, candidates: list[RouteTarget], route_id: str) -> RouteTarget:
-        """Select the next candidate for ``route_id`` and advance its cursor."""
-        index = self._cursors[route_id] % len(candidates)
-        self._cursors[route_id] += 1
+        """Select the next candidate and retain cursors in a bounded LRU."""
+        current = self._cursors.get(route_id, 0)
+        index = current % len(candidates)
+        self._cursors[route_id] = current + 1
+        self._cursors.move_to_end(route_id)
+        if len(self._cursors) > _MAX_CURSORS:
+            self._cursors.popitem(last=False)
         return candidates[index]
 
     @staticmethod

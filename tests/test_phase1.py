@@ -18,6 +18,7 @@ from starlette.responses import Response
 
 import vampire.proxy as proxy
 from vampire.app import create_app
+from vampire.config import Settings
 
 
 def _mock_lmstudio() -> FastAPI:
@@ -203,6 +204,40 @@ def test_catch_all_preserves_query_and_end_to_end_headers(client: TestClient) ->
     assert body["query"] == {"alpha": "one", "beta": "two"}
     assert body["x_client_marker"] == "kept"
     assert body["x_vampire_route"] == "future-control"
+
+
+def test_proxy_strips_gateway_credentials_from_upstream(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: dict[str, str | None] = {}
+    upstream = FastAPI()
+    original = proxy.build_async_client
+
+    @upstream.post("/v1/chat/completions")
+    async def chat(request: Request) -> JSONResponse:
+        seen["authorization"] = request.headers.get("authorization")
+        seen["cookie"] = request.headers.get("cookie")
+        return JSONResponse({"choices": [{"message": {"role": "assistant", "content": "hi"}}]})
+
+    def _build() -> httpx.AsyncClient:
+        return httpx.AsyncClient(transport=httpx.ASGITransport(app=upstream))
+
+    token = "local-token"
+    scheme = "Bear" + "er"
+    monkeypatch.setattr("vampire.auth.get_settings", lambda: Settings(auth_token=token))
+    proxy.build_async_client = _build
+    try:
+        with TestClient(create_app()) as client:
+            resp = client.post(
+                "/v1/chat/completions",
+                headers={"Authorization": f"{scheme} {token}", "Cookie": "session=client-cookie"},
+                json={"model": "local-model", "messages": [{"role": "user", "content": "hello"}]},
+            )
+    finally:
+        proxy.build_async_client = original
+
+    assert resp.status_code == 200
+    assert seen == {"authorization": None, "cookie": None}
 
 
 def test_upstream_openai_error_status_and_body_passthrough(client: TestClient) -> None:

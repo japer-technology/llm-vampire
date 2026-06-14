@@ -41,7 +41,12 @@ _HOP_BY_HOP_HEADERS = frozenset(
         "upgrade",
     }
 )
-_DROP_REQUEST_HEADERS = _HOP_BY_HOP_HEADERS | {"host", "content-length"}
+_DROP_REQUEST_HEADERS = _HOP_BY_HOP_HEADERS | {
+    "host",
+    "content-length",
+    "authorization",
+    "cookie",
+}
 
 # No read/write timeout: model generations can stream for a long time. A short
 # connect timeout still surfaces unreachable nodes quickly as an upstream error.
@@ -69,8 +74,8 @@ def _filter_request_headers(headers: httpx.Headers) -> list[tuple[str, str]]:
     """Return end-to-end request headers safe to forward upstream.
 
     Custom client headers, including future ``X-Vampire-*`` controls, are
-    preserved. Only transport-specific headers that httpx must recompute or
-    manage itself are removed.
+    preserved. Transport-specific headers that httpx must recompute are
+    removed, along with client credentials that the gateway terminates itself.
     """
     return [(k, v) for k, v in headers.multi_items() if k.lower() not in _DROP_REQUEST_HEADERS]
 
