@@ -142,9 +142,7 @@ def test_discover_caps_candidates_and_skips_public_subnets(
     assert len(seen) <= 1024
 
 
-def test_discover_probes_concurrently(
-    monkeypatch: pytest.MonkeyPatch, client: TestClient
-) -> None:
+def test_discover_probes_concurrently(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     async def _slow(node: Node, *, timeout_ms: int | None = None) -> Node:
         await asyncio.sleep(0.2)
         return node.model_copy(update={"status": "offline"})

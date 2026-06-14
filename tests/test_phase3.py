@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 import vampire.proxy as proxy
-import vampire.api.openai_compat as openai_compat
 from vampire.app import create_app
 from vampire.models import ModelCard, Node, RoutePolicy, RouteTarget
 from vampire.registry import registry
@@ -267,7 +266,7 @@ def test_route_target_removed_before_dispatch_returns_structured_503(
     client.post(
         "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
     )
-    original_get = openai_compat.registry.get
+    original_get = registry.get
     calls = 0
 
     def _get_then_missing(node_id: str) -> Node | None:
@@ -277,7 +276,7 @@ def test_route_target_removed_before_dispatch_returns_structured_503(
             return original_get(node_id)
         return None
 
-    monkeypatch.setattr(openai_compat.registry, "get", _get_then_missing)
+    monkeypatch.setattr(registry, "get", _get_then_missing)
 
     resp = client.post(
         "/v1/chat/completions",
