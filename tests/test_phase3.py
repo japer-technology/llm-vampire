@@ -14,7 +14,7 @@ import vampire.proxy as proxy
 from vampire.app import create_app
 from vampire.models import ModelCard, Node, RoutePolicy, RouteTarget
 from vampire.registry import registry, route_registry
-from vampire.router import Router, Selection
+from vampire.router import _MAX_CURSORS, Router, Selection
 
 
 def _mock_cluster() -> FastAPI:
@@ -196,6 +196,36 @@ def test_router_mvp_strategies() -> None:
         )
         == "node-c"
     )
+
+
+def test_round_robin_cursor_map_is_bounded_under_distinct_virtual_models() -> None:
+    registry.add(_online_node("node-a", "shared"))
+    router = Router(registry)
+
+    for index in range(_MAX_CURSORS + 1000):
+        model = f"vampire:probe-{index}"
+        policy = router.default_policy(model, requested_model=model)
+        assert router.select(policy, requested_model=model) is not None
+
+    assert len(router._cursors) <= _MAX_CURSORS
+
+
+def test_hot_route_keeps_rotating_after_cursor_eviction() -> None:
+    registry.add(_online_node("node-a", "shared"))
+    registry.add(_online_node("node-b", "shared"))
+    router = Router(registry)
+    hot = router.default_policy("vampire:hot", requested_model="vampire:hot")
+    assert _selected_node(router.select(hot, requested_model="vampire:hot")) == "node-a"
+
+    for index in range(_MAX_CURSORS + 1000):
+        model = f"vampire:cold-{index}"
+        policy = router.default_policy(model, requested_model=model)
+        assert router.select(policy, requested_model=model) is not None
+        if index % 256 == 0:
+            assert router.select(hot, requested_model="vampire:hot") is not None
+
+    seen = {_selected_node(router.select(hot, requested_model="vampire:hot")) for _ in range(4)}
+    assert seen == {"node-a", "node-b"}
 
 
 def test_drained_node_stays_registered_but_is_not_route_candidate(client: TestClient) -> None:
