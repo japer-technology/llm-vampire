@@ -12,6 +12,7 @@ top of this seam in later phases.
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import AsyncIterator
 
@@ -157,11 +158,30 @@ async def proxy_request_with_body(
             response.headers.update(response_headers)
         return response
 
+    is_event_stream = (
+        (upstream.headers.get("content-type") or "").lower().startswith("text/event-stream")
+    )
+
     async def body_stream() -> AsyncIterator[bytes]:
         """Relay upstream bytes and close both sides of the upstream connection."""
         try:
             async for chunk in upstream.aiter_raw():
                 yield chunk
+        except httpx.HTTPError as exc:
+            logger.warning("Downstream LM Studio node %s failed mid-stream: %r", base_url, exc)
+            if not is_event_stream:
+                raise
+            error_frame = json.dumps(
+                {
+                    "error": {
+                        "message": (f"Downstream LM Studio node at {base_url} failed mid-stream."),
+                        "type": "vampire_upstream_error",
+                        "code": "upstream_stream_interrupted",
+                    }
+                }
+            )
+            yield f"data: {error_frame}\n\n".encode()
+            yield b"data: [DONE]\n\n"
         finally:
             await upstream.aclose()
             if should_close_client:
