@@ -66,7 +66,7 @@
     background-repeat: no-repeat;
     background-position: center;
     background-size: min(72vw, 72vh, 42rem);
-    opacity: 0.045;
+    opacity: 0.09;
     filter: saturate(1.2) drop-shadow(0 0 4rem rgba(172, 67, 217, 0.28));
     z-index: 0;
   }
@@ -98,21 +98,21 @@
     position: relative;
     z-index: 100;
   }
-  .brand { display: flex; gap: 0.9rem; align-items: center; min-width: 0; }
+  .brand { display: flex; gap: 1.1rem; align-items: center; min-width: 0; }
   .mark {
-    width: 3.15rem;
-    height: 3.15rem;
+    width: 6.3rem;
+    height: 6.3rem;
     flex: none;
     display: grid;
     place-items: center;
-    border-radius: 1rem;
+    border-radius: 1.6rem;
     background:
       radial-gradient(circle at 30% 18%, rgba(196, 92, 242, 0.32), transparent 70%),
       linear-gradient(160deg, rgba(172, 67, 217, 0.16), rgba(74, 17, 112, 0.28));
     border: 1px solid rgba(172, 67, 217, 0.38);
     box-shadow: 0 0 40px rgba(172, 67, 217, 0.34), inset 0 0 18px rgba(196, 92, 242, 0.18);
   }
-  .mark img { width: 2.5rem; height: 2.5rem; display: block; border-radius: 0.7rem; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(172, 67, 217, 0.45)); }
+  .mark img { width: 5rem; height: 5rem; display: block; border-radius: 1.15rem; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(172, 67, 217, 0.45)); }
   h1 { font-size: clamp(1.2rem, 2.2vw, 2rem); letter-spacing: -0.035em; line-height: 1.1; }
   .lede { color: var(--fog); max-width: 82ch; font-size: 0.92rem; margin-top: 0.25rem; }
   .app-title { cursor: help; width: max-content; max-width: 100%; }
@@ -489,7 +489,8 @@
   .gateway { margin-top: 0.75rem; border: 1px solid rgba(172, 67, 217, 0.32); background: rgba(172, 67, 217, 0.08); border-radius: 12px; padding: 0.65rem 0.7rem; }
   .gateway-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--vamp-hot); font-weight: 800; margin-bottom: 0.45rem; }
   .gateway-hint { margin-top: 0.5rem; font-size: 0.68rem; color: var(--mute); font-style: italic; }
-  .privacy-panel { margin-top: 0.75rem; border: 1px solid var(--line-soft); background: rgba(0,0,0,0.18); border-radius: 12px; padding: 0.65rem 0.7rem; }
+  .privacy-toggle { margin-top: 0.75rem; display: inline-flex; align-items: center; gap: 0.45rem; }
+  .privacy-panel { margin-top: 0.55rem; border: 1px solid var(--line-soft); background: rgba(0,0,0,0.18); border-radius: 12px; padding: 0.65rem 0.7rem; }
   .privacy-panel.ok { border-color: rgba(54, 211, 153, 0.38); background: rgba(54, 211, 153, 0.08); }
   .privacy-panel.warning { border-color: rgba(245, 181, 74, 0.42); background: rgba(245, 181, 74, 0.08); }
   .privacy-panel.danger { border-color: rgba(255, 100, 100, 0.44); background: rgba(255, 100, 100, 0.08); }
@@ -1105,6 +1106,8 @@
   let compact = false;
   const localIps = new Set();
   const collapsedDevices = new Set();
+  const visiblePrivacyDevices = new Set();
+  const modelDetailsOpen = new Map();
   const appEl = document.querySelector(".app");
   // Free-text restrict + sort controls for the results list.
   let restrictText = "";
@@ -1485,13 +1488,45 @@
     try { const u = new URL(origin); return u.port || (u.protocol === "https:" ? "443" : "80"); } catch { return ""; }
   }
 
+  function ipv4Parts(host) {
+    const match = String(host || "").match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!match) return null;
+    const parts = match.slice(1).map((part) => Number.parseInt(part, 10));
+    return parts.every((part) => part >= 0 && part <= 255) ? parts : null;
+  }
+
+  function compareHosts(a, b) {
+    const ap = ipv4Parts(a);
+    const bp = ipv4Parts(b);
+    if (ap && bp) {
+      for (let i = 0; i < ap.length; i++) {
+        if (ap[i] !== bp[i]) return ap[i] - bp[i];
+      }
+      return 0;
+    }
+    if (ap) return -1;
+    if (bp) return 1;
+    return String(a || "").localeCompare(String(b || ""), undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  function compareOrigins(a, b) {
+    const hostCmp = compareHosts(hostOf(a), hostOf(b));
+    if (hostCmp) return hostCmp;
+    const portCmp = (Number.parseInt(portOf(a), 10) || 0) - (Number.parseInt(portOf(b), 10) || 0);
+    return portCmp || String(a || "").localeCompare(String(b || ""), undefined, { numeric: true, sensitivity: "base" });
+  }
+
+  function compareDeviceAddress(a, b) {
+    return compareHosts(deviceLabel(a), deviceLabel(b)) || compareHosts(a.host, b.host);
+  }
+
   function isLocalHost(host) {
     if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") return true;
     if (host.endsWith(".localhost")) return true;
     return localIps.has(host);
   }
 
-  // Collapse loopback aliases (localhost, 127.0.0.1) and this machine's own LAN IP
+  // Collapse loopback aliases (localhost, 127.0.0.1) and the detected LAN IP
   // into a single device, and group every endpoint of the same host together so
   // one physical computer is counted and listed once.
   function deviceKey(origin) {
@@ -1557,7 +1592,7 @@
       device.models = models;
       device.stats = summarizeModels(models);
       device.flavor = primaryFlavor(device.flavors);
-      device.endpoints.sort((a, b) => statusRank(a.status) - statusRank(b.status) || a.origin.localeCompare(b.origin));
+      device.endpoints.sort((a, b) => statusRank(a.status) - statusRank(b.status) || compareOrigins(a.origin, b.origin));
       if (device.latency === Infinity) device.latency = 0;
       if (!device.logging) device.logging = fallbackLoggingStatus(device.status === "offline" ? "offline" : "unknown");
       devices.push(device);
@@ -1636,7 +1671,7 @@
     const stat = (key, value, label, title) =>
       `<button type="button" class="stat${activeSummary === key ? " is-active" : ""}" data-action="focus-summary" data-summary="${key}" aria-pressed="${activeSummary === key}" title="${esc(title)}"><b>${esc(value)}</b><span>${esc(label)}</span></button>`;
     els.summary.innerHTML = [
-      stat("online", totals.online, "LM Studio", "Show only computers answering an LM Studio model surface. localhost, 127.0.0.1 and this machine's LAN IP count as one device."),
+      stat("online", totals.online, "LM Studio", "Show only computers answering an LM Studio model surface. localhost, 127.0.0.1 and the detected LAN IP count as one device."),
       stat("vampires", totals.vampires, "Vampires", "Show only computers exposing a Vampire gateway (/vampire/v1/status)."),
       stat("logging", totals.logging_needs_check, "Logging check", "Show computers whose LM Studio logging status is not advertised as disabled."),
       stat("distinct", totals.distinct_models, "Distinct models", "Show every computer that exposes at least one readable model."),
@@ -1689,22 +1724,26 @@
         (b.vampire ? 1 : 0) - (a.vampire ? 1 : 0) ||
         statusRank(a.status) - statusRank(b.status) ||
         a.latency - b.latency ||
-        a.host.localeCompare(b.host));
+        compareDeviceAddress(a, b));
     }
     const dir = sortDir === "desc" ? -1 : 1;
     return devices.sort((a, b) => {
       const av = sortValue(a, sortKey);
       const bv = sortValue(b, sortKey);
-      const cmp = (typeof av === "number" && typeof bv === "number")
+      const cmp = sortKey === "host"
+        ? compareDeviceAddress(a, b)
+        : (typeof av === "number" && typeof bv === "number")
         ? av - bv
-        : String(av).localeCompare(String(bv));
-      return (cmp * dir) || a.host.localeCompare(b.host);
+        : String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+      return (cmp * dir) || compareDeviceAddress(a, b);
     });
   }
 
   function renderResults() {
     renderSummary();
     els.results.classList.toggle("compact", compact);
+    els.showLiveBtn.classList.toggle("is-active", !showOffline);
+    els.showAllBtn.classList.toggle("is-active", showOffline);
     let devices = groupDevices(lastResults)
       .filter((device) => showOffline || device.status !== "offline")
       .filter(deviceMatchesRestrict);
@@ -1899,7 +1938,7 @@
       const head = [
         { label: "Computer", tip: "Reachable LM Studio surface" },
         { label: "API", tip: "Which API dialect answered" },
-        { label: "Models", tip: "Unique models this computer exposes" },
+        { label: "Models", tip: "Unique models this address exposes" },
         { label: "Loaded", tip: "Models currently held in memory" },
         { label: "Latency", tip: "Round-trip time of the probe" },
       ];
@@ -1981,8 +2020,14 @@
     </div>`;
   }
 
-  // Pick a representative LAN IP for this machine, preferring one inside the
-  // subnet the user is scanning so the local computer reads like a real address.
+  function loggingPrivacyBlock(device, logging) {
+    const status = logging || fallbackLoggingStatus(device.status === "offline" ? "offline" : "unknown");
+    const visible = visiblePrivacyDevices.has(device.key);
+    const label = visible ? "Hide logging privacy" : "Show logging privacy";
+    return `<button type="button" class="btn-ghost btn-small privacy-toggle" data-action="toggle-privacy" data-key="${esc(device.key)}" aria-expanded="${visible ? "true" : "false"}" title="Reveal or hide detailed logging privacy signals for this address">${label}: ${esc(status.label || loggingSummary(status.level))}</button>${visible ? loggingPanel(status) : ""}`;
+  }
+
+  // Pick a representative LAN IP, preferring one inside the subnet being scanned.
   function localLanIp() {
     const ips = [...localIps];
     if (!ips.length) return "";
@@ -1994,14 +2039,18 @@
     return ips[0];
   }
 
+  function localEndpointIp(device) {
+    const hosts = (device && Array.isArray(device.endpoints) ? device.endpoints : [])
+      .map((endpoint) => endpoint.host)
+      .filter((host) => ipv4Parts(host));
+    return hosts.find((host) => !host.startsWith("127.")) || hosts[0] || "";
+  }
+
   function deviceLabel(device) {
     if (device.local) {
-      // Show the machine as its LAN IP address. Avoid printing "localhost" or
-      // "127.0.0.1", which would otherwise advertise that this is the operator's
-      // own computer. When no LAN IP has been discovered yet, fall back to a
-      // neutral label rather than exposing the loopback aliases.
+      // Show an IP address rather than loopback hostnames whenever possible.
       const ip = localLanIp();
-      return ip || "This computer";
+      return ip || localEndpointIp(device) || "127.0.0.1";
     }
     return device.host;
   }
@@ -2024,7 +2073,7 @@
       return `<span class="endpoint ${esc(endpoint.status)}" title="${esc(tip)}">${esc(label)}</span>`;
     }).join("");
     const aliasNote = device.local
-      ? `<div class="device-aliases" title="localhost, 127.0.0.1 and this machine's LAN IP are the same computer, so they are shown once.">${device.endpoints.length} alias${device.endpoints.length === 1 ? "" : "es"} of this machine</div>`
+      ? `<div class="device-aliases" title="localhost, 127.0.0.1 and the detected LAN IP are aliases, so they are shown once.">${device.endpoints.length} alias${device.endpoints.length === 1 ? "" : "es"} of this IP</div>`
       : "";
 
     const note = device.notes.size ? `<div class="node-note">${[...device.notes].map(esc).join("<br>")}</div>` : "";
@@ -2032,8 +2081,7 @@
     const flavorLabel = FLAVOR_LABELS[device.flavor] || "";
     const logging = device.logging || fallbackLoggingStatus(device.status === "offline" ? "offline" : "unknown");
     const badges = [
-      device.endpoints.length > 1 ? `<span class="badge ports" title="${esc(device.endpoints.length)} reachable endpoint(s) on this computer">${device.endpoints.length}×</span>` : "",
-      flavorLabel ? `<span class="badge flavor" title="API surface used to identify this computer">${esc(flavorLabel)}</span>` : "",
+      flavorLabel ? `<span class="badge flavor" title="API surface used to identify this address">${esc(flavorLabel)}</span>` : "",
       vampire ? `<span class="badge vampire" title="${vampire.headers_only ? "Identified as a Vampire gateway from its response headers" : "Vampire gateway detected"}">vampire</span>` : "",
       `<span class="badge logging-${esc(logging.level)}" title="${esc(loggingDetail(logging))}">${esc(logging.label || loggingSummary(logging.level))}</span>`,
       `<span class="badge ${esc(device.status)}" title="${device.status === "detected" ? "Responds but blocks cross-origin reads (enable CORS)" : esc(device.status)}">${device.status === "detected" ? "CORS blocked" : esc(device.status)}</span>`,
@@ -2043,7 +2091,7 @@
     const factsBlock = (device.models.length || flavorLabel || device.server) ? `<div class="facts">
       ${flavorLabel ? fact(flavorLabel, "API surface", "Which API dialect answered: native LM Studio, OpenAI-compatible, or a Vampire gateway") : ""}
       ${device.server ? fact(device.server, "server", "Server software reported in response headers (when exposed)") : ""}
-      ${device.models.length ? fact(device.models.length, "models offered", "Unique models this computer exposes") : ""}
+      ${device.models.length ? fact(device.models.length, "models offered", "Unique models this address exposes") : ""}
       ${device.models.length ? fact(stats.loaded || 0, "loaded now", "Models currently held in memory") : ""}
       ${stats.publishers ? fact(stats.publishers, "publishers", "Distinct model publishers") : ""}
       ${typeSummary ? fact(typeSummary, "model types", "Breakdown by model type") : ""}
@@ -2063,22 +2111,22 @@
 
     const focusDeviceBtn = focus && focus.type === "device" && focus.key === device.key
       ? `<button class="btn-ghost btn-small is-active" data-action="clear-focus" title="Clear the filter and show every device again">Show all devices</button>`
-      : `<button class="btn-ghost btn-small" data-action="focus-device" data-key="${esc(device.key)}" data-label="${esc(deviceLabel(device))}" title="Hide every other computer and show only this one">Only this computer</button>`;
+      : `<button class="btn-ghost btn-small" data-action="focus-device" data-key="${esc(device.key)}" data-label="${esc(deviceLabel(device))}" title="Hide every other address and show only this IP">Only this IP</button>`;
     const corsHelp = device.status === "detected" ? `
       <div class="node-actions">
         ${focusDeviceBtn}
-        <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(primary.origin)}" title="Copy this computer's address">Copy origin</button>
+        <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(primary.origin)}" title="Copy this address origin">Copy origin</button>
         <button class="btn-ghost btn-small" data-action="copy-cors" data-origin="${esc(primary.origin)}" title="Copy the command to enable CORS on this host">Copy CORS fix</button>
       </div>` : `
       <div class="node-actions">
         ${focusDeviceBtn}
-        <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(primary.origin)}" title="Copy this computer's address">Copy origin</button>
+        <button class="btn-ghost btn-small" data-action="copy-origin" data-origin="${esc(primary.origin)}" title="Copy this address origin">Copy origin</button>
       </div>`;
 
     let modelsBlock = "";
     const loadedModels = device.models.filter((model) => model.state === "loaded");
     const loadedCollapsed = loadedModels.length
-      ? `<div class="loaded-collapsed" title="Models currently loaded in memory on this computer"><span class="loaded-label">Loaded:</span>${loadedModels.map((model) => `<span class="loaded-chip">${esc(model.id)}</span>`).join("")}</div>`
+      ? `<div class="loaded-collapsed" title="Models currently loaded in memory at this address"><span class="loaded-label">Loaded:</span>${loadedModels.map((model) => `<span class="loaded-chip">${esc(model.id)}</span>`).join("")}</div>`
       : "";
     if (device.models.length) {
       const focusModelId = focus && focus.type === "model" ? focus.id : null;
@@ -2094,7 +2142,8 @@
       const summaryLabel = focusModelId
         ? `Showing ${shown.length} of ${device.models.length} model${device.models.length === 1 ? "" : "s"}`
         : `${device.models.length} model${device.models.length === 1 ? "" : "s"} interrogated`;
-      modelsBlock = `<details class="models"${compact ? "" : " open"}><summary title="Show or hide the model list for this computer">${summaryLabel}</summary><ul class="model-list">${items}</ul></details>`;
+      const detailsOpen = modelDetailsOpen.has(device.key) ? modelDetailsOpen.get(device.key) : !compact;
+      modelsBlock = `<details class="models" data-device-key="${esc(device.key)}"${detailsOpen ? " open" : ""}><summary title="Show or hide the model list for this address">${summaryLabel}</summary><ul class="model-list">${items}</ul></details>`;
     }
 
     const meta = [
@@ -2106,7 +2155,7 @@
     ].filter(Boolean).join(" · ");
 
     return `<article class="node ${esc(device.status)}${vampire ? " vampire" : ""}${device.local ? " local" : ""}${collapsed ? " collapsed" : ""}">
-      <button type="button" class="node-head" data-action="toggle-device" data-key="${esc(device.key)}" title="Click to collapse or expand this computer" aria-expanded="${collapsed ? "false" : "true"}">
+      <button type="button" class="node-head" data-action="toggle-device" data-key="${esc(device.key)}" title="Click to collapse or expand this address" aria-expanded="${collapsed ? "false" : "true"}">
         <div class="node-headline">
           <div class="node-id">${esc(deviceLabel(device))}</div>
           <div class="node-meta">${esc(meta)}</div>
@@ -2120,7 +2169,7 @@
         ${note}
         ${factsBlock}
         ${gatewayBlock}
-        ${loggingPanel(logging)}
+        ${loggingPrivacyBlock(device, logging)}
         ${modelsBlock}
         ${corsHelp}
       </div>
@@ -2592,8 +2641,8 @@
     }
   }
 
-  // Discover this machine's own LAN IPs so its loopback aliases and LAN address
-  // all collapse into a single "This computer" device.
+  // Discover local LAN IPs so loopback aliases and the LAN address
+  // all collapse into a single local IP device.
   function detectLocalIps() {
     try {
       const pc = new RTCPeerConnection({ iceServers: [] });
@@ -2668,6 +2717,13 @@
       renderResults();
       return;
     }
+    if (action === "toggle-privacy") {
+      const key = button.dataset.key;
+      if (visiblePrivacyDevices.has(key)) visiblePrivacyDevices.delete(key);
+      else visiblePrivacyDevices.add(key);
+      renderResults();
+      return;
+    }
     if (action === "collapse-sidebar") {
       els.workspace.classList.add("nav-collapsed");
       return;
@@ -2735,6 +2791,12 @@
     handleDelegatedClick(event);
   }
 
+  function handleDetailsToggle(event) {
+    const details = event.target;
+    if (!(details instanceof HTMLDetailsElement) || !details.matches("details.models[data-device-key]")) return;
+    modelDetailsOpen.set(details.dataset.deviceKey, details.open);
+  }
+
   function bindEvents() {
     els.scanBtn.addEventListener("click", () => { if (abort) stopScan(); else startScan(); });
     els.monitorBtn.addEventListener("click", toggleMonitor);
@@ -2760,6 +2822,7 @@
       if (event.key === "Escape") hideExportMenu();
     });
     document.addEventListener("keydown", handleDelegatedKeydown);
+    document.addEventListener("toggle", handleDetailsToggle, true);
     for (const input of [els.subnet, els.rangeStart, els.rangeEnd, els.ports, els.timeout, els.concurrency, els.interval, els.manual, els.includeLocalhost, els.huntVampires]) {
       input.addEventListener("input", () => { updateTargetPreview(); saveSettings(); });
       input.addEventListener("change", () => { updateTargetPreview(); saveSettings(); });
