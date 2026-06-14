@@ -142,7 +142,7 @@ async def proxy_request_with_body(
     upstream_request = client.build_request(
         request.method,
         url,
-        params=request.query_params.multi_items(),
+        params=tuple(request.query_params.multi_items()),
         headers=headers,
         content=body,
     )
