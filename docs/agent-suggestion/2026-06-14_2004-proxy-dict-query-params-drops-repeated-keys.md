@@ -117,4 +117,6 @@
 - **Effort & risk:** ~1 line changed in `src/vampire/proxy.py` (plus an optional 1-line mock tweak in `tests/test_phase1.py:87` and ~20 lines for the new test). One source file touched. Fully backward compatible: single-value queries serialize identically; only the previously-lost duplicate values are now correctly forwarded. No API shape change, no new dependency. Risk is negligible — `multi_items()` is a stable Starlette API already relied on elsewhere in the same module.
 
 ---
+- **APPLIED 2026-06-14:** Set to Taken and implemented by forwarding `request.query_params.multi_items()` through the proxy, with regression coverage for repeated query keys.
+
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · input ~285k tok · output ~10k tok · est. cost ~$5.03 · run started 06:00 finished 06:05. _(Estimated: summed `in=`/`out=` for this run's API calls from agent.log; Opus pricing $15/1M in, $75/1M out.)_

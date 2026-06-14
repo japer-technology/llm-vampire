@@ -85,6 +85,7 @@ def _mock_lmstudio() -> FastAPI:
             {
                 "path": path,
                 "query": dict(request.query_params),
+                "query_pairs": list(request.query_params.multi_items()),
                 "x_client_marker": request.headers.get("x-client-marker"),
                 "x_vampire_route": request.headers.get("x-vampire-route"),
             }
@@ -242,6 +243,13 @@ def test_catch_all_preserves_query_and_end_to_end_headers(client: TestClient) ->
     assert body["query"] == {"alpha": "one", "beta": "two"}
     assert body["x_client_marker"] == "kept"
     assert body["x_vampire_route"] == "future-control"
+
+
+def test_proxy_preserves_repeated_query_parameters(client: TestClient) -> None:
+    resp = client.get("/v1/echo/q?stop=a&stop=b&single=x")
+
+    assert resp.status_code == 200
+    assert resp.json()["query_pairs"] == [["stop", "a"], ["stop", "b"], ["single", "x"]]
 
 
 def test_proxy_strips_gateway_credentials_from_upstream(
