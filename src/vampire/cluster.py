@@ -23,6 +23,10 @@ _MAX_SCAN_CANDIDATES = 1024
 _DISCOVERY_CONCURRENCY = 16
 
 
+class DiscoveryInputError(ValueError):
+    """Raised when a discovery request contains invalid input."""
+
+
 def _now() -> str:
     """Return an ISO-8601 UTC timestamp for node health metadata."""
     return datetime.now(timezone.utc).isoformat()
@@ -150,14 +154,19 @@ def _coerce_model_cards(payload: object) -> list[ModelCard]:
     return cards
 
 
-async def refresh_node(node: Node, *, timeout_ms: int | None = None) -> Node:
+async def refresh_node(
+    node: Node,
+    *,
+    timeout_ms: int | None = None,
+    client: httpx.AsyncClient | None = None,
+) -> Node:
     """Interrogate a node's ``/v1/models`` endpoint and update health metadata."""
     timeout = httpx.Timeout((timeout_ms or 1500) / 1000)
     base_url = node.lmstudio_base_url.rstrip("/")
-    client = proxy.build_async_client()
+    http_client = client or proxy.build_async_client()
     started = perf_counter()
     try:
-        response = await client.get(f"{base_url}/v1/models", timeout=timeout)
+        response = await http_client.get(f"{base_url}/v1/models", timeout=timeout)
         latency_ms = round((perf_counter() - started) * 1000, 3)
         response.raise_for_status()
         updated = node.model_copy(
@@ -183,17 +192,27 @@ async def refresh_node(node: Node, *, timeout_ms: int | None = None) -> Node:
             }
         )
     finally:
-        await client.aclose()
+        if client is None:
+            await http_client.aclose()
 
-    registry.add(updated)
+    if registry.get(updated.id) is not None:
+        registry.add(updated)
     return updated
 
 
-async def refresh_registered_nodes(*, timeout_ms: int | None = None) -> list[Node]:
+async def refresh_registered_nodes(
+    *, timeout_ms: int | None = None, client: httpx.AsyncClient | None = None
+) -> list[Node]:
     """Refresh every registered node and return the updated snapshot."""
     nodes = registry.list()
     if not nodes:
         return []
+    if client is not None:
+        return list(
+            await asyncio.gather(
+                *(refresh_node(node, timeout_ms=timeout_ms, client=client) for node in nodes)
+            )
+        )
     return list(
         await asyncio.gather(*(refresh_node(node, timeout_ms=timeout_ms) for node in nodes))
     )
@@ -262,7 +281,10 @@ def _candidate_urls(request: DiscoveryRequest) -> list[str]:
 
     if "lan_scan" in methods:
         for subnet in request.subnets[:_MAX_SCAN_SUBNETS]:
-            network = ipaddress.ip_network(subnet, strict=False)
+            try:
+                network = ipaddress.ip_network(subnet, strict=False)
+            except ValueError as exc:
+                raise DiscoveryInputError(f"invalid subnet {subnet!r}: {exc}") from exc
             if not (network.is_private or network.is_loopback):
                 continue
             for index, host in enumerate(network.hosts()):
@@ -276,7 +298,9 @@ def _candidate_urls(request: DiscoveryRequest) -> list[str]:
     return _dedupe_local_access_urls(list(dict.fromkeys(urls)))[:_MAX_SCAN_CANDIDATES]
 
 
-async def discover_nodes(request: DiscoveryRequest) -> list[Node]:
+async def discover_nodes(
+    request: DiscoveryRequest, *, client: httpx.AsyncClient | None = None
+) -> list[Node]:
     """Perform Phase 2 static/dev-subnet discovery and register online nodes."""
     semaphore = asyncio.Semaphore(_DISCOVERY_CONCURRENCY)
 
@@ -288,8 +312,13 @@ async def discover_nodes(request: DiscoveryRequest) -> list[Node]:
             lmstudio_base_url=base_url,
             trusted=not request.trusted_only,
         )
+        if current is None:
+            registry.add(node)
         async with semaphore:
-            refreshed = await refresh_node(node, timeout_ms=request.timeout_ms)
+            if client is not None:
+                refreshed = await refresh_node(node, timeout_ms=request.timeout_ms, client=client)
+            else:
+                refreshed = await refresh_node(node, timeout_ms=request.timeout_ms)
         if refreshed.status == "online" and (refreshed.trusted or not request.trusted_only):
             return refreshed
         return None

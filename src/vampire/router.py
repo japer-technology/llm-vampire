@@ -8,6 +8,7 @@ least_latency, model_affinity, trusted_only, plus fallback/failover.
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 
 from vampire.models import Node, RoutePolicy, RouteTarget
 from vampire.registry import NodeRegistry
@@ -21,6 +22,14 @@ MVP_STRATEGIES = (
 )
 
 
+@dataclass(frozen=True)
+class Selection:
+    """Selected route target and the strategy actually applied."""
+
+    target: RouteTarget
+    strategy: str
+
+
 class Router:
     """Choose node/model targets for Phase 3 virtual-model routing."""
 
@@ -31,7 +40,7 @@ class Router:
 
     def select(
         self, policy: RoutePolicy, *, requested_model: str | None = None
-    ) -> RouteTarget | None:
+    ) -> Selection | None:
         """Return a node/model pair selected by the policy's MVP strategy."""
         strategy = policy.strategy
         if strategy not in MVP_STRATEGIES:
@@ -45,14 +54,19 @@ class Router:
             return None
 
         if strategy == "least_busy":
-            return min(candidates, key=lambda target: self._busy_score(self._node(target)))
+            target = min(candidates, key=lambda target: self._busy_score(self._node(target)))
+            return Selection(target=target, strategy=strategy)
         if strategy == "least_latency":
-            return min(candidates, key=lambda target: self._latency_score(self._node(target)))
+            target = min(candidates, key=lambda target: self._latency_score(self._node(target)))
+            return Selection(target=target, strategy=strategy)
         if strategy == "model_affinity":
-            return self._model_affinity(candidates, requested_model) or self._round_robin(
-                candidates, policy.id
+            affinity_target = self._model_affinity(candidates, requested_model)
+            if affinity_target is not None:
+                return Selection(target=affinity_target, strategy=strategy)
+            return Selection(
+                target=self._round_robin(candidates, policy.id), strategy="round_robin"
             )
-        return self._round_robin(candidates, policy.id)
+        return Selection(target=self._round_robin(candidates, policy.id), strategy=strategy)
 
     def default_policy(
         self,

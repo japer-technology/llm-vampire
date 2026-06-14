@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 import vampire.proxy as proxy
 from vampire.app import create_app
 from vampire.models import ModelCard, Node, RoutePolicy, RouteTarget
-from vampire.registry import registry
-from vampire.router import Router
+from vampire.registry import registry, route_registry
+from vampire.router import Router, Selection
 
 
 def _mock_cluster() -> FastAPI:
@@ -91,10 +91,10 @@ def _online_node(
     )
 
 
-def _selected_node(target: RouteTarget | None) -> str:
+def _selected_node(selection: Selection | None) -> str:
     """Assert a route was selected and return its node id."""
-    assert target is not None
-    return target.node
+    assert selection is not None
+    return selection.target.node
 
 
 def test_route_policy_crud(client: TestClient) -> None:
@@ -289,9 +289,9 @@ def test_route_target_removed_before_dispatch_returns_structured_503(
 
     assert resp.status_code == 503
     assert resp.json()["error"] == {
-        "message": "Route target node-a went offline before dispatch.",
+        "message": "Selected route target node node-a is no longer registered.",
         "type": "vampire_routing_error",
-        "code": "route_target_unavailable",
+        "code": "route_target_removed",
     }
 
 
@@ -349,3 +349,69 @@ def test_route_fallback_uses_secondary_policy_when_primary_has_no_online_targets
     assert resp.status_code == 200
     assert resp.json()["node"] == "node-b"
     assert resp.headers["x-vampire-route"] == "route-backup"
+
+
+def test_models_endpoint_survives_virtual_physical_id_collision(client: TestClient) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+    resp = client.post(
+        "/vampire/v1/routes",
+        json={
+            "id": "collide",
+            "virtual_model": "node-a-model",
+            "targets": [{"node": "node-a", "model": "node-a-model"}],
+            "strategy": "round_robin",
+        },
+    )
+    assert resp.status_code == 409
+
+    registry_route = RoutePolicy(
+        id="existing-collide",
+        virtual_model="node-a-model",
+        targets=[RouteTarget(node="node-a", model="node-a-model")],
+    )
+    route_registry.add(registry_route)
+
+    models = client.get("/v1/models")
+
+    assert models.status_code == 200
+    ids = [card["id"] for card in models.json()["data"]]
+    assert len(ids) == len(set(ids))
+    card = next(card for card in models.json()["data"] if card["id"] == "node-a-model")
+    assert card["owned_by"] == "vampire"
+
+
+def test_unknown_strategy_override_is_rejected_not_silently_downgraded(
+    client: TestClient,
+) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"X-Vampire-Mode": "route", "X-Vampire-Strategy": "weighted_round_robin"},
+        json={"model": "node-a-model", "messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "unsupported_strategy"
+
+
+def test_reported_strategy_is_the_effective_one(client: TestClient) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"X-Vampire-Mode": "route", "X-Vampire-Strategy": "model_affinity"},
+        json={
+            "model": "vampire:auto",
+            "messages": [{"role": "user", "content": "hello"}],
+        },
+    )
+
+    assert resp.status_code == 200
+    assert resp.headers["x-vampire-strategy"] == "round_robin"
