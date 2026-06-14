@@ -57,6 +57,13 @@ def build_async_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=_TIMEOUT)
 
 
+def _request_client(request: Request) -> tuple[httpx.AsyncClient, bool]:
+    client = getattr(request.app.state, "http_client", None)
+    if isinstance(client, httpx.AsyncClient):
+        return client, False
+    return build_async_client(), True
+
+
 def _filter_request_headers(headers: httpx.Headers) -> list[tuple[str, str]]:
     """Return end-to-end request headers safe to forward upstream.
 
@@ -124,7 +131,7 @@ async def proxy_request_with_body(
     body = body if body is not None else await request.body()
     headers = _filter_request_headers(httpx.Headers(request.headers.raw))
 
-    client = build_async_client()
+    client, should_close_client = _request_client(request)
     upstream_request = client.build_request(
         request.method,
         url,
@@ -135,7 +142,8 @@ async def proxy_request_with_body(
     try:
         upstream = await client.send(upstream_request, stream=True)
     except httpx.RequestError as exc:
-        await client.aclose()
+        if should_close_client:
+            await client.aclose()
         # Log the underlying cause server-side; do not leak internals to clients.
         logger.warning("Downstream LM Studio node %s unreachable: %r", base_url, exc)
         response = _upstream_error(f"Could not reach downstream LM Studio node at {base_url}.")
@@ -150,7 +158,8 @@ async def proxy_request_with_body(
                 yield chunk
         finally:
             await upstream.aclose()
-            await client.aclose()
+            if should_close_client:
+                await client.aclose()
 
     filtered_headers = dict(_filter_response_headers(upstream.headers))
     if response_headers:

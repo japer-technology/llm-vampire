@@ -129,6 +129,27 @@ def test_models_passthrough(client: TestClient) -> None:
     assert body["data"][0]["id"] == "local-model"
 
 
+def test_proxy_reuses_lifespan_async_client() -> None:
+    mock = _mock_lmstudio()
+    original = proxy.build_async_client
+    built_clients: list[httpx.AsyncClient] = []
+
+    def _build() -> httpx.AsyncClient:
+        client = httpx.AsyncClient(transport=httpx.ASGITransport(app=mock))
+        built_clients.append(client)
+        return client
+
+    proxy.build_async_client = _build
+    try:
+        with TestClient(create_app()) as client:
+            assert client.get("/v1/models").status_code == 200
+            assert client.get("/v1/models").status_code == 200
+        assert len(built_clients) == 1
+        assert built_clients[0].is_closed
+    finally:
+        proxy.build_async_client = original
+
+
 def test_chat_completion_passthrough(client: TestClient) -> None:
     resp = client.post(
         "/v1/chat/completions",
