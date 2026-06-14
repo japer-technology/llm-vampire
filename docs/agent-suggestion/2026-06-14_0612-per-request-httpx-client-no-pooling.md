@@ -2,6 +2,8 @@
 
 - **Severity:** High — on the gateway's single hottest path (`/v1/chat/completions`), it forces a brand-new TCP (and TLS, for `https` nodes) handshake per request, inflating tail latency and exhausting ephemeral ports/file descriptors under concurrent load; it is invisible in the localhost test suite, so it ships silently.
 - **Category:** performance (with a secondary resource-leak / FD-exhaustion dimension).
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented a lifespan-owned pooled `httpx.AsyncClient` and shared it through proxy and node-refresh paths when request state is available.
 - **Summary:** `vampire.proxy.proxy_request_with_body` calls `build_async_client()` to create a *new* `httpx.AsyncClient` for every single request and `aclose()`s it after the response stream drains. httpx connection pooling and keep-alive are per-client, so a per-request client throws away the pool every time — each forwarded inference request pays a fresh connect (and TLS negotiation) to the downstream LM Studio node, and bursts of concurrent requests open an unbounded number of simultaneous client objects/sockets. The identical anti-pattern is duplicated in `cluster.refresh_node`, which `asyncio.gather`s one client-per-node on every `/v1/models` and `/vampire/v1/models` call.
 
 - **Location:**

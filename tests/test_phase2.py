@@ -163,6 +163,40 @@ def test_discover_probes_concurrently(monkeypatch: pytest.MonkeyPatch, client: T
     assert elapsed < 1.0
 
 
+def test_discover_rejects_malformed_subnet(client: TestClient) -> None:
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={"methods": ["lan_scan"], "subnets": ["not-a-cidr"]},
+    )
+
+    assert resp.status_code == 400
+    assert "invalid subnet" in resp.json()["detail"]
+
+
+def test_refresh_node_does_not_resurrect_deregistered_node(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    node = Node(id="node-z", lmstudio_base_url="http://node-z:1234")
+    from vampire.registry import registry
+
+    registry.add(node)
+
+    class _DeletingTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            registry.remove("node-z")
+            return httpx.Response(200, json={"object": "list", "data": []})
+
+    monkeypatch.setattr(
+        proxy,
+        "build_async_client",
+        lambda: httpx.AsyncClient(transport=_DeletingTransport()),
+    )
+
+    asyncio.run(cluster.refresh_node(node))
+
+    assert registry.get("node-z") is None
+
+
 def test_control_api_auth_token_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
     token = "test-token"
     scheme = "Bear" + "er"

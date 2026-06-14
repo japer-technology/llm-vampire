@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
@@ -20,7 +21,7 @@ async def require_control_auth(
         return
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise _auth_error()
-    if credentials.credentials != token:
+    if not hmac.compare_digest(credentials.credentials, token):
         raise _auth_error()
 
 

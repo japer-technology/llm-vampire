@@ -2,6 +2,8 @@
 
 - **Severity:** High — the *privileged* control surface (`/vampire/v1/*`) compares the bearer token with Python's `!=`, a length-dependent, short-circuiting comparison that is exploitable as a timing side channel; the very same project already knows the right answer (`hmac.compare_digest`) and uses it one module over, so this is an inconsistent, security-regressing gap on the more dangerous surface.
 - **Category:** security
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented constant-time control API token comparison with `hmac.compare_digest`.
 - **Summary:** `vampire/api/_auth.py::require_control_auth` authenticates control-plane requests with `credentials.credentials != token`, a non-constant-time string comparison, while `vampire/auth.py::require_auth` (the OpenAI proxy surface) correctly uses `hmac.compare_digest`. The control API can create/delete nodes, rewrite routes, toggle sharing, and trigger LAN discovery, so it is the *higher*-value target, yet it is the one guarded by the leaky comparison. An attacker who can measure response latency can recover the token byte-by-byte and then take over cluster orchestration.
 - **Location:**
   - `src/vampire/api/_auth.py:23` (the offending comparison).

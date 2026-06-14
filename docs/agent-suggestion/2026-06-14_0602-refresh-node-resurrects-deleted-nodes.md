@@ -2,6 +2,8 @@
 
 - **Severity:** High — a successful `DELETE /vampire/v1/nodes/{id}` (HTTP 200, `{"status":"removed"}`) can be silently undone by an in-flight health refresh, re-registering a node the owner explicitly revoked. On a control plane whose entire job is to gate which LM Studio backends receive traffic, an "un-deletable" node is a trust/security and correctness failure, not a cosmetic one.
 - **Category:** concurrency (async data-integrity race) — with a secondary error-handling/contract violation against the delete API.
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented guarded refresh persistence and discovery pre-registration so in-flight probes cannot resurrect deleted nodes.
 
 - **Summary:** `cluster.refresh_node` finishes by calling `registry.add(updated)` unconditionally (`cluster.py:182`). Because the function `await`s a network probe in the middle, a concurrent `DELETE /vampire/v1/nodes/{id}` (or any `registry.remove`) that lands during that await is overwritten when `refresh_node` resumes and re-inserts the stale node copy. The deleted node reappears in the registry with pre-deletion metadata, the operator's delete is reverted with no error, and routing/`/v1/models` can subsequently dispatch traffic to a backend the owner removed.
 

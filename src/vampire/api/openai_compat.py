@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
@@ -21,23 +22,28 @@ from vampire.cluster import aggregate_model_cards, refresh_registered_nodes
 from vampire.models import ModelCard, ModelListResponse, RoutePolicy
 from vampire.proxy import proxy_request, proxy_request_with_body
 from vampire.registry import registry, route_registry
-from vampire.router import Router
+from vampire.router import MVP_STRATEGIES, Router
 
 router = APIRouter(prefix="/v1", tags=["openai-compatible"])
 _router = Router(registry)
+
+
+class StrategyError(ValueError):
+    """Raised when a request asks for an unsupported routing strategy."""
 
 
 @router.get("/models")
 async def list_models(request: Request) -> Response:
     """Return registered-node model aggregation, falling back to Phase 1 passthrough."""
     if registry.list():
-        nodes = await refresh_registered_nodes()
+        nodes = await refresh_registered_nodes(client=_request_http_client(request))
         physical = aggregate_model_cards(nodes).data
         virtual_ids = {"vampire:auto"}
         virtual_ids.update(route.virtual_model for route in route_registry.list())
         virtual = [
             ModelCard(id=virtual_id, owned_by="vampire") for virtual_id in sorted(virtual_ids)
         ]
+        physical = [card for card in physical if card.id not in virtual_ids]
         return JSONResponse(ModelListResponse(data=[*virtual, *physical]).model_dump())
     return await proxy_request(request)
 
@@ -92,19 +98,31 @@ async def _route_or_proxy(request: Request) -> Response:
     if not isinstance(model, str) or not _is_routing_request(request, payload, model):
         return await proxy_request_with_body(request, body=body)
 
-    strategy = _strategy_override(request, payload)
+    try:
+        strategy = _strategy_override(request, payload)
+    except StrategyError:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "message": "Unsupported routing strategy.",
+                    "type": "vampire_routing_error",
+                    "code": "unsupported_strategy",
+                }
+            },
+        )
     policy = _route_policy(request, payload, model, strategy)
-    target = _router.select(policy, requested_model=model)
-    if target is None and policy.fallback:
+    selection = _router.select(policy, requested_model=model)
+    if selection is None and policy.fallback:
         fallback = route_registry.get_by_virtual_model(policy.fallback) or _router.default_policy(
             policy.fallback,
             strategy=strategy or policy.strategy,
             requested_model=policy.fallback,
         )
-        target = _router.select(fallback, requested_model=policy.fallback)
+        selection = _router.select(fallback, requested_model=policy.fallback)
         policy = fallback
 
-    if target is None:
+    if selection is None:
         return JSONResponse(
             status_code=503,
             content={
@@ -116,15 +134,16 @@ async def _route_or_proxy(request: Request) -> Response:
             },
         )
 
+    target = selection.target
     node = registry.get(target.node)
     if node is None:
         return JSONResponse(
             status_code=503,
             content={
                 "error": {
-                    "message": f"Route target {target.node} went offline before dispatch.",
+                    "message": f"Selected route target node {target.node} is no longer registered.",
                     "type": "vampire_routing_error",
-                    "code": "route_target_unavailable",
+                    "code": "route_target_removed",
                 }
             },
         )
@@ -138,7 +157,7 @@ async def _route_or_proxy(request: Request) -> Response:
         body=json.dumps(routed_payload).encode("utf-8"),
         response_headers={
             "X-Vampire-Route": policy.id,
-            "X-Vampire-Strategy": policy.strategy,
+            "X-Vampire-Strategy": selection.strategy,
             "X-Vampire-Node": target.node,
             "X-Vampire-Model": target.model,
         },
@@ -171,7 +190,11 @@ def _strategy_override(request: Request, payload: dict[str, Any]) -> str | None:
     raw_routing = vampire.get("routing")
     routing = raw_routing if isinstance(raw_routing, dict) else {}
     strategy = request.headers.get("X-Vampire-Strategy") or routing.get("strategy")
-    return strategy if isinstance(strategy, str) else None
+    if not isinstance(strategy, str):
+        return None
+    if strategy not in MVP_STRATEGIES:
+        raise StrategyError(f"unsupported routing strategy {strategy!r}")
+    return strategy
 
 
 def _route_policy(
@@ -198,3 +221,8 @@ def _vampire_object(payload: dict[str, Any]) -> dict[str, Any]:
     """Return the request's opt-in Vampire control object when present."""
     raw = payload.get("vampire")
     return raw if isinstance(raw, dict) else {}
+
+
+def _request_http_client(request: Request) -> httpx.AsyncClient | None:
+    client = getattr(request.app.state, "http_client", None)
+    return client if isinstance(client, httpx.AsyncClient) else None

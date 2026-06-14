@@ -46,6 +46,7 @@ _DROP_REQUEST_HEADERS = _HOP_BY_HOP_HEADERS | {"host", "content-length"}
 # No read/write timeout: model generations can stream for a long time. A short
 # connect timeout still surfaces unreachable nodes quickly as an upstream error.
 _TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=None, pool=None)
+_LIMITS = httpx.Limits(max_connections=200, max_keepalive_connections=50)
 
 
 def build_async_client() -> httpx.AsyncClient:
@@ -54,7 +55,7 @@ def build_async_client() -> httpx.AsyncClient:
     Exposed as a seam so tests can inject a mock transport (a stand-in LM Studio
     server) without opening real network sockets.
     """
-    return httpx.AsyncClient(timeout=_TIMEOUT)
+    return httpx.AsyncClient(timeout=_TIMEOUT, limits=_LIMITS)
 
 
 def _request_client(request: Request) -> tuple[httpx.AsyncClient, bool]:
