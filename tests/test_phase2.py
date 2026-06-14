@@ -351,3 +351,72 @@ def test_share_control_endpoint_updates_required_cli_command_state(client: TestC
     assert updated["mode"] == "family"
     assert updated["enabled"] is True
     assert updated["model"] == "family-model"
+
+
+def test_discovery_does_not_auto_trust_nodes() -> None:
+    """Default discovery (trusted_only=False) must NOT auto-grant trust."""
+    from vampire.models import DiscoveryRequest
+    from vampire.registry import registry as node_registry
+
+    node_registry.clear()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"object": "list", "data": [{"id": "m"}]})
+
+    transport = httpx.MockTransport(handler)
+
+    async def _run() -> list[Node]:
+        async with httpx.AsyncClient(transport=transport) as http:
+            return await cluster.discover_nodes(
+                DiscoveryRequest(methods=["static"], base_urls=["http://10.0.0.9:1234"]),
+                client=http,
+            )
+
+    nodes = asyncio.run(_run())
+
+    assert nodes, "an online node should be discovered"
+    assert all(node.trusted is False for node in nodes), (
+        "discovery must never auto-grant trust; default is owner-deny"
+    )
+    stored = node_registry.get("node-10-0-0-9-1234")
+    assert stored is not None
+    assert stored.trusted is False
+
+
+def test_trusted_only_discovery_returns_already_trusted_nodes() -> None:
+    """trusted_only=True filters results to already-trusted nodes (not a grant)."""
+    from vampire.models import DiscoveryRequest
+    from vampire.registry import registry as node_registry
+
+    node_registry.clear()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"object": "list", "data": [{"id": "m"}]})
+
+    transport = httpx.MockTransport(handler)
+
+    async def _run() -> list[Node]:
+        async with httpx.AsyncClient(transport=transport) as http:
+            # First pass: discover an untrusted node (recorded, not returned under trusted_only).
+            await cluster.discover_nodes(
+                DiscoveryRequest(methods=["static"], base_urls=["http://10.0.0.9:1234"]),
+                client=http,
+            )
+            # Owner grants trust out of band.
+            node = node_registry.get("node-10-0-0-9-1234")
+            assert node is not None
+            node_registry.add(node.model_copy(update={"trusted": True}))
+            # trusted_only discovery now returns the already-trusted node.
+            return await cluster.discover_nodes(
+                DiscoveryRequest(
+                    methods=["static"],
+                    base_urls=["http://10.0.0.9:1234"],
+                    trusted_only=True,
+                ),
+                client=http,
+            )
+
+    nodes = asyncio.run(_run())
+
+    assert [n.id for n in nodes] == ["node-10-0-0-9-1234"]
+    assert nodes[0].trusted is True
