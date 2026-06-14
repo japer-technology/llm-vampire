@@ -262,7 +262,7 @@
 
   .status-strip {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 0.7rem;
     padding: 1rem 1rem 0;
   }
@@ -457,6 +457,10 @@
   .badge.ports::before { display: none; }
   .badge.flavor { color: var(--fog); background: rgba(255, 255, 255, 0.07); }
   .badge.flavor::before { display: none; }
+  .badge.logging-off { color: var(--ok); background: rgba(54, 211, 153, 0.13); }
+  .badge.logging-on { color: #ff7d7d; background: rgba(255, 100, 100, 0.14); }
+  .badge.logging-partial { color: var(--warn); background: rgba(245, 181, 74, 0.13); }
+  .badge.logging-unknown { color: var(--fog); background: rgba(255, 255, 255, 0.07); }
   .surfaces, .node-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
   .surface { font-family: var(--mono); font-size: 0.7rem; padding: 0.22rem 0.5rem; border-radius: 7px; background: rgba(0,0,0,0.24); border: 1px solid var(--line-soft); color: var(--fog); }
   .surface.accent { color: var(--vamp-hot); border-color: rgba(172, 67, 217, 0.4); background: rgba(172, 67, 217, 0.1); }
@@ -485,6 +489,18 @@
   .gateway { margin-top: 0.75rem; border: 1px solid rgba(172, 67, 217, 0.32); background: rgba(172, 67, 217, 0.08); border-radius: 12px; padding: 0.65rem 0.7rem; }
   .gateway-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--vamp-hot); font-weight: 800; margin-bottom: 0.45rem; }
   .gateway-hint { margin-top: 0.5rem; font-size: 0.68rem; color: var(--mute); font-style: italic; }
+  .privacy-panel { margin-top: 0.75rem; border: 1px solid var(--line-soft); background: rgba(0,0,0,0.18); border-radius: 12px; padding: 0.65rem 0.7rem; }
+  .privacy-panel.ok { border-color: rgba(54, 211, 153, 0.38); background: rgba(54, 211, 153, 0.08); }
+  .privacy-panel.warning { border-color: rgba(245, 181, 74, 0.42); background: rgba(245, 181, 74, 0.08); }
+  .privacy-panel.danger { border-color: rgba(255, 100, 100, 0.44); background: rgba(255, 100, 100, 0.08); }
+  .privacy-title { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.45rem; }
+  .privacy-title strong { color: var(--bone); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; }
+  .privacy-status { font-family: var(--mono); font-size: 0.68rem; color: var(--fog); }
+  .privacy-detail { color: var(--fog); font-size: 0.74rem; line-height: 1.45; }
+  .privacy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.4rem; margin-top: 0.55rem; }
+  .privacy-item { border: 1px solid var(--line-soft); border-radius: 9px; background: rgba(0,0,0,0.18); padding: 0.42rem 0.5rem; min-width: 0; }
+  .privacy-item b { display: block; color: var(--bone); font-family: var(--mono); font-size: 0.78rem; overflow-wrap: anywhere; }
+  .privacy-item span { color: var(--mute); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.07em; }
   .models { margin-top: 0.85rem; border-top: 1px solid var(--line-soft); padding-top: 0.75rem; }
   .models summary { cursor: pointer; font-size: 0.8rem; color: var(--fog); }
   .model-list { list-style: none; margin-top: 0.62rem; display: grid; gap: 0.36rem; }
@@ -509,6 +525,7 @@
   .results.compact .node-body { margin-top: 0.5rem; }
   .results.compact .facts,
   .results.compact .gateway,
+  .results.compact .privacy-panel,
   .results.compact .node-note,
   .results.compact .node-actions,
   .results.compact .device-aliases { display: none; }
@@ -713,6 +730,18 @@
         </section>
 
         <section class="panel">
+          <h2>Logging trust</h2>
+          <div class="hint">
+            <strong>About logging status.</strong> The scanner reads logging/privacy signals from exposed response headers and Vampire status bodies when they exist. LM Studio's model APIs do not always advertise server logging settings, so <strong>logging unknown</strong> means owner verification is required, not that logging is definitely on.
+            <ul>
+              <li>Disable <strong>Log Prompts and Responses</strong> and verbose developer/server logging in LM Studio.</li>
+              <li>Avoid <code>lms log stream</code> in sensitive environments.</li>
+              <li>Use <code>LMSTUDIO-SETUP.md</code> as the owner attestation checklist.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="panel">
           <h2>Saved scans</h2>
           <div class="history-list" id="historyList"></div>
         </section>
@@ -802,6 +831,197 @@
   // of them (or "vampire" in the Server banner) identifies a gateway even when
   // /vampire/v1/status is blocked by CORS.
   const VAMPIRE_HEADER_PREFIX = "x-vampire-";
+  const LOGGING_HEADERS = [
+    ["prompt_response", "x-lmstudio-log-prompts-and-responses"],
+    ["prompt_response", "x-lmstudio-log-prompts"],
+    ["prompt_response", "x-lm-studio-log-prompts-and-responses"],
+    ["prompt_response", "x-lm-studio-log-prompts"],
+    ["prompt_response", "x-vampire-lmstudio-log-prompts-and-responses"],
+    ["prompt_response", "x-vampire-lmstudio-log-prompts"],
+    ["verbose", "x-lmstudio-verbose-logging"],
+    ["verbose", "x-lm-studio-verbose-logging"],
+    ["verbose", "x-vampire-lmstudio-verbose-logging"],
+    ["status", "x-lmstudio-logging-status"],
+    ["status", "x-lm-studio-logging-status"],
+    ["status", "x-vampire-logging-status"],
+  ];
+  const LOGGING_OFF_VALUES = new Set(["0", "false", "off", "disabled", "disable", "no", "none", "minimal", "minimized", "minimised"]);
+  const LOGGING_ON_VALUES = new Set(["1", "true", "on", "enabled", "enable", "yes", "full", "verbose"]);
+
+  function parseLoggingFlag(value) {
+    if (value === true || value === false) return value;
+    if (value === 0 || value === "0") return false;
+    if (value === 1 || value === "1") return true;
+    const raw = String(value ?? "").trim().toLowerCase();
+    if (!raw) return null;
+    if (LOGGING_OFF_VALUES.has(raw)) return false;
+    if (LOGGING_ON_VALUES.has(raw)) return true;
+    if (/disabled|off|minimi[sz]ed|none/.test(raw)) return false;
+    if (/enabled|on|verbose|full/.test(raw)) return true;
+    return null;
+  }
+
+  function loggingLevel(promptResponse, verbose, statusText, hasSignal) {
+    const statusFlag = parseLoggingFlag(statusText);
+    if (promptResponse === true || verbose === true || statusFlag === true) return "on";
+    if (promptResponse === false && verbose === false) return "off";
+    if (statusFlag === false && promptResponse !== true && verbose !== true) return "off";
+    if (promptResponse === false || verbose === false) return "partial";
+    return hasSignal ? "partial" : "unknown";
+  }
+
+  function loggingSummary(level) {
+    if (level === "off") return "logging off";
+    if (level === "on") return "logging on";
+    if (level === "partial") return "logging partial";
+    return "logging unknown";
+  }
+
+  function loggingStatusFromParts(parts) {
+    const promptResponse = parts.prompt_response ?? null;
+    const verbose = parts.verbose ?? null;
+    const statusText = parts.status || "";
+    const hasSignal = Boolean(parts.source || Object.keys(parts.raw || {}).length || statusText);
+    const level = loggingLevel(promptResponse, verbose, statusText, hasSignal);
+    return {
+      level,
+      label: loggingSummary(level),
+      prompt_response: promptResponse,
+      verbose,
+      source: parts.source || "advertised status",
+      detail: parts.detail || "",
+      raw: parts.raw || {},
+    };
+  }
+
+  function loggingFromHeaders(headers) {
+    const parts = { prompt_response: null, verbose: null, status: "", source: "response headers", raw: {} };
+    try {
+      for (const [field, header] of LOGGING_HEADERS) {
+        const value = headers.get(header);
+        if (value === null) continue;
+        parts.raw[header] = value;
+        if (field === "status") parts.status = value;
+        else parts[field] = parseLoggingFlag(value);
+      }
+    } catch {
+      return null;
+    }
+    if (!Object.keys(parts.raw).length) return null;
+    return loggingStatusFromParts(parts);
+  }
+
+  function findValueDeep(value, keys, depth = 0) {
+    if (!value || typeof value !== "object" || depth > 4) return undefined;
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) return value[key];
+    }
+    for (const child of Object.values(value)) {
+      const found = findValueDeep(child, keys, depth + 1);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+
+  function loggingFromStatusBody(body) {
+    if (!body || typeof body !== "object") return null;
+    const promptValue = findValueDeep(body, [
+      "log_prompts_and_responses",
+      "logPromptsAndResponses",
+      "prompt_response_logging",
+      "promptResponseLogging",
+      "prompts_and_responses",
+      "promptsAndResponses",
+      "log_prompts",
+      "logPrompts",
+    ]);
+    const verboseValue = findValueDeep(body, [
+      "verbose_logging",
+      "verboseLogging",
+      "developer_verbose_logging",
+      "server_verbose_logging",
+      "verbose",
+    ]);
+    const statusValue = findValueDeep(body, [
+      "logging_status",
+      "loggingStatus",
+      "log_status",
+      "logStatus",
+    ]);
+    const hasSignal = promptValue !== undefined || verboseValue !== undefined || statusValue !== undefined;
+    if (!hasSignal) return null;
+    return loggingStatusFromParts({
+      prompt_response: parseLoggingFlag(promptValue),
+      verbose: parseLoggingFlag(verboseValue),
+      status: statusValue === undefined ? "" : String(statusValue),
+      source: "status body",
+      raw: {
+        prompt_response: promptValue,
+        verbose: verboseValue,
+        status: statusValue,
+      },
+    });
+  }
+
+  function loggingRank(level) {
+    return level === "on" ? 0 : level === "off" ? 1 : level === "partial" ? 2 : 3;
+  }
+
+  function mergeLoggingStatus(...statuses) {
+    const usable = statuses.filter(Boolean);
+    if (!usable.length) return null;
+    let best = usable[0];
+    for (const status of usable.slice(1)) {
+      if (loggingRank(status.level) < loggingRank(best.level)) best = status;
+    }
+    const sources = [...new Set(usable.map((status) => status.source).filter(Boolean))];
+    return { ...best, source: sources.join(", ") || best.source };
+  }
+
+  function fallbackLoggingStatus(kind) {
+    if (kind === "auth") {
+      return {
+        level: "unknown",
+        label: "logging unknown",
+        prompt_response: null,
+        verbose: null,
+        source: "authentication required",
+        detail: "The server requires a valid token before the scanner can read enough status to inspect logging signals.",
+        raw: {},
+      };
+    }
+    if (kind === "cors") {
+      return {
+        level: "unknown",
+        label: "logging unknown",
+        prompt_response: null,
+        verbose: null,
+        source: "CORS blocked",
+        detail: "The browser reached the server but could not read status headers or bodies. Enable CORS temporarily to verify.",
+        raw: {},
+      };
+    }
+    if (kind === "offline") {
+      return {
+        level: "unknown",
+        label: "logging unknown",
+        prompt_response: null,
+        verbose: null,
+        source: "offline",
+        detail: "The scanner could not reach this target.",
+        raw: {},
+      };
+    }
+    return {
+      level: "unknown",
+      label: "logging unknown",
+      prompt_response: null,
+      verbose: null,
+      source: "not advertised",
+      detail: "LM Studio did not expose server logging settings over the probed HTTP surface. Verify Developer -> Server Settings manually.",
+      raw: {},
+    };
+  }
 
   // Which API dialect answered tells LM Studio nodes apart from generic servers:
   //   /api/...     -> LM Studio's own enhanced REST API (native)
@@ -830,6 +1050,8 @@
         if (key.toLowerCase().startsWith(VAMPIRE_HEADER_PREFIX)) vampireHeaders[key.toLowerCase()] = value;
       });
       if (Object.keys(vampireHeaders).length) identity.vampire_headers = vampireHeaders;
+      const logging = loggingFromHeaders(res.headers);
+      if (logging) identity.logging = logging;
     } catch {
       // Opaque or unreadable headers (no-cors / blocked). Leave identity empty.
     }
@@ -896,6 +1118,7 @@
   const SUMMARY_LABELS = {
     online: "with an LM Studio surface",
     vampires: "with a Vampire gateway",
+    logging: "needing logging verification",
     distinct: "exposing models",
     total: "exposing models",
     loaded: "with a model loaded",
@@ -1095,7 +1318,7 @@
       if (!res.ok) {
         // A gateway can refuse the read yet still reveal itself via headers.
         return headersIndicateVampire(identity)
-          ? { version: "", nodes_total: null, nodes_online: null, instance: "", share: "", identity, headers_only: true }
+          ? { version: "", nodes_total: null, nodes_online: null, instance: "", share: "", identity, logging: identity.logging || null, headers_only: true }
           : null;
       }
       let body;
@@ -1103,6 +1326,7 @@
       if (!body || typeof body !== "object") return null;
       if (body.object !== "vampire.status" && body.version === undefined && body.nodes_total === undefined) return null;
       const share = body.share && typeof body.share === "object" ? body.share.mode : body.share;
+      const logging = mergeLoggingStatus(identity.logging, loggingFromStatusBody(body));
       return {
         version: typeof body.version === "string" ? body.version : "",
         nodes_total: Number.isFinite(body.nodes_total) ? body.nodes_total : null,
@@ -1110,6 +1334,7 @@
         instance: typeof body.instance === "string" ? body.instance : (typeof body.id === "string" ? body.id : ""),
         share: typeof share === "string" ? share : "",
         identity,
+        logging,
       };
     } catch {
       return null;
@@ -1163,9 +1388,11 @@
       // The model surface itself can betray a gateway via its response headers,
       // even when /vampire/v1/status is unreadable from this origin.
       if (!vampire && headersIndicateVampire(identity)) {
-        vampire = { version: "", nodes_total: null, nodes_online: null, instance: "", share: "", identity, headers_only: true };
+        vampire = { version: "", nodes_total: null, nodes_online: null, instance: "", share: "", identity, logging: identity.logging || null, headers_only: true };
       }
       const models = (interrogated.models || []).map(simplifyModel);
+      const logging = mergeLoggingStatus(identity.logging, vampire && vampire.logging)
+        || fallbackLoggingStatus(interrogated.auth ? "auth" : "unknown");
       return {
         origin,
         status: "online",
@@ -1176,6 +1403,7 @@
         identity,
         auth: !!interrogated.auth,
         vampire,
+        logging,
         models,
         stats: summarizeModels(models),
         note: interrogated.auth
@@ -1195,6 +1423,7 @@
         identity: vampire.identity || {},
         auth: false,
         vampire,
+        logging: vampire.logging || fallbackLoggingStatus("unknown"),
         models: [],
         stats: summarizeModels([]),
         note: "Vampire gateway responding. Its aggregated LM Studio model surface was not directly readable from here.",
@@ -1213,12 +1442,13 @@
         identity: {},
         auth: false,
         vampire: null,
+        logging: fallbackLoggingStatus("cors"),
         models: [],
         stats: summarizeModels([]),
         note: "A server responded but blocked cross-origin reads. Enable CORS on this node to interrogate it.",
       };
     }
-    return { origin, status: "offline", latency: Math.round(performance.now() - t0), path: "", flavor: "", server: "", identity: {}, auth: false, vampire: null, models: [], stats: summarizeModels([]), note: "" };
+    return { origin, status: "offline", latency: Math.round(performance.now() - t0), path: "", flavor: "", server: "", identity: {}, auth: false, vampire: null, logging: fallbackLoggingStatus("offline"), models: [], stats: summarizeModels([]), note: "" };
   }
 
   async function runPool(targets, concurrency, timeoutMs, onResult) {
@@ -1286,6 +1516,7 @@
           vampire: null,
           flavors: new Set(),
           server: "",
+          logging: null,
           endpoints: [],
           modelMap: new Map(),
           notes: new Set(),
@@ -1298,6 +1529,7 @@
       if (result.vampire && (!device.vampire || (device.vampire.headers_only && !result.vampire.headers_only))) device.vampire = result.vampire;
       if (result.flavor) device.flavors.add(result.flavor);
       if (result.server && !device.server) device.server = result.server;
+      device.logging = mergeLoggingStatus(device.logging, result.logging);
       if (result.note) device.notes.add(result.note);
       device.endpoints.push({
         origin: result.origin,
@@ -1308,6 +1540,7 @@
         path: result.path,
         flavor: result.flavor || "",
         vampire: !!result.vampire,
+        logging: result.logging || null,
         modelCount: result.models.length,
       });
       for (const model of result.models) {
@@ -1326,6 +1559,7 @@
       device.flavor = primaryFlavor(device.flavors);
       device.endpoints.sort((a, b) => statusRank(a.status) - statusRank(b.status) || a.origin.localeCompare(b.origin));
       if (device.latency === Infinity) device.latency = 0;
+      if (!device.logging) device.logging = fallbackLoggingStatus(device.status === "offline" ? "offline" : "unknown");
       devices.push(device);
     }
     return devices;
@@ -1368,8 +1602,12 @@
     let totalModels = 0;
     let loadedModels = 0;
     let vampires = 0;
+    let loggingNeedsCheck = 0;
+    let loggingOff = 0;
     for (const device of liveDevices) {
       if (device.vampire) vampires++;
+      if (device.logging && device.logging.level === "off") loggingOff++;
+      else loggingNeedsCheck++;
       for (const model of device.models) {
         models.add(model.id);
         totalModels++;
@@ -1383,6 +1621,8 @@
       detected: liveDevices.filter((device) => device.status === "detected").length,
       offline: devices.filter((device) => device.status === "offline").length,
       vampires,
+      logging_needs_check: loggingNeedsCheck,
+      logging_off: loggingOff,
       distinct_models: models.size,
       total_models: totalModels,
       loaded_models: loadedModels,
@@ -1398,6 +1638,7 @@
     els.summary.innerHTML = [
       stat("online", totals.online, "LM Studio", "Show only computers answering an LM Studio model surface. localhost, 127.0.0.1 and this machine's LAN IP count as one device."),
       stat("vampires", totals.vampires, "Vampires", "Show only computers exposing a Vampire gateway (/vampire/v1/status)."),
+      stat("logging", totals.logging_needs_check, "Logging check", "Show computers whose LM Studio logging status is not advertised as disabled."),
       stat("distinct", totals.distinct_models, "Distinct models", "Show every computer that exposes at least one readable model."),
       stat("total", totals.total_models, "Total models", "Show every computer that exposes at least one readable model (aliases de-duplicated)."),
       stat("loaded", totals.loaded_models, "Loaded", "Show only computers with a model currently loaded into memory."),
@@ -1412,6 +1653,7 @@
   function deviceHaystack(device) {
     const parts = [deviceLabel(device), device.host, device.status];
     if (device.vampire) parts.push("vampire gateway", device.vampire.version || "");
+    if (device.logging) parts.push(device.logging.label || "", device.logging.level || "", device.logging.source || "");
     for (const ep of device.endpoints) parts.push(ep.origin, ep.port, ep.status);
     for (const m of device.models) {
       parts.push(m.id, m.type, m.state, m.compat, m.arch, m.publisher,
@@ -1493,6 +1735,7 @@
     switch (key) {
       case "online": return device.status === "online";
       case "vampires": return !!device.vampire;
+      case "logging": return device.status !== "offline" && (!device.logging || device.logging.level !== "off");
       case "loaded": return (device.stats && device.stats.loaded) > 0;
       case "distinct":
       case "total": return device.models.length > 0;
@@ -1612,6 +1855,26 @@
         </tr>`;
       });
       html = table(`${devices.length} Vampire gateway${devices.length === 1 ? "" : "s"}`, head, rows, null);
+    } else if (focus.summary === "logging") {
+      const flag = (value) => value === true ? "on" : value === false ? "off" : "unknown";
+      const head = [
+        { label: "Computer", tip: "Computer whose LM Studio logging state needs review" },
+        { label: "Logging", tip: "Scanner-normalised logging status" },
+        { label: "Prompts", tip: "Prompt/response logging when advertised" },
+        { label: "Verbose", tip: "Verbose developer/server logging when advertised" },
+        { label: "Source", tip: "Where this status came from" },
+      ];
+      const rows = devices.map((d) => {
+        const log = d.logging || fallbackLoggingStatus("unknown");
+        return `<tr>
+          <td class="model-cell" title="${esc(deviceLabel(d))}">${esc(deviceLabel(d))}</td>
+          <td>${esc(log.label || loggingSummary(log.level))}</td>
+          <td>${esc(flag(log.prompt_response))}</td>
+          <td>${esc(flag(log.verbose))}</td>
+          <td>${esc(log.source || "not advertised")}</td>
+        </tr>`;
+      });
+      html = table(`${devices.length} computer${devices.length === 1 ? "" : "s"} needing logging verification`, head, rows, null);
     } else if (focus.summary === "loaded") {
       const head = [
         { label: "Model", tip: "Model currently held in memory" },
@@ -1674,6 +1937,50 @@
     return `<div class="fact"${tip}><b>${esc(value)}</b><span>${esc(label)}</span></div>`;
   }
 
+  function loggingFlagLabel(value) {
+    if (value === true) return "on";
+    if (value === false) return "off";
+    return "unknown";
+  }
+
+  function loggingPanelClass(logging) {
+    if (!logging || logging.level === "unknown") return "warning";
+    if (logging.level === "on") return "danger";
+    if (logging.level === "off") return "ok";
+    return "warning";
+  }
+
+  function loggingDetail(logging) {
+    if (!logging) return fallbackLoggingStatus("unknown").detail;
+    if (logging.detail) return logging.detail;
+    if (logging.level === "off") {
+      return "This endpoint advertises LM Studio prompt/response and verbose logging as disabled or minimised. Keep owner-side settings aligned with LMSTUDIO-SETUP.md.";
+    }
+    if (logging.level === "on") {
+      return "This endpoint advertises prompt/response or verbose logging as enabled. Do not send sensitive prompts until the owner disables it.";
+    }
+    if (logging.level === "partial") {
+      return "Only part of the logging posture was advertised. Verify Log Prompts and Responses plus verbose developer/server logging in LM Studio.";
+    }
+    return "LM Studio did not expose server logging settings over the probed HTTP surface. Verify Developer -> Server Settings manually.";
+  }
+
+  function loggingPanel(logging) {
+    const status = logging || fallbackLoggingStatus("unknown");
+    return `<div class="privacy-panel ${loggingPanelClass(status)}">
+      <div class="privacy-title">
+        <strong>Logging privacy</strong>
+        <span class="privacy-status">${esc(status.label || loggingSummary(status.level))}</span>
+      </div>
+      <div class="privacy-detail">${esc(loggingDetail(status))}</div>
+      <div class="privacy-grid">
+        <div class="privacy-item"><b>${esc(loggingFlagLabel(status.prompt_response))}</b><span>prompt/response</span></div>
+        <div class="privacy-item"><b>${esc(loggingFlagLabel(status.verbose))}</b><span>verbose logging</span></div>
+        <div class="privacy-item"><b>${esc(status.source || "not advertised")}</b><span>source</span></div>
+      </div>
+    </div>`;
+  }
+
   // Pick a representative LAN IP for this machine, preferring one inside the
   // subnet the user is scanning so the local computer reads like a real address.
   function localLanIp() {
@@ -1723,10 +2030,12 @@
     const note = device.notes.size ? `<div class="node-note">${[...device.notes].map(esc).join("<br>")}</div>` : "";
 
     const flavorLabel = FLAVOR_LABELS[device.flavor] || "";
+    const logging = device.logging || fallbackLoggingStatus(device.status === "offline" ? "offline" : "unknown");
     const badges = [
       device.endpoints.length > 1 ? `<span class="badge ports" title="${esc(device.endpoints.length)} reachable endpoint(s) on this computer">${device.endpoints.length}×</span>` : "",
       flavorLabel ? `<span class="badge flavor" title="API surface used to identify this computer">${esc(flavorLabel)}</span>` : "",
       vampire ? `<span class="badge vampire" title="${vampire.headers_only ? "Identified as a Vampire gateway from its response headers" : "Vampire gateway detected"}">vampire</span>` : "",
+      `<span class="badge logging-${esc(logging.level)}" title="${esc(loggingDetail(logging))}">${esc(logging.label || loggingSummary(logging.level))}</span>`,
       `<span class="badge ${esc(device.status)}" title="${device.status === "detected" ? "Responds but blocks cross-origin reads (enable CORS)" : esc(device.status)}">${device.status === "detected" ? "CORS blocked" : esc(device.status)}</span>`,
     ].filter(Boolean).join("");
 
@@ -1811,6 +2120,7 @@
         ${note}
         ${factsBlock}
         ${gatewayBlock}
+        ${loggingPanel(logging)}
         ${modelsBlock}
         ${corsHelp}
       </div>
@@ -1930,6 +2240,7 @@
       t: Date.now(),
       online: totals.online,
       vampires: totals.vampires,
+      logging: totals.logging_needs_check,
       distinct: totals.distinct_models,
       total: totals.total_models,
       loaded: totals.loaded_models,
@@ -1941,6 +2252,7 @@
   const SERIES = [
     { key: "online", label: "LM Studio", color: "#3ad6a0" },
     { key: "vampires", label: "Vampires", color: "#c45cf2" },
+    { key: "logging", label: "Logging check", color: "#ff7d7d" },
     { key: "distinct", label: "Distinct models", color: "#f5b54a" },
     { key: "total", label: "Total models", color: "#5aa9ff" },
     { key: "loaded", label: "Loaded", color: "#ff7ac1" },
@@ -2165,6 +2477,7 @@
         lines.push(`### ${deviceLabel(device)}`);
         lines.push("");
         lines.push(`- Status: ${device.status}`);
+        if (device.logging) lines.push(`- Logging: ${device.logging.label || loggingSummary(device.logging.level)} (${device.logging.source || "not advertised"})`);
         if (device.vampire) lines.push(`- Vampire gateway: yes${device.vampire.version ? ` (v${device.vampire.version})` : ""}`);
         if (device.flavor) lines.push(`- API: ${FLAVOR_LABELS[device.flavor] || device.flavor}`);
         if (device.endpoints.length) lines.push(`- Endpoints: ${device.endpoints.map((ep) => ep.origin).join(", ")}`);

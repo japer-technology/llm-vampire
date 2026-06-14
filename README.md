@@ -39,6 +39,7 @@ The compute behind an LM Studio endpoint may be local, remote, headless, GPU-bac
 ## Table of contents
 
 - [About LM Studio](#about-lm-studio)
+- [LM Studio setup](#lm-studio-setup)
 - [Why](#why)
 - [Features](#features)
 - [How it works](#how-it-works)
@@ -144,6 +145,18 @@ node adds `/api/v1/*`, tokens, headless llmster operation, and LM Link remote ro
 For the full treatment of each mechanism and how Vampire maps onto it, see the
 [`lmstudio.ai/`](lmstudio.ai/) reference — especially
 [12-vampire-integration.md](lmstudio.ai/12-vampire-integration.md).
+
+## LM Studio setup
+
+Before an LM Studio machine should be discovered, trusted, or routed through
+Vampire, configure its server, authentication, CORS, model loading, and
+prompt/response logging posture deliberately. The definitive owner checklist is:
+
+**[LMSTUDIO-SETUP.md](LMSTUDIO-SETUP.md)**
+
+It covers desktop and headless setup, LAN exposure, API tokens, scanner
+verification, and the privacy controls needed for other Vampires to trust that
+prompt/response and verbose server logging have been minimised.
 
 ## Why
 
@@ -326,6 +339,7 @@ pytest
 | --- | --- |
 | [VISION.md](VISION.md) | One-paragraph vision for the project. |
 | [ASPIRATION.md](ASPIRATION.md) | The full aspirations paper: thesis, audiences, and goals. |
+| [LMSTUDIO-SETUP.md](LMSTUDIO-SETUP.md) | Definitive LM Studio owner setup: server, auth, LAN/CORS, model loading, scanner verification, and logging/privacy posture. |
 | [DESIGN-API.md](DESIGN-API.md) | The OpenAI-compatible + Vampire orchestration API design. |
 | [MVP.md](MVP.md) | Minimum Viable Product definition. |
 | [MVVP.md](MVVP.md) | Minimum Viable Valuable Product (per Guy Kawasaki). |
