@@ -2,6 +2,8 @@
 
 - **Severity:** High — a routine, operator-reachable configuration (a route whose `virtual_model` equals an existing physical model id) takes the single most-polled OpenAI-compatibility endpoint, `GET /v1/models`, completely offline with an opaque 500 for *all* clients, not just the colliding model.
 - **Category:** error-handling / api-correctness.
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented virtual/physical model de-duplication on `/v1/models` and route creation rejection for physical-id collisions.
 - **Summary:** `list_models` concatenates the synthesized virtual model cards with the aggregated physical model cards and feeds the combined list straight into `ModelListResponse`, whose `keep_model_ids_unique` validator raises `ValueError` on any duplicate id. A virtual id (`vampire:auto`, or any route's `virtual_model`) that matches a physical model id served by a registered node is never reconciled, so model construction throws *inside the request handler*, FastAPI converts the uncaught `pydantic.ValidationError` into a bare `500 Internal Server Error`, and the endpoint is unusable until the collision is removed. The `POST /vampire/v1/routes` handler does nothing to prevent an operator from creating such a colliding route.
 - **Location:**
   - `src/vampire/api/openai_compat.py:30-42` (the `list_models` handler that builds the combined list).

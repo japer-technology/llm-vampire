@@ -2,6 +2,8 @@
 
 - **Severity:** High — the single most-called inference endpoint (`POST /v1/chat/completions`, and every other `/v1/*` routed verb) can crash with an uncaught `AttributeError → 500` whenever a route target's node is removed (DELETE, patch-to-offline + clear, or a discovery/refresh churn) between selection and dispatch. The defect is *deliberately hidden* from the type checker by a `# type: ignore[union-attr]`, so the one tool that would have flagged it has been silenced.
 - **Category:** type-safety (a `# type: ignore` masking a real bug) — with a co-equal concurrency (TOCTOU race) and error-handling (contract-violating bare 500) dimension.
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented explicit node re-read/narrowing before dispatch and return a structured 503 when a selected node is removed.
 
 - **Summary:** `_route_or_proxy` selects a `RouteTarget` from the router, then immediately dereferences `registry.get(target.node).lmstudio_base_url` to build the downstream URL. `registry.get()` is typed `Node | None`, and the `.lmstudio_base_url` access on a possibly-`None` value is suppressed with `# type: ignore[union-attr]`. The suppressed warning is real: the router's `select()` releases control of the event loop is not required, but the *request handler `await`s `request.body()` earlier and the registry is mutated by concurrent control-plane requests*, so between the moment the router validates the node exists and the moment this line reads it, a concurrent `DELETE /vampire/v1/nodes/{id}` (or `registry.clear()` from discovery) can remove it — making `registry.get()` return `None` and turning the next attribute access into an unhandled `AttributeError`.
 
