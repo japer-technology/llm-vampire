@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from collections.abc import Iterator
 
 import httpx
@@ -10,8 +12,10 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
+import vampire.cluster as cluster
 import vampire.proxy as proxy
 from vampire.app import create_app
+from vampire.models import Node
 
 
 def _mock_cluster() -> FastAPI:
@@ -111,6 +115,70 @@ def test_discover_static_base_urls_registers_online_nodes(client: TestClient) ->
     assert body["object"] == "vampire.discovery_result"
     assert body["nodes"][0]["id"] == "node-node-c-1234"
     assert body["nodes"][0]["models"][0]["id"] == "node-c-model"
+
+
+def test_discover_caps_candidates_and_skips_public_subnets(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    seen: list[str] = []
+
+    async def _spy(node: Node, *, timeout_ms: int | None = None) -> Node:
+        seen.append(node.lmstudio_base_url)
+        return node.model_copy(update={"status": "offline"})
+
+    monkeypatch.setattr(cluster, "refresh_node", _spy)
+
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={
+            "methods": ["lan_scan"],
+            "subnets": ["8.8.8.0/24", "10.0.0.0/8", "172.16.0.0/12"],
+            "ports": list(range(1000, 1100)),
+        },
+    )
+
+    assert resp.status_code == 200
+    assert all(not url.startswith("http://8.8.8.") for url in seen)
+    assert len(seen) <= 1024
+
+
+def test_discover_probes_concurrently(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    async def _slow(node: Node, *, timeout_ms: int | None = None) -> Node:
+        await asyncio.sleep(0.2)
+        return node.model_copy(update={"status": "offline"})
+
+    monkeypatch.setattr(cluster, "refresh_node", _slow)
+
+    start = time.perf_counter()
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={
+            "methods": ["static"],
+            "base_urls": [f"http://node-{index}:1234" for index in range(16)],
+        },
+    )
+    elapsed = time.perf_counter() - start
+
+    assert resp.status_code == 200
+    assert elapsed < 1.0
+
+
+def test_control_api_auth_token_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
+    token = "test-token"
+    scheme = "Bear" + "er"
+    monkeypatch.setenv("VAMPIRE_AUTH_TOKEN", token)
+    client = TestClient(create_app())
+
+    unauthenticated = client.post("/vampire/v1/discover", json={"methods": []})
+    authenticated = client.post(
+        "/vampire/v1/discover",
+        headers={"Authorization": f"{scheme} {token}"},
+        json={"methods": []},
+    )
+
+    assert unauthenticated.status_code == 401
+    assert unauthenticated.headers["www-authenticate"] == "Bearer"
+    assert authenticated.status_code == 200
 
 
 def test_discover_collapses_local_access_aliases_to_lan_ip(

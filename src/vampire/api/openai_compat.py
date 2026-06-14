@@ -116,12 +116,25 @@ async def _route_or_proxy(request: Request) -> Response:
             },
         )
 
+    node = registry.get(target.node)
+    if node is None:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": {
+                    "message": f"Route target {target.node} went offline before dispatch.",
+                    "type": "vampire_routing_error",
+                    "code": "route_target_unavailable",
+                }
+            },
+        )
+
     routed_payload = dict(payload)
     routed_payload["model"] = target.model
     routed_payload.pop("vampire", None)
     return await proxy_request_with_body(
         request,
-        downstream_base_url=registry.get(target.node).lmstudio_base_url,  # type: ignore[union-attr]
+        downstream_base_url=node.lmstudio_base_url,
         body=json.dumps(routed_payload).encode("utf-8"),
         response_headers={
             "X-Vampire-Route": policy.id,

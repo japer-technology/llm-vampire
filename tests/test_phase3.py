@@ -260,6 +260,41 @@ def test_virtual_model_request_routes_to_selected_node(client: TestClient) -> No
     assert resp.headers["x-vampire-model"] == "node-b-model"
 
 
+def test_route_target_removed_before_dispatch_returns_structured_503(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+    original_get = registry.get
+    calls = 0
+
+    def _get_then_missing(node_id: str) -> Node | None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return original_get(node_id)
+        return None
+
+    monkeypatch.setattr(registry, "get", _get_then_missing)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "node-a-model",
+            "messages": [{"role": "user", "content": "hello"}],
+            "vampire": {"mode": "route"},
+        },
+    )
+
+    assert resp.status_code == 503
+    assert resp.json()["error"] == {
+        "message": "Route target node-a went offline before dispatch.",
+        "type": "vampire_routing_error",
+        "code": "route_target_unavailable",
+    }
+
+
 def test_x_vampire_headers_control_physical_model_routing(client: TestClient) -> None:
     client.post(
         "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
