@@ -24,23 +24,67 @@ powers a specific part of Vampire's design ([`../VISION.md`](../VISION.md),
 | `lms` CLI | [10](10-cli.md) | Owner-side scripting of everything above |
 | Continuous batching (`parallel`) | [11](11-concurrency.md) | Per-instance capacity for `least_loaded` routing |
 
+## Capability stack
+
+```mermaid
+flowchart TB
+    subgraph lmstudio["LM Studio owner boundary"]
+        server["API server<br/>port, bind, CORS"]
+        auth["Token authentication<br/>per-token permissions"]
+        models["Model inventory<br/>capabilities, context, loaded instances"]
+        lifecycle["Lifecycle controls<br/>JIT, TTL, auto-evict, load/unload"]
+        runtime["Runtime capacity<br/>parallel slots, TPS, TTFT"]
+        remote["Optional remote compute<br/>LM Link"]
+    end
+
+    subgraph vampire["Vampire gateway boundary"]
+        registry["Registry + health snapshots"]
+        vault["Per-node credential vault"]
+        router["Policy-aware router"]
+        proxy["Transparent /v1 proxy"]
+        observability["Fleet metrics, traces, failover"]
+    end
+
+    server --> registry
+    auth --> vault
+    models --> registry
+    lifecycle --> router
+    runtime --> router
+    remote --> registry
+    vault --> proxy
+    registry --> router
+    router --> proxy
+    proxy --> observability
+```
+
 ## The Vampire request path, annotated
 
-```text
-client ──▶ Vampire /v1/chat/completions
-              │
-              ├─ 1. AuthN/AuthZ (Vampire realm tokens — Vampire's own layer)
-              ├─ 2. Cache / coalescer lookup        (Vampire's own layer)
-              ├─ 3. Candidate selection:
-              │      model id  → nodes advertising it     [03,04,05]
-              │      capability → vision/tools/reasoning   [04]
-              │      state      → loaded? JIT? cold cost   [05,07]
-              │      capacity   → parallel slots free      [04,11]
-              │      policy     → trust level, realm       [06 + Vampire policy]
-              ├─ 4. Forward request + node token           [06]
-              │      (pass through ttl, stream, tools)     [03,07]
-              ├─ 5. Stream/relay response; record TPS/TTFT [05]
-              └─ 6. On failure → failover to next node     [02 (nodes vanish freely)]
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client
+    participant Vampire as Vampire /v1/chat/completions
+    participant Registry as Node registry
+    participant Policy as Policy + token vault
+    participant Node as Selected LM Studio node
+    participant Fallback as Next candidate node
+
+    Client->>Vampire: OpenAI-compatible request
+    Vampire->>Vampire: Authenticate Vampire realm token
+    Vampire->>Vampire: Check cache / request coalescer
+    Vampire->>Registry: Find nodes advertising model and capabilities
+    Registry-->>Vampire: Inventory, loaded state, parallel slots, stats
+    Vampire->>Policy: Apply realm, trust, credential, and routing policy
+    Policy-->>Vampire: Candidate node + node token
+    Vampire->>Node: Forward request, ttl, stream, tools, Authorization
+    alt Node succeeds
+        Node-->>Vampire: Stream or response with stats
+        Vampire-->>Client: Relay response and record TPS/TTFT
+    else Node disappears, rejects, or times out
+        Vampire->>Fallback: Retry eligible request against next node
+        Fallback-->>Vampire: Stream or response
+        Vampire-->>Client: Relay response and mark failover
+    end
 ```
 
 ## What LM Studio does NOT provide (Vampire's added value)
