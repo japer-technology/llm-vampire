@@ -16,6 +16,12 @@ from vampire.config import get_settings
 from vampire.models import DiscoveryRequest, ModelCard, ModelListResponse, Node, PhysicalModel
 from vampire.registry import registry
 
+_MAX_SCAN_SUBNETS = 8
+_MAX_SCAN_PORTS = 8
+_MAX_SCAN_HOSTS_PER_SUBNET = 256
+_MAX_SCAN_CANDIDATES = 1024
+_DISCOVERY_CONCURRENCY = 16
+
 
 def _now() -> str:
     """Return an ISO-8601 UTC timestamp for node health metadata."""
@@ -255,21 +261,26 @@ def _candidate_urls(request: DiscoveryRequest) -> list[str]:
         urls.extend(node.lmstudio_base_url.rstrip("/") for node in registry.list())
 
     if "lan_scan" in methods:
-        for subnet in request.subnets:
+        for subnet in request.subnets[:_MAX_SCAN_SUBNETS]:
             network = ipaddress.ip_network(subnet, strict=False)
+            if not (network.is_private or network.is_loopback):
+                continue
             for index, host in enumerate(network.hosts()):
-                if index >= 256:
+                if index >= _MAX_SCAN_HOSTS_PER_SUBNET or len(urls) >= _MAX_SCAN_CANDIDATES:
                     break
-                for port in request.ports:
+                for port in request.ports[:_MAX_SCAN_PORTS]:
+                    if len(urls) >= _MAX_SCAN_CANDIDATES:
+                        break
                     urls.append(f"http://{host}:{port}")
 
-    return _dedupe_local_access_urls(list(dict.fromkeys(urls)))
+    return _dedupe_local_access_urls(list(dict.fromkeys(urls)))[:_MAX_SCAN_CANDIDATES]
 
 
 async def discover_nodes(request: DiscoveryRequest) -> list[Node]:
     """Perform Phase 2 static/dev-subnet discovery and register online nodes."""
-    discovered: list[Node] = []
-    for base_url in _candidate_urls(request):
+    semaphore = asyncio.Semaphore(_DISCOVERY_CONCURRENCY)
+
+    async def _probe(base_url: str) -> Node | None:
         current = registry.get(_node_id_for_url(base_url))
         node = current or Node(
             id=_node_id_for_url(base_url),
@@ -277,7 +288,11 @@ async def discover_nodes(request: DiscoveryRequest) -> list[Node]:
             lmstudio_base_url=base_url,
             trusted=not request.trusted_only,
         )
-        refreshed = await refresh_node(node, timeout_ms=request.timeout_ms)
+        async with semaphore:
+            refreshed = await refresh_node(node, timeout_ms=request.timeout_ms)
         if refreshed.status == "online" and (refreshed.trusted or not request.trusted_only):
-            discovered.append(refreshed)
-    return discovered
+            return refreshed
+        return None
+
+    results = await asyncio.gather(*(_probe(base_url) for base_url in _candidate_urls(request)))
+    return [node for node in results if node is not None]

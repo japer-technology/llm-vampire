@@ -34,7 +34,7 @@ listen address.
 | `port` | `VAMPIRE_PORT` | `7777` | Port the gateway listens on. |
 | `lmstudio_base_url` | `VAMPIRE_LMSTUDIO_BASE_URL` | `http://localhost:1234` | Default downstream LM Studio node used by the Phase 1 transparent proxy. |
 | `log_level` | `VAMPIRE_LOG_LEVEL` | `INFO` | Logging verbosity for the gateway process. |
-| `auth_token` | `VAMPIRE_AUTH_TOKEN` | `""` (empty) | Local API key for **planned** Phase 6 policy. Empty keeps Phase 1 drop-in compatibility unauthenticated. |
+| `auth_token` | `VAMPIRE_AUTH_TOKEN` | `""` (empty) | Optional bearer token for `/vampire/v1/*` control routes. Empty keeps the control API unauthenticated. |
 
 ## Setting configuration
 
@@ -84,10 +84,10 @@ flowchart TD
 ```
 
 > **Security note.** Binding to `0.0.0.0` exposes the gateway on your network.
-> The current scaffold does not enforce authentication, so only do this on a
-> trusted network. Owner-side controls (tokens, allowlists, realms) are part of
-> the **planned** Phase 6 policy layer — see
-> [IMPLEMENTATION-PLAN.md](../../IMPLEMENTATION-PLAN.md).
+> Set `VAMPIRE_AUTH_TOKEN` to require bearer-token authentication on the
+> `/vampire/v1/*` control API before exposing it beyond a trusted machine.
+> Additional owner-side controls (allowlists, realms) are part of the
+> **planned** Phase 6 policy layer — see [IMPLEMENTATION-PLAN.md](../../IMPLEMENTATION-PLAN.md).
 
 ## Next steps
 

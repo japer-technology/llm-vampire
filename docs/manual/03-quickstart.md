@@ -133,9 +133,9 @@ resp = client.chat.completions.create(
 print(resp.choices[0].message.content)
 ```
 
-> The current scaffold does not require an API key by default. A local
-> `auth_token` setting exists for **planned** Phase 6 policy; until then any
-> placeholder key works.
+> The OpenAI-compatible `/v1/*` surface does not require an API key by default.
+> Setting `VAMPIRE_AUTH_TOKEN` now requires an authorization bearer token on the
+> Vampire control API at `/vampire/v1/*`.
 
 ## What you have now
 

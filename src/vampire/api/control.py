@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from vampire import __version__
+from vampire.api._auth import require_control_auth
 from vampire.cluster import (
     discover_nodes,
     metrics_snapshot,
@@ -23,7 +24,11 @@ from vampire.models import DiscoveryRequest, Node, NodeUpdate, RoutePolicy, Shar
 from vampire.registry import registry, route_registry, share_registry
 from vampire.router import MVP_STRATEGIES
 
-router = APIRouter(prefix="/vampire/v1", tags=["vampire-control"])
+router = APIRouter(
+    prefix="/vampire/v1",
+    tags=["vampire-control"],
+    dependencies=[Depends(require_control_auth)],
+)
 MANUAL_UNAVAILABLE_STATUSES = {"draining", "disabled", "maintenance"}
 
 
