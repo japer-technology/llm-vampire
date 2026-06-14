@@ -34,28 +34,87 @@ where versions matter, the required LM Studio version is noted.
 | [11-concurrency.md](11-concurrency.md) | Parallel requests via continuous batching | Node capacity for load-aware routing |
 | [12-vampire-integration.md](12-vampire-integration.md) | Mechanism-by-mechanism mapping to Vampire's design | The synthesis: how Vampire uses all of the above |
 
+## Executive architecture map
+
+```mermaid
+flowchart LR
+    owner["Owner"]
+    clients["OpenAI-compatible clients"]
+    vampire["Vampire gateway<br/>single governed endpoint"]
+    registry["Node registry<br/>health, models, metrics"]
+    policy["Policy + credentials<br/>realms, trust, per-node tokens"]
+
+    subgraph lmstudio["LM Studio nodes"]
+        desktop["Desktop API server<br/>localhost or LAN"]
+        headless["llmster daemon<br/>headless GPU host"]
+        link["LM Link endpoint<br/>remote encrypted compute"]
+    end
+
+    owner -->|"Starts server, binds address, enables auth, sets JIT/TTL"| desktop
+    owner -->|"Scripts with lms CLI"| headless
+    owner -->|"Pairs devices"| link
+
+    clients -->|"/v1/*"| vampire
+    vampire --> registry
+    vampire --> policy
+    registry -->|"/api/v1/models<br/>/api/v0/models<br/>/v1/models"| lmstudio
+    policy -->|"Authorization per node"| lmstudio
+    vampire -->|"Selected /v1/* request"| lmstudio
+```
+
+## Documentation flow
+
+```mermaid
+flowchart TB
+    overview["01 Overview"]
+    server["02 API server"]
+    compat["03 OpenAI / Anthropic compatibility"]
+    native["04 Native REST v1"]
+    legacy["05 Legacy REST v0"]
+    auth["06 Authentication"]
+    lifecycle["07 Model lifecycle"]
+    headless["08 Headless"]
+    link["09 LM Link"]
+    cli["10 lms CLI"]
+    concurrency["11 Concurrency"]
+    integration["12 Vampire integration"]
+
+    overview --> server
+    server --> compat
+    server --> native
+    server --> legacy
+    server --> auth
+    native --> lifecycle
+    legacy --> lifecycle
+    lifecycle --> concurrency
+    headless --> integration
+    link --> integration
+    cli --> integration
+    compat --> integration
+    native --> integration
+    legacy --> integration
+    auth --> integration
+    lifecycle --> integration
+    concurrency --> integration
+```
+
 ## The mechanism in one page
 
 An LM Studio node, as Vampire sees it:
 
-```text
-            ┌──────────────────────────────────────────────────────┐
-            │                  LM Studio node                       │
-            │  (desktop app, headless app, or llmster daemon)       │
-            │                                                       │
-  owner ──▶ │  Server settings: port (default 1234), bind address,  │
-  controls  │  Require Authentication, Serve on Local Network,      │
-            │  CORS, JIT loading, TTL, auto-evict, parallelism      │
-            │                                                       │
-            │  API surfaces on the same port:                       │
-            │   • /v1/*        OpenAI-compatible                    │
-            │   • /v1/messages Anthropic-compatible                 │
-            │   • /api/v1/*    native REST (0.4.0+)                 │
-            │   • /api/v0/*    legacy REST with stats (0.3.6+)      │
-            │                                                       │
-            │  Compute may be local — or remote via LM Link's       │
-            │  end-to-end-encrypted device network                  │
-            └──────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    owner["Owner controls"]
+
+    subgraph node["LM Studio node<br/>desktop app, headless app, or llmster daemon"]
+        settings["Server settings<br/>port, bind address, auth, CORS,<br/>JIT loading, TTL, auto-evict, parallelism"]
+        surfaces["API surfaces on one port<br/>/v1/* OpenAI-compatible<br/>/v1/messages Anthropic-compatible<br/>/api/v1/* native REST<br/>/api/v0/* legacy REST with stats"]
+        compute["Compute<br/>local hardware or LM Link remote device"]
+    end
+
+    owner --> settings
+    settings --> surfaces
+    surfaces --> compute
 ```
 
 Vampire's job (per [`../DESIGN-API.md`](../DESIGN-API.md)) is to sit in front of one or
