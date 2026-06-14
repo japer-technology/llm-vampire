@@ -2,6 +2,8 @@
 
 - **Severity:** High — a configured credential (`VAMPIRE_AUTH_TOKEN`) is defined, documented, and surfaced to operators but is **dead code**: nothing reads it, so setting it provides zero protection while creating a false sense of security. The unauthenticated control API additionally exposes a server-side request-forgery (SSRF) primitive. Not rated Critical only because the default `host` binds to `127.0.0.1`; the moment an operator follows the project's own LAN-sharing use-cases and binds to `0.0.0.0`, this becomes Critical.
 - **Category:** security (with secondary code-vs-doc drift).
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented bearer-token enforcement for configured `VAMPIRE_AUTH_TOKEN` values across `/v1/*` and `/vampire/v1/*`, while preserving the empty-token drop-in mode and leaving the static UI open. The follow-up SSRF hardening mentioned below remains out of scope for this suggestion.
 
 - **Summary:** `vampire/config.py` defines `auth_token` and its docstring states a "Local API key required on requests," and `DESIGN-API.md §21` lists `Authorization: Bearer ***` as the **"Required minimum"** security control. However, a repository-wide search finds exactly **one** reference to `auth_token` — its own definition. No FastAPI dependency, middleware, or handler ever inspects the `Authorization` header. Every route — the OpenAI proxy *and* the full `/vampire/v1/*` control plane (register node, delete node, run LAN discovery, change share mode) — is reachable with no credential, so an operator who exports `VAMPIRE_AUTH_TOKEN=secret` is no more protected than one who does not.
 
