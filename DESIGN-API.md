@@ -1164,6 +1164,9 @@ Default should remain plain OpenAI-compatible streaming.
 Authorization: Bearer <local-token>
 ```
 
+The gateway terminates this client-facing credential itself and must not forward
+it to downstream LM Studio nodes.
+
 ## Suggested security controls
 
 ```json

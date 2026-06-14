@@ -117,6 +117,49 @@ def test_discover_static_base_urls_registers_online_nodes(client: TestClient) ->
     assert body["nodes"][0]["models"][0]["id"] == "node-c-model"
 
 
+def test_discover_does_not_register_offline_candidates(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    from vampire.registry import registry as node_registry
+
+    async def _offline(node: Node, *, timeout_ms: int | None = None) -> Node:
+        updated = node.model_copy(update={"status": "offline"})
+        if node_registry.get(updated.id) is not None:
+            node_registry.add(updated)
+        return updated
+
+    monkeypatch.setattr(cluster, "refresh_node", _offline)
+
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={"methods": ["static"], "base_urls": ["http://dead-node:1234"]},
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["nodes"] == []
+    assert node_registry.get("node-dead-node-1234") is None
+    assert node_registry.list() == []
+
+
+def test_discover_registers_online_candidates(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    from vampire.registry import registry as node_registry
+
+    async def _online(node: Node, *, timeout_ms: int | None = None) -> Node:
+        return node.model_copy(update={"status": "online"})
+
+    monkeypatch.setattr(cluster, "refresh_node", _online)
+
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={"methods": ["static"], "base_urls": ["http://live-node:1234"]},
+    )
+
+    assert resp.status_code == 200
+    assert node_registry.get("node-live-node-1234") is not None
+
+
 def test_discover_caps_candidates_and_skips_public_subnets(
     monkeypatch: pytest.MonkeyPatch, client: TestClient
 ) -> None:

@@ -305,21 +305,21 @@ async def discover_nodes(
     semaphore = asyncio.Semaphore(_DISCOVERY_CONCURRENCY)
 
     async def _probe(base_url: str) -> Node | None:
-        current = registry.get(_node_id_for_url(base_url))
+        node_id = _node_id_for_url(base_url)
+        current = registry.get(node_id)
         node = current or Node(
-            id=_node_id_for_url(base_url),
+            id=node_id,
             host=urlparse(base_url).hostname,
             lmstudio_base_url=base_url,
             trusted=not request.trusted_only,
         )
-        if current is None:
-            registry.add(node)
         async with semaphore:
             if client is not None:
                 refreshed = await refresh_node(node, timeout_ms=request.timeout_ms, client=client)
             else:
                 refreshed = await refresh_node(node, timeout_ms=request.timeout_ms)
         if refreshed.status == "online" and (refreshed.trusted or not request.trusted_only):
+            registry.add(refreshed)
             return refreshed
         return None
 

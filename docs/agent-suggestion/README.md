@@ -6,13 +6,13 @@ This index is rebuilt from the directory contents on every run.
 
 _Generated: 2026-06-14 08:27 UTC_
 
-11 total · 3 open · 8 taken · 0 declined
+11 total · 0 open · 11 taken · 0 declined
 
 | Date | Title | Severity | Category | Status | File |
 | --- | --- | --- | --- | --- | --- |
-| 2026-06-14 0826 | `Router._cursors` is an unbounded `defaultdict` keyed by client-controlled model strings: any client can grow gateway memory without limit via distinct `vampire:<anything>` model names | High | concurrency / resource-leak | Open | [2026-06-14_0826-router-cursor-unbounded-growth.md](./2026-06-14_0826-router-cursor-unbounded-growth.md) |
-| 2026-06-14 0808 | Transparent proxy forwards the client's `Authorization` header (the gateway's own `VAMPIRE_AUTH_TOKEN`) verbatim to every downstream LM Studio node | High | security | Open | [2026-06-14_0808-proxy-forwards-gateway-bearer-token-to-untrusted-upstreams.md](./2026-06-14_0808-proxy-forwards-gateway-bearer-token-to-untrusted-upstreams.md) |
-| 2026-06-14 0802 | `discover_nodes` permanently registers every scanned candidate IP, flooding the registry with un-reapable offline "phantom" nodes that sabotage `/v1/models` | High | concurrency / resource-leak | Open | [2026-06-14_0802-discover-offline-phantom-node-pollution.md](./2026-06-14_0802-discover-offline-phantom-node-pollution.md) |
+| 2026-06-14 0826 | `Router._cursors` is an unbounded `defaultdict` keyed by client-controlled model strings: any client can grow gateway memory without limit via distinct `vampire:<anything>` model names | High | concurrency / resource-leak | Taken | [2026-06-14_0826-router-cursor-unbounded-growth.md](./2026-06-14_0826-router-cursor-unbounded-growth.md) |
+| 2026-06-14 0808 | Transparent proxy forwards the client's `Authorization` header (the gateway's own `VAMPIRE_AUTH_TOKEN`) verbatim to every downstream LM Studio node | High | security | Taken | [2026-06-14_0808-proxy-forwards-gateway-bearer-token-to-untrusted-upstreams.md](./2026-06-14_0808-proxy-forwards-gateway-bearer-token-to-untrusted-upstreams.md) |
+| 2026-06-14 0802 | `discover_nodes` permanently registers every scanned candidate IP, flooding the registry with un-reapable offline "phantom" nodes that sabotage `/v1/models` | High | concurrency / resource-leak | Taken | [2026-06-14_0802-discover-offline-phantom-node-pollution.md](./2026-06-14_0802-discover-offline-phantom-node-pollution.md) |
 | 2026-06-14 0701 | Control-API bearer check uses non-constant-time comparison, leaking the gateway token via timing | High | security | Taken | [2026-06-14_0701-control-auth-timing-side-channel.md](./2026-06-14_0701-control-auth-timing-side-channel.md) |
 | 2026-06-14 0642 | Per-request `X-Vampire-Strategy` override accepted unvalidated and coerced, yet the trace header reports the strategy never applied | High | api-correctness | Taken | [2026-06-14_0642-strategy-override-unvalidated-trace-header-lies.md](./2026-06-14_0642-strategy-override-unvalidated-trace-header-lies.md) |
 | 2026-06-14 0633 | `discover_nodes` probes LAN-scan candidates sequentially, turning `/vampire/v1/discover` into a multi-minute hang; malformed subnet crashes with bare 500 | High | performance / error-handling | Taken | [2026-06-14_0633-discover-sequential-lan-scan-blocks.md](./2026-06-14_0633-discover-sequential-lan-scan-blocks.md) |
