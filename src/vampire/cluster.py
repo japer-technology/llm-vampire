@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import logging
 import socket
 from datetime import datetime, timezone
 from time import perf_counter
@@ -21,6 +22,7 @@ _MAX_SCAN_PORTS = 8
 _MAX_SCAN_HOSTS_PER_SUBNET = 256
 _MAX_SCAN_CANDIDATES = 1024
 _DISCOVERY_CONCURRENCY = 16
+logger = logging.getLogger(__name__)
 
 
 class DiscoveryInputError(ValueError):
@@ -179,7 +181,7 @@ async def refresh_node(
                 "last_error": None,
             }
         )
-    except (httpx.HTTPError, ValueError) as exc:
+    except (httpx.HTTPError, httpx.InvalidURL, ValueError) as exc:
         latency_ms = round((perf_counter() - started) * 1000, 3)
         updated = node.model_copy(
             update={
@@ -207,15 +209,23 @@ async def refresh_registered_nodes(
     nodes = registry.list()
     if not nodes:
         return []
-    if client is not None:
-        return list(
-            await asyncio.gather(
-                *(refresh_node(node, timeout_ms=timeout_ms, client=client) for node in nodes)
-            )
-        )
-    return list(
-        await asyncio.gather(*(refresh_node(node, timeout_ms=timeout_ms) for node in nodes))
+    results = await asyncio.gather(
+        *(
+            refresh_node(node, timeout_ms=timeout_ms, client=client)
+            if client is not None
+            else refresh_node(node, timeout_ms=timeout_ms)
+            for node in nodes
+        ),
+        return_exceptions=True,
     )
+    refreshed: list[Node] = []
+    for node, result in zip(nodes, results, strict=True):
+        if isinstance(result, Node):
+            refreshed.append(result)
+            continue
+        logger.warning("refresh of node %s failed: %r", node.id, result)
+        refreshed.append(node)
+    return refreshed
 
 
 def aggregate_model_cards(nodes: list[Node]) -> ModelListResponse:
