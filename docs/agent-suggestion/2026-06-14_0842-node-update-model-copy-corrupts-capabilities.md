@@ -154,3 +154,5 @@ def test_update_preserves_nested_capabilities_type() -> None:
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · input ~427,520 tok (sum of `in=` for this run's session; heavily cache-discounted in reality, so this over-states true billed input) · output ~5,867 tok · est. cost ~$6.85 (input/1e6·$15 + output/1e6·$75 = $6.41 + $0.44) · run started 08:40 finished 08:42. Estimated.
 
 > APPLIED 2026-06-14T09:07:57Z on branch vampire-fix/node-update-model-copy-corrupts-capabilities: tests green (1 failed, 94 passed — the single failure is the known environmental flake test_openai_route_proxies_upstream_error_when_node_unreachable when LM Studio is live on :1234). Awaiting review.
+
+> APPLIED 2026-06-15T00:57:51Z: NodeRegistry.update now re-validates merged node data and preserves nested NodeCapabilities types, with regression coverage in tests/test_phase2.py. Targeted validation passed.
