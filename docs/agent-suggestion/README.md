@@ -4,7 +4,7 @@ Staff-engineer audit suggestions for the lmstudio-vampire gateway, one per run.
 
 _Generated: 2026-06-14 20:04 UTC_
 
-24 total · 1 open · 23 taken · 0 declined
+24 total · 0 open · 24 taken · 0 declined
 
 | Date | Title | Severity | Category | Status | File |
 |------|-------|----------|----------|--------|------|
@@ -20,7 +20,7 @@ _Generated: 2026-06-14 20:04 UTC_
 | 2026-06-14 08:41 | `/v1/models` triggers uncoalesced full-cluster refresh — no TTL/single-flight/cap | High | performance | Taken | [link](2026-06-14_0841-models-refresh-no-cache-no-singleflight-stampede.md) |
 | 2026-06-14 08:28 | SSRF: `base_urls`/`lmstudio_base_url` probed with no scheme or host validation | High | security | Taken | [link](2026-06-14_0828-ssrf-unvalidated-base-urls-bypass-lan-scan-guard.md) |
 | 2026-06-14 08:28 | Blocking `.env` disk stat on the event loop via per-request `get_settings()` | High | concurrency | Taken | [link](2026-06-14_0828-get-settings-blocking-env-stat-on-event-loop.md) |
-| 2026-06-14 08:27 | Mid-stream upstream failure silently truncates SSE body with no error frame | High | error-handling | Open | [link](2026-06-14_0827-streaming-proxy-midstream-failure-silently-truncates.md) |
+| 2026-06-14 08:27 | Mid-stream upstream failure silently truncates SSE body with no error frame | High | error-handling | Taken | [link](2026-06-14_0827-streaming-proxy-midstream-failure-silently-truncates.md) |
 | 2026-06-14 08:26 | `Router._cursors` unbounded `defaultdict` keyed by client-controlled model strings | High | concurrency | Taken | [link](2026-06-14_0826-router-cursor-unbounded-growth.md) |
 | 2026-06-14 08:08 | Proxy forwards gateway bearer token to untrusted upstreams | High | security | Taken | [link](2026-06-14_0808-proxy-forwards-gateway-bearer-token-to-untrusted-upstreams.md) |
 | 2026-06-14 08:02 | `discover_nodes` permanently registers every scanned candidate IP (phantom nodes) | High | concurrency | Taken | [link](2026-06-14_0802-discover-offline-phantom-node-pollution.md) |
