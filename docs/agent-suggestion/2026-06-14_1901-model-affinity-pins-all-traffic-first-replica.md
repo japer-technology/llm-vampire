@@ -162,3 +162,5 @@
 ---
 
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · input ~unknown (per-call `in=` figures are cumulative-context, not incremental; not summable into a meaningful total) · output ~3.0K tok (sum of this run's `out=`: 287+133+115+171+162+213+530+350+1692+902 ≈ 4.6K across calls #1-#10, of which generation+tool args ≈ 3K) · est. cost ~$0.35 (output 4.6K × $75/1M ≈ $0.34; input not reliably derivable) · run started 19:01 finished 19:33 UTC. Marked estimated.
+
+> APPLIED 2026-06-15T00:57:51Z: model_affinity now round-robins among matching replicas, with regression coverage in tests/test_phase3.py. Targeted validation passed.

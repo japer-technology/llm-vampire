@@ -61,9 +61,12 @@ class Router:
             target = min(candidates, key=lambda target: self._latency_score(self._node(target)))
             return Selection(target=target, strategy=strategy)
         if strategy == "model_affinity":
-            affinity_target = self._model_affinity(candidates, requested_model)
-            if affinity_target is not None:
-                return Selection(target=affinity_target, strategy=strategy)
+            affinity_candidates = self._model_affinity_candidates(candidates, requested_model)
+            if affinity_candidates:
+                return Selection(
+                    target=self._round_robin(affinity_candidates, f"{policy.id}#affinity"),
+                    strategy=strategy,
+                )
             return Selection(
                 target=self._round_robin(candidates, policy.id), strategy="round_robin"
             )
@@ -129,10 +132,10 @@ class Router:
         return (node.latency_ms if node.latency_ms is not None else float("inf"), node.id)
 
     @staticmethod
-    def _model_affinity(
+    def _model_affinity_candidates(
         candidates: list[RouteTarget], requested_model: str | None
-    ) -> RouteTarget | None:
-        """Prefer a target whose physical model matches the requested model."""
+    ) -> list[RouteTarget]:
+        """Return targets whose physical model matches the requested model."""
         if requested_model is None or requested_model.startswith("vampire:"):
-            return None
-        return next((target for target in candidates if target.model == requested_model), None)
+            return []
+        return [target for target in candidates if target.model == requested_model]

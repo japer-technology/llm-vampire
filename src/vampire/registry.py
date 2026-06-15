@@ -32,9 +32,26 @@ class NodeRegistry:
         if node is None:
             return None
 
-        updated = node.model_copy(update=patch.model_dump(exclude_unset=True, exclude_none=True))
+        merged = {**node.model_dump(), **patch.model_dump(exclude_unset=True, exclude_none=True)}
+        updated = Node.model_validate(merged)
         self._nodes[node_id] = updated
         return updated
+
+    def mark_busy(self, node_id: str) -> None:
+        """Record one in-flight request for a registered node."""
+        node = self._nodes.get(node_id)
+        if node is not None:
+            self._nodes[node_id] = node.model_copy(
+                update={"active_requests": node.active_requests + 1}
+            )
+
+    def mark_idle(self, node_id: str) -> None:
+        """Release one in-flight request for a registered node."""
+        node = self._nodes.get(node_id)
+        if node is not None:
+            self._nodes[node_id] = node.model_copy(
+                update={"active_requests": max(0, node.active_requests - 1)}
+            )
 
     def get(self, node_id: str) -> Node | None:
         """Return a node by id, or ``None`` when it is not registered."""

@@ -203,3 +203,5 @@ A second, end-to-end test asserts the counter actually moves through the HTTP su
 ---
 
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · input ~440000 tok (cumulative, cache-heavy) · output ~12000 tok · est. cost ~$7.50 · run started 09:40 finished 09:45. Marked estimated; derived from `~/.hermes/logs/agent.log` `in=`/`out=` sums for this cron run.
+
+> APPLIED 2026-06-15T00:57:51Z: routed requests now mark selected nodes busy until response completion, with registry and HTTP-path regression coverage in tests/test_phase3.py. Targeted validation passed.
