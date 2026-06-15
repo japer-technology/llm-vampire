@@ -150,6 +150,8 @@ Reject malformed URLs at `POST /vampire/v1/nodes` so they never persist. Change 
 
 No `# type: ignore` to remove here. No docs need changing beyond optionally noting URL validation in DESIGN-API.md §13.
 
+- **APPLIED 2026-06-15:** Set to Taken and implemented by treating `httpx.InvalidURL` as an offline probe failure, isolating unexpected per-node refresh failures during fan-out, and adding malformed URL regression coverage.
+
 ## Test
 A regression test that fails today (uncaught `InvalidURL` → 500) and passes after the fix. Add to `tests/test_phase2.py`:
 

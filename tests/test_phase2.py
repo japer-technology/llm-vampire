@@ -240,6 +240,42 @@ def test_refresh_node_does_not_resurrect_deregistered_node(
     assert registry.get("node-z") is None
 
 
+def test_refresh_node_handles_malformed_url_as_offline() -> None:
+    from vampire.registry import registry as node_registry
+
+    node_registry.clear()
+    node = Node(id="bad", lmstudio_base_url="http://node:notaport")
+
+    refreshed = asyncio.run(cluster.refresh_node(node))
+
+    assert refreshed.status == "offline"
+    assert refreshed.last_error is not None
+    assert "port" in refreshed.last_error.lower() or "url" in refreshed.last_error.lower()
+
+
+def test_models_endpoints_survive_one_malformed_node(client: TestClient) -> None:
+    from vampire.registry import registry as node_registry
+
+    node_registry.clear()
+    client.post(
+        "/vampire/v1/nodes",
+        json={"id": "good", "lmstudio_base_url": "http://good:1234"},
+    )
+
+    bad = client.post(
+        "/vampire/v1/nodes",
+        json={"id": "bad", "lmstudio_base_url": "http://node:notaport"},
+    )
+    assert bad.status_code == 200
+    assert bad.json()["status"] == "registered"
+
+    resp = client.get("/v1/models")
+
+    assert resp.status_code == 200
+    ids = {model["id"] for model in resp.json()["data"]}
+    assert "good-model" in ids
+
+
 def test_control_api_auth_token_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
     token = "test-token"
     scheme = "Bear" + "er"
