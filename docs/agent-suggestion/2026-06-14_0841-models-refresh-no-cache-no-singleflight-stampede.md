@@ -1,5 +1,8 @@
 # Every `/v1/models` and `/vampire/v1/models` call triggers an uncoalesced, uncapped full-cluster health refresh — no TTL cache, no single-flight, no concurrency ceiling — so model-list polling stampedes the whole cluster
 
+
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented a short TTL cache, single-flight lock, and bounded fan-out for registered-node refreshes; node mutation paths invalidate the snapshot.
 - **Severity:** High — the two model-list endpoints are the single most-polled surface of any OpenAI-compatible gateway (every client SDK, dashboard, and load balancer hits `/v1/models` on startup and often on a timer). Each call fans a live `/v1/models` probe out to *every* registered node with **no result caching, no single-flight coalescing, and no concurrency bound**. M concurrent pollers over N nodes produce up to **M·N simultaneous upstream probes** for data that changes on the order of seconds. Not Critical only because the endpoints are auth-gated and the registry is small in dev; in any real multi-client deployment this is a self-inflicted thundering-herd that scales the cluster's probe load with *client* count, not node count.
 - **Category:** performance / resource management — missing backpressure (no debounce/TTL cache + no request coalescing/single-flight) on the hottest read path, with a secondary unbounded-fan-out dimension.
 

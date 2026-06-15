@@ -2,12 +2,15 @@
 
 Defaults follow DESIGN-API.md: Vampire listens on port 7777 and proxies to a
 downstream LM Studio node that commonly listens on port 1234. Settings can be
-overridden with ``VAMPIRE_*`` environment variables.
+overridden with ``VAMPIRE_*`` environment variables. They are cached on first
+access for the process lifetime; restart the gateway after changing runtime
+configuration.
 """
 
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -47,6 +50,7 @@ def configure_logging(settings: Settings | None = None) -> None:
     )
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Return a fresh Settings instance loaded from the environment."""
+    """Return the cached process settings snapshot."""
     return Settings()

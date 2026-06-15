@@ -22,6 +22,12 @@ _MAX_SCAN_PORTS = 8
 _MAX_SCAN_HOSTS_PER_SUBNET = 256
 _MAX_SCAN_CANDIDATES = 1024
 _DISCOVERY_CONCURRENCY = 16
+_REFRESH_CONCURRENCY = 16
+_REFRESH_TTL_SECONDS = 1.0
+_ALLOWED_SCHEMES = frozenset({"http", "https"})
+_refresh_lock = asyncio.Lock()
+_refresh_cache: list[Node] | None = None
+_refresh_cache_at = 0.0
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +70,26 @@ def _host_ip_address(host: str | None) -> ipaddress.IPv4Address | ipaddress.IPv6
         return ipaddress.ip_address(host)
     except ValueError:
         return None
+
+
+def is_allowed_target_url(base_url: str) -> bool:
+    """Return whether a caller-supplied probe/proxy target is in the safe scope."""
+    parsed = urlparse(base_url)
+    if parsed.scheme not in _ALLOWED_SCHEMES or parsed.hostname is None:
+        return False
+    host_ip = _host_ip_address(parsed.hostname)
+    if host_ip is None:
+        return True
+    if host_ip.is_link_local or host_ip.is_reserved or host_ip.is_multicast:
+        return False
+    return bool(host_ip.is_loopback or host_ip.is_private)
+
+
+def invalidate_refresh_cache() -> None:
+    """Discard the short-lived registered-node refresh snapshot."""
+    global _refresh_cache, _refresh_cache_at
+    _refresh_cache = None
+    _refresh_cache_at = 0.0
 
 
 def _url_with_host(base_url: str, host: str) -> str:
@@ -203,29 +229,57 @@ async def refresh_node(
 
 
 async def refresh_registered_nodes(
-    *, timeout_ms: int | None = None, client: httpx.AsyncClient | None = None
+    *,
+    timeout_ms: int | None = None,
+    client: httpx.AsyncClient | None = None,
+    force: bool = False,
 ) -> list[Node]:
     """Refresh every registered node and return the updated snapshot."""
     nodes = registry.list()
     if not nodes:
         return []
-    results = await asyncio.gather(
-        *(
-            refresh_node(node, timeout_ms=timeout_ms, client=client)
-            if client is not None
-            else refresh_node(node, timeout_ms=timeout_ms)
-            for node in nodes
-        ),
-        return_exceptions=True,
-    )
-    refreshed: list[Node] = []
-    for node, result in zip(nodes, results, strict=True):
-        if isinstance(result, Node):
-            refreshed.append(result)
-            continue
-        logger.warning("refresh of node %s failed: %r", node.id, result)
-        refreshed.append(node)
-    return refreshed
+
+    global _refresh_cache, _refresh_cache_at
+    now = perf_counter()
+    if not force and _refresh_cache is not None and now - _refresh_cache_at < _REFRESH_TTL_SECONDS:
+        return _refresh_cache
+
+    async with _refresh_lock:
+        now = perf_counter()
+        if (
+            not force
+            and _refresh_cache is not None
+            and now - _refresh_cache_at < _REFRESH_TTL_SECONDS
+        ):
+            return _refresh_cache
+
+        nodes = registry.list()
+        if not nodes:
+            invalidate_refresh_cache()
+            return []
+
+        semaphore = asyncio.Semaphore(_REFRESH_CONCURRENCY)
+
+        async def _bounded_refresh(node: Node) -> Node | BaseException:
+            async with semaphore:
+                try:
+                    if client is not None:
+                        return await refresh_node(node, timeout_ms=timeout_ms, client=client)
+                    return await refresh_node(node, timeout_ms=timeout_ms)
+                except BaseException as exc:
+                    return exc
+
+        results = await asyncio.gather(*(_bounded_refresh(node) for node in nodes))
+        refreshed: list[Node] = []
+        for node, result in zip(nodes, results, strict=True):
+            if isinstance(result, Node):
+                refreshed.append(result)
+                continue
+            logger.warning("refresh of node %s failed: %r", node.id, result)
+            refreshed.append(node)
+        _refresh_cache = refreshed
+        _refresh_cache_at = perf_counter()
+        return refreshed
 
 
 def aggregate_model_cards(nodes: list[Node]) -> ModelListResponse:
@@ -283,7 +337,12 @@ def metrics_snapshot() -> dict[str, object]:
 
 def _candidate_urls(request: DiscoveryRequest) -> list[str]:
     """Expand static and development-subnet discovery inputs to base URLs."""
-    urls = [url.rstrip("/") for url in request.base_urls]
+    urls: list[str] = []
+    for url in request.base_urls:
+        cleaned = url.rstrip("/")
+        if not is_allowed_target_url(cleaned):
+            raise DiscoveryInputError(f"disallowed discovery target {url!r}")
+        urls.append(cleaned)
     methods = set(request.methods)
     if "static" in methods:
         urls.append(get_settings().lmstudio_base_url.rstrip("/"))

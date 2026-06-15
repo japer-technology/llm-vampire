@@ -140,8 +140,8 @@ def test_settings_honour_vampire_env_prefix(monkeypatch: pytest.MonkeyPatch) -> 
     assert settings.log_level == "DEBUG"
 
 
-def test_get_settings_returns_fresh_instances() -> None:
-    assert get_settings() is not get_settings()
+def test_get_settings_returns_cached_snapshot() -> None:
+    assert get_settings() is get_settings()
 
 
 def test_configure_logging_applies_settings_level() -> None:
