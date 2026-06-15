@@ -4,7 +4,7 @@ Staff-engineer audit suggestions for the lmstudio-vampire gateway, one per run.
 
 _Generated: 2026-06-14 20:04 UTC_
 
-24 total · 10 open · 14 taken · 0 declined
+24 total · 9 open · 15 taken · 0 declined
 
 | Date | Title | Severity | Category | Status | File |
 |------|-------|----------|----------|--------|------|
@@ -16,7 +16,7 @@ _Generated: 2026-06-14 20:04 UTC_
 | 2026-06-14 09:13 | Prompt playground output not announced to assistive tech (ARIA live region) | Medium | ux | Taken | [link](2026-06-14_0913-html-ux-playground-live-region.md) |
 | 2026-06-14 09:02 | Discovery auto-trusts every reachable node by default (`trusted = not request.trusted_only`) | High | security | Taken | [link](2026-06-14_0902-discover-auto-trusts-every-node-by-default.md) |
 | 2026-06-14 08:42 | NodeRegistry.update bypasses Pydantic validation, corrupting nested NodeCapabilities on PATCH | High | type-safety | Open | [link](2026-06-14_0842-node-update-model-copy-corrupts-capabilities.md) |
-| 2026-06-14 08:42 | `/v1/models` cards omit OpenAI-required `created` field | High | api-correctness | Open | [link](2026-06-14_0842-models-listing-omits-required-created-field.md) |
+| 2026-06-14 08:42 | `/v1/models` cards omit OpenAI-required `created` field | High | api-correctness | Taken | [link](2026-06-14_0842-models-listing-omits-required-created-field.md) |
 | 2026-06-14 08:41 | `/v1/models` triggers uncoalesced full-cluster refresh — no TTL/single-flight/cap | High | performance | Open | [link](2026-06-14_0841-models-refresh-no-cache-no-singleflight-stampede.md) |
 | 2026-06-14 08:28 | SSRF: `base_urls`/`lmstudio_base_url` probed with no scheme or host validation | High | security | Open | [link](2026-06-14_0828-ssrf-unvalidated-base-urls-bypass-lan-scan-guard.md) |
 | 2026-06-14 08:28 | Blocking `.env` disk stat on the event loop via per-request `get_settings()` | High | concurrency | Open | [link](2026-06-14_0828-get-settings-blocking-env-stat-on-event-loop.md) |

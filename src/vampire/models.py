@@ -7,6 +7,7 @@ IMPLEMENTATION-PLAN.md are implemented.
 
 from __future__ import annotations
 
+import time
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -20,12 +21,15 @@ ModelKind = Literal["physical", "virtual"]
 ShareMode = Literal["off", "local", "personal", "family", "business", "event"]
 """Owner sharing modes exposed by the required ``vampire share`` command."""
 
+_SYNTHETIC_CREATED = int(time.time())
+
 
 class ModelCard(BaseModel):
     """OpenAI-compatible model listing item."""
 
     id: str
     object: Literal["model"] = "model"
+    created: int = _SYNTHETIC_CREATED
     owned_by: str = "lmstudio-vampire"
 
     model_config = ConfigDict(extra="allow")
