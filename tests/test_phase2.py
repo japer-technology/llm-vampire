@@ -15,7 +15,8 @@ from fastapi.testclient import TestClient
 import vampire.cluster as cluster
 import vampire.proxy as proxy
 from vampire.app import create_app
-from vampire.models import Node
+from vampire.models import Node, NodeCapabilities, NodeUpdate
+from vampire.registry import NodeRegistry
 
 
 def _mock_cluster() -> FastAPI:
@@ -83,6 +84,24 @@ def test_patch_node_updates_and_refreshes(client: TestClient) -> None:
     assert body["tags"] == ["gpu"]
     assert body["trusted"] is True
     assert body["status"] == "online"
+
+
+def test_update_preserves_nested_capabilities_type() -> None:
+    reg = NodeRegistry()
+    reg.add(Node(id="node-a", lmstudio_base_url="http://node-a:1234"))
+
+    updated = reg.update(
+        "node-a",
+        NodeUpdate(capabilities=NodeCapabilities(vision=True, tools=True)),
+    )
+
+    assert updated is not None
+    assert isinstance(updated.capabilities, NodeCapabilities)
+    assert updated.capabilities.vision is True
+    assert updated.capabilities.tools is True
+    stored = reg.get("node-a")
+    assert stored is not None
+    assert isinstance(stored.capabilities, NodeCapabilities)
 
 
 def test_registered_nodes_aggregate_openai_and_vampire_models(client: TestClient) -> None:

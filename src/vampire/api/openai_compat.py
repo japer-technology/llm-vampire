@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.responses import Response
 
 from vampire.cluster import aggregate_model_cards, refresh_registered_nodes
@@ -151,17 +152,34 @@ async def _route_or_proxy(request: Request) -> Response:
     routed_payload = dict(payload)
     routed_payload["model"] = target.model
     routed_payload.pop("vampire", None)
-    return await proxy_request_with_body(
-        request,
-        downstream_base_url=node.lmstudio_base_url,
-        body=json.dumps(routed_payload).encode("utf-8"),
-        response_headers={
-            "X-Vampire-Route": policy.id,
-            "X-Vampire-Strategy": selection.strategy,
-            "X-Vampire-Node": target.node,
-            "X-Vampire-Model": target.model,
-        },
-    )
+    registry.mark_busy(target.node)
+    try:
+        response = await proxy_request_with_body(
+            request,
+            downstream_base_url=node.lmstudio_base_url,
+            body=json.dumps(routed_payload).encode("utf-8"),
+            response_headers={
+                "X-Vampire-Route": policy.id,
+                "X-Vampire-Strategy": selection.strategy,
+                "X-Vampire-Node": target.node,
+                "X-Vampire-Model": target.model,
+            },
+        )
+    except BaseException:
+        registry.mark_idle(target.node)
+        raise
+    response.background = _release_on_finish(target.node, response.background)
+    return response
+
+
+def _release_on_finish(node_id: str, existing: BackgroundTask | None) -> BackgroundTask:
+    release = BackgroundTask(registry.mark_idle, node_id)
+    if existing is None:
+        return release
+    tasks = BackgroundTasks()
+    tasks.add_task(existing)
+    tasks.add_task(release)
+    return tasks
 
 
 def _json_payload(body: bytes) -> dict[str, Any] | None:

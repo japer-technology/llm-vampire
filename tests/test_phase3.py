@@ -9,7 +9,9 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from starlette.responses import Response
 
+import vampire.api.openai_compat as openai_compat
 import vampire.proxy as proxy
 from vampire.app import create_app
 from vampire.models import ModelCard, Node, RoutePolicy, RouteTarget
@@ -197,6 +199,97 @@ def test_router_mvp_strategies() -> None:
         )
         == "node-c"
     )
+
+
+def test_model_affinity_load_balances_across_replicas_of_same_model() -> None:
+    registry.add(_online_node("node-a", "shared"))
+    registry.add(_online_node("node-b", "shared"))
+    registry.add(_online_node("node-c", "shared"))
+    router = Router(registry)
+    targets = [
+        RouteTarget(node="node-a", model="shared"),
+        RouteTarget(node="node-b", model="shared"),
+        RouteTarget(node="node-c", model="shared"),
+    ]
+    policy = RoutePolicy(
+        id="affinity-lb",
+        virtual_model="vampire:auto",
+        targets=targets,
+        strategy="model_affinity",
+    )
+
+    picks = [_selected_node(router.select(policy, requested_model="shared")) for _ in range(9)]
+
+    assert set(picks) == {"node-a", "node-b", "node-c"}
+    assert picks.count("node-a") == 3
+    assert picks.count("node-b") == 3
+    assert picks.count("node-c") == 3
+    selection = router.select(policy, requested_model="shared")
+    assert selection is not None
+    assert selection.strategy == "model_affinity"
+
+
+def test_least_busy_reflects_inflight_registry_state() -> None:
+    registry.add(_online_node("node-a", "shared"))
+    registry.add(_online_node("node-b", "shared"))
+    router = Router(registry)
+    policy = RoutePolicy(
+        id="busy",
+        virtual_model="vampire:auto",
+        targets=[
+            RouteTarget(node="node-a", model="shared"),
+            RouteTarget(node="node-b", model="shared"),
+        ],
+        strategy="least_busy",
+    )
+
+    registry.mark_busy("node-a")
+    selection = router.select(policy)
+
+    assert selection is not None
+    assert selection.target.node == "node-b"
+    registry.mark_idle("node-a")
+    node = registry.get("node-a")
+    assert node is not None
+    assert node.active_requests == 0
+
+
+def test_routed_request_marks_selected_node_busy_until_response_finishes(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+    observed_active_requests: list[int] = []
+
+    async def _fake_proxy_request_with_body(
+        request: Request,
+        *,
+        downstream_base_url: str | None = None,
+        body: bytes | None = None,
+        response_headers: dict[str, str] | None = None,
+    ) -> Response:
+        node = registry.get("node-a")
+        assert node is not None
+        observed_active_requests.append(node.active_requests)
+        response = JSONResponse({"ok": True})
+        if response_headers:
+            response.headers.update(response_headers)
+        return response
+
+    monkeypatch.setattr(openai_compat, "proxy_request_with_body", _fake_proxy_request_with_body)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"X-Vampire-Mode": "route", "X-Vampire-Strategy": "least_busy"},
+        json={"model": "node-a-model", "messages": [{"role": "user", "content": "hello"}]},
+    )
+
+    assert resp.status_code == 200
+    assert observed_active_requests == [1]
+    node = registry.get("node-a")
+    assert node is not None
+    assert node.active_requests == 0
 
 
 def test_round_robin_cursor_map_is_bounded_under_distinct_virtual_models() -> None:
