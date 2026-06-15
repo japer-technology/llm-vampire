@@ -256,6 +256,37 @@ def test_drained_node_stays_registered_but_is_not_route_candidate(client: TestCl
     assert restored.json()["status"] == "online"
 
 
+def test_patch_unrelated_field_does_not_undrain_node(client: TestClient) -> None:
+    client.post(
+        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+    )
+
+    drained = client.patch("/vampire/v1/nodes/node-a", json={"status": "draining"})
+    updated = client.patch("/vampire/v1/nodes/node-a", json={"tags": ["gpu"]})
+
+    assert drained.status_code == 200
+    assert updated.status_code == 200
+    assert updated.json()["tags"] == ["gpu"]
+    assert updated.json()["status"] == "draining"
+    stored = registry.get("node-a")
+    assert stored is not None
+    assert stored.status == "draining"
+    assert (
+        Router(registry).select(
+            RoutePolicy(
+                id="route-drained",
+                virtual_model="vampire:auto",
+                targets=[RouteTarget(node="node-a", model="node-a-model")],
+            )
+        )
+        is None
+    )
+
+    restored = client.patch("/vampire/v1/nodes/node-a", json={"status": "online"})
+    assert restored.status_code == 200
+    assert restored.json()["status"] == "online"
+
+
 def test_virtual_model_request_routes_to_selected_node(client: TestClient) -> None:
     client.post(
         "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}

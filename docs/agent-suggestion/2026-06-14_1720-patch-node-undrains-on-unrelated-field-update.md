@@ -168,4 +168,6 @@ def test_patch_unrelated_field_does_not_undrain_node(client: TestClient) -> None
 
 ---
 
+- **APPLIED 2026-06-15:** Set to Taken and implemented by preserving existing manual-unavailable statuses on status-less node PATCH requests, with regression coverage for unrelated metadata edits on drained nodes.
+
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · input ~1,267,753 tok · output ~14,285 tok · est. cost ~$20.09 · run started 01:00 finished 03:20. Marked estimated — input figure sums per-call `in=` from `agent.log` and is inflated by uncached cumulative context (large prompt-cache hit rates on later calls mean true billed cost is materially lower); long wall-clock gaps are upstream stream-retry timeouts, not compute.
