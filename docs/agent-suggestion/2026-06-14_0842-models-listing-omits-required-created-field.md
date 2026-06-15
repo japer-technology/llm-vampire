@@ -1,5 +1,8 @@
 # `/v1/models` cards omit the OpenAI-required `created` field, breaking strict clients and drifting from DESIGN-API.md §5
 
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented a typed `created` field on OpenAI model cards with a stable process-start fallback, preserving upstream values and adding regression coverage for aggregated `/v1/models`.
+
 **Severity:** High — This is the single most-hit read endpoint of the OpenAI compatibility surface (every SDK calls it at startup/model-pick time), the omission is a hard spec violation, and it is silently inconsistent: the *passthrough* path returns LM Studio's real `created` timestamps while the *aggregation* path strips them. Clients that validate the model object (OpenAI Python `Model` requires `created: int`; LangChain, LiteLLM, and several TUI/IDE pickers deserialize into typed structs) raise on the aggregated response but not the passthrough one, so the bug only manifests once the operator registers a node — i.e. exactly when Vampire stops being a dumb proxy and starts being Vampire. Not Critical because it does not corrupt inference traffic or leak data; it breaks discovery/model-listing for strict clients.
 
 **Category:** API-correctness / OpenAI compatibility / spec drift

@@ -31,6 +31,7 @@ def _mock_cluster() -> FastAPI:
                     {
                         "id": f"{host}-model",
                         "object": "model",
+                        "created": 1781234567,
                         "owned_by": "lmstudio",
                     }
                 ],
@@ -410,6 +411,27 @@ def test_models_endpoint_survives_virtual_physical_id_collision(client: TestClie
     assert len(ids) == len(set(ids))
     card = next(card for card in models.json()["data"] if card["id"] == "node-a-model")
     assert card["owned_by"] == "vampire"
+
+
+def test_models_listing_includes_created_for_every_card(client: TestClient) -> None:
+    registry.add(
+        Node(
+            id="node-a",
+            lmstudio_base_url="http://node-a:1234",
+            status="online",
+            trusted=True,
+            models=[ModelCard(id="node-a-model")],
+        )
+    )
+
+    response = client.get("/v1/models")
+
+    assert response.status_code == 200
+    cards = response.json()["data"]
+    assert cards
+    for card in cards:
+        assert isinstance(card["created"], int)
+        assert card["created"] > 0
 
 
 def test_unknown_strategy_override_is_rejected_not_silently_downgraded(

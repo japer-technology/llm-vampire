@@ -176,6 +176,8 @@ def test_configure_logging_falls_back_on_unknown_level() -> None:
 def test_model_card_defaults_to_vampire_ownership() -> None:
     card = ModelCard(id="local-model")
     assert card.object == "model"
+    assert isinstance(card.created, int)
+    assert card.created > 0
     assert card.owned_by == "lmstudio-vampire"
 
 
