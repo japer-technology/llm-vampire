@@ -17,6 +17,8 @@ from vampire.api._auth import require_control_auth
 from vampire.cluster import (
     DiscoveryInputError,
     discover_nodes,
+    invalidate_refresh_cache,
+    is_allowed_target_url,
     metrics_snapshot,
     physical_model_inventory,
     refresh_node,
@@ -65,8 +67,12 @@ async def register_node(node: Node, request: Request) -> dict[str, Any]:
     ``lmstudio_base_url``. Phase 2 immediately interrogates ``/v1/models`` to
     populate health and model metadata, while keeping offline nodes registered.
     """
+    if not is_allowed_target_url(node.lmstudio_base_url):
+        raise HTTPException(status_code=400, detail="disallowed lmstudio_base_url target")
+    invalidate_refresh_cache()
     registry.add(node)
     refreshed = await refresh_node(node, client=_request_http_client(request))
+    invalidate_refresh_cache()
     return {"id": refreshed.id, "status": "registered", "trusted": refreshed.trusted}
 
 
@@ -82,14 +88,19 @@ async def get_node(node_id: str) -> dict[str, Any]:
 @router.patch("/nodes/{node_id}")
 async def patch_node(node_id: str, patch: NodeUpdate, request: Request) -> dict[str, Any]:
     """Partially update a registered node and refresh its health metadata."""
+    if patch.lmstudio_base_url is not None and not is_allowed_target_url(patch.lmstudio_base_url):
+        raise HTTPException(status_code=400, detail="disallowed lmstudio_base_url target")
     node = registry.update(node_id, patch)
     if node is None:
         raise HTTPException(status_code=404, detail="node not found")
+    invalidate_refresh_cache()
     if patch.status in MANUAL_UNAVAILABLE_STATUSES:
         return node.model_dump()
     if patch.status is None and node.status in MANUAL_UNAVAILABLE_STATUSES:
         return node.model_dump()
-    return (await refresh_node(node, client=_request_http_client(request))).model_dump()
+    refreshed = await refresh_node(node, client=_request_http_client(request))
+    invalidate_refresh_cache()
+    return refreshed.model_dump()
 
 
 @router.delete("/nodes/{node_id}")
@@ -97,6 +108,7 @@ async def delete_node(node_id: str) -> dict[str, Any]:
     """Remove an in-memory node registration or return 404 if it is absent."""
     if not registry.remove(node_id):
         raise HTTPException(status_code=404, detail="node not found")
+    invalidate_refresh_cache()
     return {"id": node_id, "status": "removed"}
 
 
@@ -112,6 +124,7 @@ async def discover(
         )
     except DiscoveryInputError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    invalidate_refresh_cache()
     return {"object": "vampire.discovery_result", "nodes": [node.model_dump() for node in nodes]}
 
 

@@ -1,5 +1,8 @@
 # Blocking `.env` disk stat on the event loop: `get_settings()` re-reads config from disk on every request, every auth check, and every node health probe
 
+
+- **Status:** Suggestion taken with notes.
+- **Notes:** Implemented process-wide settings caching with test isolation via `get_settings.cache_clear()`, eliminating repeated dotenv disk checks on hot paths.
 **Severity:** High — This is not a correctness bug but a systemic, repo-wide event-loop-blocking defect on the hottest paths in the gateway. Every single `/v1/*` request triggers *at minimum* two synchronous `Settings()` constructions (`require_auth` + the proxy), each of which performs blocking `os.stat()` syscalls against the `.env` file from inside `async` handlers running on the single Uvicorn event loop. Under fan-out (`/v1/models` refreshing N nodes, discovery probing up to 1024 candidates) the count multiplies. It is not Critical because each individual stat is sub-millisecond on a warm-cache local SSD and there is no data corruption; but it violates the cardinal async rule (never do blocking I/O on the loop), scales with both request rate and cluster size, and silently defeats the connection-pooling/latency work already landed in prior suggestions. It also means runtime config is non-deterministic mid-flight (see Impact).
 
 **Category:** concurrency / event-loop-blocking / performance

@@ -124,6 +124,38 @@ def test_registered_nodes_aggregate_openai_and_vampire_models(client: TestClient
     assert {model["model"] for model in vampire_models["data"]} == {"node-a-model", "node-b-model"}
 
 
+def test_refresh_registered_nodes_coalesces_and_caches(monkeypatch: pytest.MonkeyPatch) -> None:
+    from vampire.registry import registry as node_registry
+
+    node_registry.clear()
+    cluster.invalidate_refresh_cache()
+    for index in range(5):
+        node_registry.add(Node(id=f"n{index}", lmstudio_base_url=f"http://10.0.0.{index}:1234"))
+
+    probes = 0
+
+    async def _counting_refresh(
+        node: Node,
+        *,
+        timeout_ms: int | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> Node:
+        nonlocal probes
+        probes += 1
+        await asyncio.sleep(0)
+        return node.model_copy(update={"status": "online"})
+
+    monkeypatch.setattr(cluster, "refresh_node", _counting_refresh)
+
+    async def _run() -> None:
+        await asyncio.gather(*(cluster.refresh_registered_nodes() for _ in range(10)))
+        await cluster.refresh_registered_nodes()
+
+    asyncio.run(_run())
+
+    assert probes == 5
+
+
 def test_discover_static_base_urls_registers_online_nodes(client: TestClient) -> None:
     resp = client.post(
         "/vampire/v1/discover",
@@ -134,6 +166,48 @@ def test_discover_static_base_urls_registers_online_nodes(client: TestClient) ->
     assert body["object"] == "vampire.discovery_result"
     assert body["nodes"][0]["id"] == "node-node-c-1234"
     assert body["nodes"][0]["models"][0]["id"] == "node-c-model"
+
+
+def test_discover_rejects_offscope_base_urls(client: TestClient) -> None:
+    resp = client.post(
+        "/vampire/v1/discover",
+        json={
+            "methods": ["static"],
+            "base_urls": ["http://169.254.169.254", "http://8.8.8.8:80"],
+        },
+    )
+
+    assert resp.status_code == 400
+    nodes = client.get("/vampire/v1/nodes").json()["data"]
+    hosts = {node["host"] for node in nodes}
+    assert "169.254.169.254" not in hosts
+    assert "8.8.8.8" not in hosts
+
+
+def test_register_node_rejects_offscope_url(client: TestClient) -> None:
+    resp = client.post(
+        "/vampire/v1/nodes",
+        json={"id": "evil", "lmstudio_base_url": "http://169.254.169.254/latest/meta-data"},
+    )
+
+    assert resp.status_code == 400
+    assert client.get("/vampire/v1/nodes/evil").status_code == 404
+
+
+def test_patch_node_rejects_offscope_url(client: TestClient) -> None:
+    client.post(
+        "/vampire/v1/nodes",
+        json={"id": "node-a", "lmstudio_base_url": "http://127.0.0.1:1234"},
+    )
+
+    resp = client.patch(
+        "/vampire/v1/nodes/node-a",
+        json={"lmstudio_base_url": "http://8.8.8.8:80"},
+    )
+
+    assert resp.status_code == 400
+    node = client.get("/vampire/v1/nodes/node-a").json()
+    assert node["lmstudio_base_url"] == "http://127.0.0.1:1234"
 
 
 def test_discover_does_not_register_offline_candidates(
