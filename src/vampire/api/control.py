@@ -87,6 +87,8 @@ async def patch_node(node_id: str, patch: NodeUpdate, request: Request) -> dict[
         raise HTTPException(status_code=404, detail="node not found")
     if patch.status in MANUAL_UNAVAILABLE_STATUSES:
         return node.model_dump()
+    if patch.status is None and node.status in MANUAL_UNAVAILABLE_STATUSES:
+        return node.model_dump()
     return (await refresh_node(node, client=_request_http_client(request))).model_dump()
 
 

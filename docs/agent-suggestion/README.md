@@ -4,13 +4,13 @@ Staff-engineer audit suggestions for the lmstudio-vampire gateway, one per run.
 
 _Generated: 2026-06-14 20:04 UTC_
 
-24 total · 9 open · 15 taken · 0 declined
+24 total · 8 open · 16 taken · 0 declined
 
 | Date | Title | Severity | Category | Status | File |
 |------|-------|----------|----------|--------|------|
 | 2026-06-14 20:04 | Transparent proxy collapses repeated query parameters (`dict(request.query_params)` drops all but last) | High | api-correctness | Taken | [link](2026-06-14_2004-proxy-dict-query-params-drops-repeated-keys.md) |
 | 2026-06-14 19:01 | `model_affinity` routing pins 100% of traffic to the first replica — no load distribution across nodes hosting the same model | High | api-correctness | Open | [link](2026-06-14_1901-model-affinity-pins-all-traffic-first-replica.md) |
-| 2026-06-14 17:20 | `PATCH /vampire/v1/nodes/{id}` silently un-drains a node on any unrelated field update | High | api-correctness | Open | [link](2026-06-14_1720-patch-node-undrains-on-unrelated-field-update.md) |
+| 2026-06-14 17:20 | `PATCH /vampire/v1/nodes/{id}` silently un-drains a node on any unrelated field update | High | api-correctness | Taken | [link](2026-06-14_1720-patch-node-undrains-on-unrelated-field-update.md) |
 | 2026-06-14 10:00 | `refresh_node` lets `httpx.InvalidURL` escape its `except` — one malformed node URL 500s every cluster endpoint | High | error-handling | Open | [link](2026-06-14_1000-refresh-node-invalid-url-uncaught-500.md) |
 | 2026-06-14 09:40 | `least_busy` routing is a no-op in production — proxy never tracks in-flight requests | High | api-correctness | Open | [link](2026-06-14_0940-least-busy-no-inflight-tracking-degenerates.md) |
 | 2026-06-14 09:13 | Prompt playground output not announced to assistive tech (ARIA live region) | Medium | ux | Taken | [link](2026-06-14_0913-html-ux-playground-live-region.md) |
