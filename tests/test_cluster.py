@@ -1,10 +1,26 @@
-import pytest
 import asyncio
-from vampire.registry import registry
-from vampire.cluster import discover_nodes, _node_id_for_url
+from unittest.mock import AsyncMock
+
+import pytest
+
+import vampire.cluster as cluster
+from vampire.cluster import _node_id_for_url, discover_nodes
 from vampire.models import DiscoveryRequest, Node
-import httpx
-from unittest.mock import AsyncMock, patch
+from vampire.registry import registry
+
+
+def test_coerce_model_cards_filters_reserved_vampire_namespace():
+    cards = cluster._coerce_model_cards(
+        {
+            "object": "list",
+            "data": [
+                {"id": "local-model", "object": "model", "owned_by": "lmstudio"},
+                {"id": "vampire:shadow", "object": "model", "owned_by": "lmstudio"},
+            ],
+        }
+    )
+
+    assert [card.id for card in cards] == ["local-model"]
 
 @pytest.mark.asyncio
 async def test_discover_nodes_prevents_resurrection(monkeypatch):
@@ -46,7 +62,6 @@ async def test_discover_nodes_successful_registration(monkeypatch):
     # Setup
     base_url = "http://localhost:1234"
     node_id = _node_id_for_url(base_url)
-    node = Node(id=node_id, lmstudio_base_url=base_url, status="online")
     registry.clear()
 
     async def fast_refresh(n, timeout_ms=None, client=None):

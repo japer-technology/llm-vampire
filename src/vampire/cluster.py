@@ -82,7 +82,7 @@ def is_allowed_target_url(base_url: str) -> bool:
         return True
     if host_ip.is_link_local or host_ip.is_reserved or host_ip.is_multicast:
         return False
-    return not (host_ip.is_loopback or host_ip.is_private)
+    return bool(host_ip.is_loopback or host_ip.is_private)
 
 
 def invalidate_refresh_cache() -> None:
@@ -178,6 +178,8 @@ def _coerce_model_cards(payload: object) -> list[ModelCard]:
     cards: list[ModelCard] = []
     for raw in data:
         if isinstance(raw, dict) and isinstance(raw.get("id"), str):
+            if raw["id"].startswith("vampire:"):
+                continue
             cards.append(ModelCard.model_validate(raw))
     return cards
 
