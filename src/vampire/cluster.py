@@ -82,7 +82,7 @@ def is_allowed_target_url(base_url: str) -> bool:
         return True
     if host_ip.is_link_local or host_ip.is_reserved or host_ip.is_multicast:
         return False
-    return bool(host_ip.is_loopback or host_ip.is_private)
+    return not (host_ip.is_loopback or host_ip.is_private)
 
 
 def invalidate_refresh_cache() -> None:
