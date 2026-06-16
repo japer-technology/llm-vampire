@@ -395,6 +395,8 @@ async def discover_nodes(
         # trusted_only is a *filter* over results, not a grant of trust.
         if request.trusted_only and not refreshed.trusted:
             return None
+        if current is not None and registry.get(refreshed.id) is None:
+            return None
         registry.add(refreshed)
         return refreshed
 
