@@ -304,6 +304,37 @@
 
 ---
 
+## Opus 4.8 Advice
+
+The lost-update analysis is correct and the re-read-and-merge fix is the right shape. Three
+refinements before you land it:
+
+1. **The monotonic counters have the same lost-update bug as `active_requests` — fix them the
+   same way.** The proposed `health_update` still copies `node.request_count + 1` /
+   `node.error_count + 1`, i.e. increments from the *stale* snapshot. If a concurrent refresh
+   already bumped `request_count` on the live node, copying `node.request_count + 1` onto
+   `current` discards that increment — exactly the race you're closing for `active_requests`.
+   Increment from the live value instead: read `current.request_count` and use
+   `current.request_count + 1` (likewise `error_count`).
+
+2. **This shares an owner with suggestions `1210` and the `_probe` add path.** Three call sites
+   write the registry via read-then-add against a snapshot: `refresh_node` (cluster.py:226),
+   `_probe`'s own `registry.add` (cluster.py:398), and this merge. The `current is None ->
+   return without add` branch you propose **is** the resurrection guard from `1210` — it's the
+   same invariant. Implement it once: make `refresh_node` the single writer that merges health
+   onto the *current* registry node, and have `_probe` only `add` genuinely new nodes (see the
+   `1210` advice, whose naive guard otherwise breaks new-node discovery). Land `0930` and `1210`
+   together.
+
+3. **The atomicity argument holds only with no `await` between `registry.get` and
+   `registry.add`.** Keep them adjacent; do not insert logging-with-await or any other yield
+   point between the re-read and the write-back, or the race reopens.
+
+Also worth doing alongside: tighten `mark_idle` (registry.py:53) to **log** when it would go
+negative instead of silently flooring with `max(0, ...)`. That silent floor is what let this drift
+go unnoticed; surfacing it turns the next occurrence of any counter desync into a visible warning
+rather than a routing mystery.
+
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · provider
   lmstudio (job mis-pinned to a non-downloaded model on the prior run; this run
   executed under the session model) · output ~5K tok generation + tool args ·
