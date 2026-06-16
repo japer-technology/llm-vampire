@@ -56,3 +56,5 @@ def test_coerce_model_cards_filters_vampire_namespace():
 - **Effort & risk:** lines changed: 1, files touched: 1 (`src/vampire/cluster.py`), backward-compat: Low, risk level: Low.
 - **Scout link:** Addresses `2026-06-15_1818-strategic-scout-lifecycle-namespace-and-config-drift.md` - Target: AOI-B (the `vampire:` reserved namespace).
 - **Receipt (estimated):** model `google/gemma-4-26b-a4b` (lmstudio) · input ~2.1K tok · output ~1.1K tok · run started 14:30 finished 14:31. _(Estimated from agent.log in=/out= for this run.)_
+
+> APPLIED 2026-06-16 02:49 UTC on main (commit ff59268): tests green (121 passed, 1 deselected known live-LM-Studio flake; full suite otherwise 121 passed, 1 known flake). Awaiting review.
