@@ -2,12 +2,17 @@
 
 Staff-engineer audit suggestions for the lmstudio-vampire gateway, one per run.
 
-_Generated: 2026-06-14 20:04 UTC_
+_Generated: 2026-06-16 12:10 UTC_
 
-24 total · 0 open · 24 taken · 0 declined
+29 total · 5 open · 24 taken · 0 declined
 
 | Date | Title | Severity | Category | Status | File |
 |------|-------|----------|----------|--------|------|
+| 2026-06-16 12:10 | `discover_nodes._probe` suffers from a "resurrection" race condition: unconditional `registry.add` after `await refresh_node` allows a deleted node to be re-added to the registry. | High | concurrency | Open | [link](2026-06-16_1210-discovery-probe-resurrection-race-unconditional-registry-add.md) |
+| 2026-06-15 12:00 | `PATCH /vampire/v1/nodes/{id}` skips health refresh for metadata updates when node is in maintenance mode | Medium | api-correctness | Open | [link](2026-06-15_1200-patch-node-skips-health-refresh-for-unavailable-nodes.md) |
+| 2026-06-15 11:00 | `PATCH /vampire/v1/nodes/{id}` silently fails to update metadata when node is in maintenance/draining status | Medium | api-correctness | Open | [link](2026-06-15_1100-silent-patch-failure-on-maintenance-nodes.md) |
+| 2026-06-15 09:34 | `is_allowed_target_url` waves through every DNS hostname — SSRF guard only blocks IP literals (metadata-by-name, internal services, DNS rebinding) | High | security | Open | [link](2026-06-15_0934-ssrf-dns-hostname-bypass-and-rebinding.md) |
+| 2026-06-15 09:30 | `refresh_node` clobbers the live `active_requests` counter — lost-update race that blinds `least_busy` routing | High | concurrency | Open | [link](2026-06-15_0930-refresh-node-clobbers-live-active-requests-counter.md) |
 | 2026-06-14 20:04 | Transparent proxy collapses repeated query parameters (`dict(request.query_params)` drops all but last) | High | api-correctness | Taken | [link](2026-06-14_2004-proxy-dict-query-params-drops-repeated-keys.md) |
 | 2026-06-14 19:01 | `model_affinity` routing pins 100% of traffic to the first replica — no load distribution across nodes hosting the same model | High | api-correctness | Taken | [link](2026-06-14_1901-model-affinity-pins-all-traffic-first-replica.md) |
 | 2026-06-14 17:20 | `PATCH /vampire/v1/nodes/{id}` silently un-drains a node on any unrelated field update | High | api-correctness | Taken | [link](2026-06-14_1720-patch-node-undrains-on-unrelated-field-update.md) |
@@ -30,5 +35,4 @@ _Generated: 2026-06-14 20:04 UTC_
 | 2026-06-14 06:29 | `# type: ignore` masks TOCTOU None-deref in routing path → bare 500 | High | type-safety | Taken | [link](2026-06-14_0629-route-node-deref-500-race.md) |
 | 2026-06-14 06:12 | Fresh `httpx.AsyncClient` per request defeats connection pooling | High | performance | Taken | [link](2026-06-14_0612-per-request-httpx-client-no-pooling.md) |
 | 2026-06-14 06:08 | `/v1/models` returns 500 on virtual/physical model id collision | High | error-handling | Taken | [link](2026-06-14_0608-models-id-collision-500.md) |
-| 2026-06-14 06:02 | `refresh_node` resurrects concurrently-deleted nodes (zombie-node race) | High | concurrency | Taken | [link](2026-06-14_0602-refresh-node-resurrects-deleted-nodes.md) |
 | 2026-06-14 05:48 | `auth_token` is a silently-ignored security control (dead code) | High | security | Taken | [link](2026-06-14_0548-auth-token-never-enforced.md) |
