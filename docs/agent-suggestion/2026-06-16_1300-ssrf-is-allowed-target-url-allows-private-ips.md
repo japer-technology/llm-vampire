@@ -57,3 +57,4 @@ def test_is_allowed_target_url_blocks_malformed():
     assert is_allowed_target_url("invalid-url") is False
 ```
 - **Effort & risk:** 1 line change. Extremely low risk.
+> APPLIED 2026-06-16 01:37:56 UTC on main (commit 05a326e): tests green (116 passed, 1 known flake). Awaiting review.
