@@ -1,32 +1,50 @@
-# Imagine: 100 x 4090 (24Gb) running Gemma 4 26B A4B QAT
+# Imagine: 100 × 4090 (24 GB) running Gemma 4 26B A4B QAT
 
-All in takes is a LM Studio Vampire running on a network...
+> One LM Studio Vampire on a network turns a crowd of ordinary GPUs into a single,
+> private, OpenAI-compatible model — and it scales the same way from **1 person with
+> 1 remote GPU** to **250 people contributing 1000 GPUs**.
 
-- 100 school children bring their notebooks to school...
-- 100 workers login to LM Studio installed on their business desktops...
-- 100 vibe coders link into the wifi of a conference....
+All it takes is a **LM Studio Vampire** running on a network and a crowd that opts in:
 
-The Vampire is an aggregator layer in front of the 100 RTX 4090s, each serving Gemma 4 26B A4B QAT**, I’d design it as a **single logical model endpoint backed by many independent replicas**, not as one 100-GPU tensor-parallel monster.
+- 100 school children bring their notebooks to school and link their home rigs.
+- 100 workers log in to LM Studio installed on their business desktops.
+- 100 vibe coders link into the Wi-Fi of a conference.
+
+The Vampire is an **aggregator layer** in front of those RTX 4090s, each serving
+Gemma 4 26B A4B QAT. The whole design philosophy fits in one line: present a
+**single logical model endpoint backed by many independent replicas**, not one
+100-GPU tensor-parallel monster.
+
+```mermaid
+flowchart LR
+    crowd["👥 A crowd that opts in<br/>school · office · conference"] --> v["🧛 LM Studio Vampire<br/>one OpenAI-compatible endpoint"]
+    v --> grid["🧱 N × RTX 4090 replicas<br/>each serving gemma-4-26b-a4b-qat"]
+    grid --> users["🧑‍💻 Everyone<br/>one model name, many GPUs"]
+```
 
 Gemma 4 26B A4B is a MoE model: about **26B total parameters**, but only about **4B active parameters per token**. Google’s model docs list the Q4_0 load memory for Gemma 4 26B A4B at roughly **14.4 GB**, but explicitly warn that this excludes runtime overhead and KV cache, so context length is the real limiter on 24 GB cards. ([Google AI for Developers][1]) The RTX 4090 has **24 GB GDDR6X**, **16,384 CUDA cores**, about **83 TFLOPS FP32**, and **1,321 AI TOPS**, with NVIDIA listing **450 W TGP**. Across 100 cards, that is roughly **2.4 TB aggregate VRAM** and **45 kW GPU board power before CPUs, networking, storage, and cooling**. ([NVIDIA][2])
 
 ## The mental model
 
-```text
-                      ┌────────────────────────────┐
-Users / apps ───────▶ │  Gemma Aggregator Gateway  │
-                      │  OpenAI-compatible API     │
-                      └─────────────┬──────────────┘
-                                    │
-                 ┌──────────────────┼──────────────────┐
-                 │                  │                  │
-        ┌────────▼───────┐  ┌──────▼────────┐  ┌──────▼────────┐
-        │ Replica Pool A │  │ Replica Pool B │  │ Replica Pool C │
-        │ short chat     │  │ long context   │  │ vision/tooling │
-        └───────┬────────┘  └──────┬────────┘  └──────┬────────┘
-                │                  │                  │
-         1-GPU workers      1/2/3-GPU workers   multimodal workers
-         4090 replicas      reserved KV cache   image-enabled path
+```mermaid
+flowchart TD
+    users["🧑‍💻 Users / apps<br/>OpenAI-compatible clients"]
+    gw["🧛 Gemma Aggregator Gateway<br/>one model name · one endpoint"]
+    users --> gw
+
+    subgraph pools["Replica pools (independent queues)"]
+        A["⚡ Replica Pool A<br/>short chat"]
+        B["📜 Replica Pool B<br/>long context"]
+        C["🖼️ Replica Pool C<br/>vision / tooling"]
+    end
+
+    gw --> A
+    gw --> B
+    gw --> C
+
+    A --> wa["🟢 1-GPU 4090 replicas"]
+    B --> wb["🟢 reserved KV-cache replicas"]
+    C --> wc["🟢 multimodal-enabled replicas"]
 ```
 
 The interface should make **100 separate 4090s feel like one elastic model**, while still exposing the operational truth: every worker has its own queue, KV cache pressure, context budget, thermal state, and failure mode.
@@ -223,7 +241,130 @@ The practical constraints will be:
 4. **Runtime format**, because “QAT” could mean GGUF, unquantized QAT checkpoint, mobile CT, or W4A16 CT depending on exact model ID.
 5. **Fault isolation**, because consumer GPU clusters fail in boring ways: risers, power cables, thermals, filesystem cache corruption, driver hangs.
 
-## The clean product abstraction
+## Sizing the fabric: one formula, two extremes
+
+The beauty of the replica model is that the **same arithmetic** describes a single
+hobbyist GPU and a thousand-GPU crowd. Because each replica is one independent
+4090, the fabric scales linearly in the dimensions that matter — VRAM, power, and
+raw concurrency — and stays bounded by the non-linear ones (KV cache per stream,
+LM Link latency, churn).
+
+```text
+Let
+  P = number of people                       (the crowd)
+  L = free LM Studios linked per person       (LM Studio's free LM Link device cap = 4)
+  G = GPUs per LM Studio endpoint             (1 RTX 4090 each)
+
+Replicas        R   = P · L · G
+Aggregate VRAM      = R · 24 GB
+Board power         = R · 450 W
+KV-cache pool       ≈ R · 8 GB                (≈ free VRAM per card after weights)
+```
+
+Everything below is just this formula evaluated at the **minimum** (`P=1, L=1`) and
+the **maximum** (`P=250, L=4`).
+
+> All per-token figures are **representative estimates** for a ~4B-active MoE at
+> Q4 on a 1008 GB/s RTX 4090, not vendor-guaranteed numbers. They exist to show
+> the *shape* of the math, not to promise a benchmark.
+
+### Minimum maths — 1 person, 1 remote GPU
+
+The smallest possible Vampire: one person points their app at a local Vampire
+gateway, which routes to **one** remote LM Studio (over LM Link) backed by **one**
+RTX 4090. No pools, no scheduler tuning — just governance and a stable endpoint in
+front of a single replica.
+
+```mermaid
+flowchart LR
+    u["🧑 1 person<br/>OpenAI-compatible app"] --> v["🧛 Vampire<br/>localhost gateway"]
+    v -. "LM Link (E2E encrypted)" .-> ls["🟢 1 LM Studio<br/>remote, broadcast: ON"]
+    ls --> g["🎮 1 × RTX 4090<br/>24 GB · 450 W"]
+    g --> m["🧠 gemma-4-26b-a4b-qat<br/>~14.4 GB load · 1 replica"]
+```
+
+Evaluating the formula at `P = 1, L = 1, G = 1`:
+
+| Quantity                     | Value                          | How it is derived                                         |
+| ---------------------------- | ------------------------------ | --------------------------------------------------------- |
+| Replicas `R`                 | **1**                          | `1 · 1 · 1`                                                |
+| Aggregate VRAM               | **24 GB**                      | `1 × 24 GB`                                                |
+| Board power                  | **450 W**                      | `1 × 450 W` (NVIDIA TGP)                                   |
+| Model load (Q4_0)            | **~14.4 GB**                   | Google's Gemma 4 26B A4B Q4_0 load figure                 |
+| Free VRAM for KV + overhead  | **~9.6 GB** (≈8 GB usable)     | `24 − 14.4`, minus ~1–2 GB runtime overhead               |
+| Single-stream decode ceiling | **~500 tok/s**                 | `1008 GB/s ÷ (~4B active × 0.5 B/param ≈ 2 GB/token)`      |
+| Realistic single-stream      | **~120–180 tok/s**             | ~30–40% of bandwidth ceiling for one interactive stream   |
+| Max context (one long chat)  | **~57K tokens**                | `8 GB ÷ ~140 KB/token` KV at the model's KV precision      |
+| Comfortable concurrency      | **1–4 streams**                | one user, KV split across at most a few open chats         |
+
+The takeaway: a single 4090 already serves a genuinely useful private Gemma — long
+context, fast tokens, one owner in control. The Vampire adds almost nothing to the
+cost here; it adds **governance and a stable URL** so the same app keeps working
+when the crowd grows.
+
+### Maximum maths — 250 people × 4 free LM Studios = 1000 GPUs
+
+Now hold the per-person setup fixed and turn the crowd up. LM Studio's free tier
+lets each person link **up to 4 devices** on their LM Link network. If 250 people
+each contribute their 4 free linked LM Studios — one RTX 4090 behind each — the
+Vampire fronts a **1000-replica fabric** that no single participant paid to build.
+
+```mermaid
+flowchart TD
+    subgraph people["👥 250 people · each links up to 4 free LM Studios"]
+        p1["🧑 Person 1<br/>4 × LM Studio"]
+        p2["🧑 Person 2<br/>4 × LM Studio"]
+        pdots["… × 250 …"]
+        p250["🧑 Person 250<br/>4 × LM Studio"]
+    end
+
+    fab["🧛 Vampire fabric<br/>one endpoint · gemma-4-26b-a4b-qat"]
+    p1 -. "broadcast / LM Link" .-> fab
+    p2 -. "broadcast / LM Link" .-> fab
+    pdots -. "broadcast / LM Link" .-> fab
+    p250 -. "broadcast / LM Link" .-> fab
+
+    fab --> grid["🧱 1000 replicas × 1 × RTX 4090<br/>24 TB VRAM · 450 kW board · ~8 TB KV pool"]
+    grid --> all["🌍 Everyone shares one elastic model"]
+```
+
+Evaluating the **same** formula at `P = 250, L = 4, G = 1`:
+
+| Quantity                       | Value                                | How it is derived                                              |
+| ------------------------------ | ------------------------------------ | -------------------------------------------------------------- |
+| Replicas `R`                   | **1000**                             | `250 · 4 · 1`                                                  |
+| Aggregate VRAM                 | **24 TB** (`24,000 GB`)              | `1000 × 24 GB`                                                 |
+| Board power                    | **450 kW** (`450,000 W`)             | `1000 × 450 W`; wall power is materially higher                |
+| KV-cache pool                  | **~8 TB**                            | `1000 × ~8 GB` usable per card                                 |
+| Comfortable concurrency        | **~8000 streams**                    | `1000 × ~8` healthy concurrent streams per 4090                |
+| Aggregate decode ceiling       | **~2,000,000 tok/s**                 | `1000 × ~2000 tok/s` aggregate per card under batching         |
+| Realistic sustained output     | **~1,000,000 tok/s**                 | ~50% of ceiling after queueing, churn, and LM Link hops        |
+| Sustained daily token budget   | **~86 billion tok/day**             | `~1e6 tok/s × 86,400 s`                                        |
+| Capacity share per person      | **4 GPUs in, ~4 GPUs out**           | net-zero: each person contributes 4 and draws from 1000        |
+
+What the maximum case really buys is **concurrency, not a bigger brain**:
+
+```text
+1000 × 4090  =  ~8000 simultaneous private Gemma conversations
+1000 × 4090  ≠  one coherent 24 TB GPU
+```
+
+The 24 TB of VRAM is only ever useful as **1000 independent replicas**. No single
+request gets faster or smarter than it would on one 4090 — but the fabric can hold
+a whole conference, school, or company in a single private endpoint at once.
+
+The non-linear limits this section deliberately does **not** wave away:
+
+1. **Free-tier link caps.** The `L = 4` ceiling is LM Studio's free LM Link device
+   limit; the math changes only if participants exceed it on paid tiers.
+2. **LM Link latency & NAT.** Every remote replica adds a network hop; TTFT/TPS
+   measured at the gateway includes it (see [09-lm-link.md](../lmstudio.ai/09-lm-link.md)).
+3. **Churn.** A crowd's GPUs join and leave constantly, so the router must treat
+   `R` as a *moving* number and quarantine dead replicas fast.
+4. **KV cache, still king.** Per-stream context is bounded by the **same ~8 GB/card**
+   at both extremes — scale adds replicas, never a deeper single context.
+
+
 
 Call it something like **Gemma Fabric**.
 
@@ -262,38 +403,28 @@ and transparent token economics.
 
 ## Minimal production architecture
 
-```text
-[API Gateway / Auth]
-        │
-        ▼
-[Request Normalizer]
-        │
-        ▼
-[Tokenizer + Token Estimator]
-        │
-        ▼
-[Policy Engine]
-  - tenant quota
-  - context tier
-  - abuse/rate controls
-  - priority class
-        │
-        ▼
-[KV/Queue-Aware Router]
-        │
-        ├── fast-chat pool
-        ├── long-context pool
-        ├── batch pool
-        ├── canary pool
-        └── spare pool
-        │
-        ▼
-[Worker Runtime]
-  - llama.cpp server, vLLM, or SGLang
-  - one model replica per GPU where possible
-        │
-        ▼
-[Telemetry + Billing + Eval Logs]
+```mermaid
+flowchart TD
+    gw["🔐 API Gateway / Auth"]
+    norm["🧹 Request Normalizer"]
+    tok["🔢 Tokenizer + Token Estimator"]
+    pol["📋 Policy Engine<br/>tenant quota · context tier<br/>abuse / rate controls · priority class"]
+    router["🧭 KV / Queue-Aware Router"]
+    worker["⚙️ Worker Runtime<br/>llama.cpp · vLLM · SGLang<br/>one model replica per GPU where possible"]
+    tele["📊 Telemetry + Billing + Eval Logs"]
+
+    gw --> norm --> tok --> pol --> router
+    router --> fast["⚡ fast-chat pool"]
+    router --> long["📜 long-context pool"]
+    router --> batch["📦 batch pool"]
+    router --> canary["🐤 canary pool"]
+    router --> spare["🩹 spare pool"]
+    fast --> worker
+    long --> worker
+    batch --> worker
+    canary --> worker
+    spare --> worker
+    worker --> tele
 ```
 
 For SGLang-style deployments, its docs describe data parallelism as full model replicas processing independent batches, and recommend SGLang Model Gateway for production-grade DP routing rather than basic in-process DP. ([docs.sglang.io][7]) That maps very naturally onto a 100 × 4090 fabric.
