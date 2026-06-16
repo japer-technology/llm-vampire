@@ -1,11 +1,7 @@
 # Vision
 
-`lmstudio-vampire` turns idle, LM Studio-compatible GPUs on a local network
-into one governed, private AI service. It wakes on the LAN, discovers approved
-inference endpoints, verifies their models and capabilities, and respects owner
-tokens and policy before routing a single request. Behind a stable
-OpenAI-compatible endpoint it load-balances, fails over, coalesces identical
-prompts, and fuses answers across machines — optimizing for latency, privacy,
-cost, and quality. Families share GPUs; businesses use LM Studio
-capacity; classrooms and events become AI-capable with just one strong host. The
-owner decides when to contribute; users simply see working, local-first AI.
+`lmstudio-vampire` turns the computing power already around us into a shared, private AI service.
+
+Across homes, schools, offices, and events, powerful machines often sit unused. This project brings that spare capacity together safely, while keeping owners in control of when and how their machines are used.
+
+Users get simple, reliable, local AI. Owners keep control. Communities make better use of the technology they already have.
