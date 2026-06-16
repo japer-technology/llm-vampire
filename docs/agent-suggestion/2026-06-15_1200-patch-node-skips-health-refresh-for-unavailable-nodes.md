@@ -58,4 +58,31 @@ async def test_patch_node_updates_metadata_and_refreshes_status():
     assert result["last_checked_at"] is not None
 ```
 - **Effort & risk:** 2 lines changed in 1 file. Low risk.
+
+## Opus 4.8 Advice
+
+This suggestion is the more accurate of the two siblings about this code block (cf. `1100`).
+Crucially, the metadata is **not** lost: `registry.update(node_id, patch)` at control.py:93
+merges and persists the patch *before* the early-return at lines 97-100 (see registry.py:29-38).
+Only the `refresh_node` health probe — and therefore the `last_checked_at`/`status` update — is
+skipped. So the real severity is low, and the framing here ("skips health refresh") is right
+where `1100`'s ("silently fails to update metadata") is wrong.
+
+Before removing the guard, decide whether skipping the probe is actually a bug. A node in
+`maintenance`/`draining`/`disabled` was *deliberately* parked offline. Removing line 99-100 means
+an unrelated edit (rename, retag) now probes the node and can flip it back to `online` — a
+surprising side effect, and the inverse of what sibling suggestion `1720` was trying to prevent
+(unintended un-draining). That is arguably worse than a stale timestamp.
+
+Prefer a narrower fix that doesn't re-online a parked node:
+- Stamp `last_checked_at` (or just return the freshly-merged node) without running the full
+  probe for manual-unavailable statuses, **or**
+- Gate the probe behind an explicit opt-in (e.g. `?refresh=true`) so metadata edits never
+  silently change health state.
+
+Also, resolve this together with `1100` — both target the same 4 lines; only one change should
+land. And the included test will hit a real network call through `refresh_node`; stub the
+transport the way the other `tests/test_phase2.py` cases do, and assert the *intended* behavior
+(timestamp refreshed without an unintended `online` transition).
+
 - **Receipt (estimated):** model `google/gemma-4-26b-a4b-qat` (lmstudio) · input ~1250 tok · output ~850 tok · run started 12:00 finished 12:05. _(Estimated from agent.log in=/out= for this run.)_

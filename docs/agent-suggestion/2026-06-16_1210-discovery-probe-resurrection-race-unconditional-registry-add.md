@@ -82,6 +82,47 @@ async def test_probe_prevents_resurrection(monkeypatch):
 - **Effort & risk:** 1 line changed in `src/vampire/cluster.py`. Extremely low risk.
 - **Scout link:** AOI-C from `2026-06-15_1818-strategic-scout-lifecycle-namespace-and-config-drift.md`
 
+## Opus 4.8 Advice
+
+The diagnosis is correct: `_probe` (cluster.py:398) calls `registry.add(refreshed)`
+unconditionally, even though `refresh_node` itself already carries the matching guard
+(`if registry.get(updated.id) is not None`, cluster.py:226). So a node deleted during the
+probe's network `await` is resurrected by `_probe`'s own add. Good catch, and mirroring the
+existing `refresh_node` guard is the right instinct.
+
+**But the proposed one-line fix is wrong — it silently breaks discovery of brand-new nodes.**
+For a newly discovered URL, `current = registry.get(node_id)` is `None` (cluster.py:378), the
+node is constructed fresh and is *not* in the registry. `refresh_node`'s line-226 guard
+therefore declines to add it, which means `_probe`'s `registry.add(refreshed)` at line 398 is
+the **only** code path that registers a newly discovered node. Guarding that add on prior
+existence (`if registry.get(refreshed.id) is not None`) makes discovery a no-op for every node
+that wasn't already known — exactly the nodes discovery exists to find.
+
+The fix must distinguish "pre-existing node deleted mid-probe" (don't resurrect) from "genuinely
+new node" (must add). Capture existence up front and branch on it:
+
+```python
+existed = current is not None  # captured before the await
+...
+if existed and registry.get(refreshed.id) is None:
+    return None  # deleted during probe — do not resurrect
+registry.add(refreshed)
+return refreshed
+```
+
+Further notes:
+- Keep the `registry.get` check and the `registry.add` adjacent with **no `await` between
+  them** so they are atomic under single-threaded asyncio (the same discipline the
+  `refresh_node` guard relies on). Any logging/`await` inserted between reintroduces the race.
+- This bug shares an owner with suggestion `0930` (refresh clobber) and the `refresh_node`
+  line-226 guard: three call sites perform read-then-add against the registry. The clean
+  resolution is to make `refresh_node` the *single* writer that merges health onto the current
+  registry node, and have `_probe` only add when it discovered a genuinely new node. Coordinate
+  the two fixes rather than landing them independently.
+- Add a regression test for the new-node case (a previously-unknown URL that comes back
+  `online` must end up registered). The supplied resurrection test alone would pass even with
+  the broken guard, hiding the discovery regression.
+
 - **Receipt (estimated):** model `google/gemma-4-26b-a4b-qat` (lmstudio) · input ~2000 tok · output ~1200 tok · run started 12:10 finished 12:12. _(Estimated from agent.log in=/out= for this run.)_
 
 > APPLIED 2026-06-17 12:00 UTC on main (commit 954b863): tests green (2 passed in 0.11s). Awaiting review.
