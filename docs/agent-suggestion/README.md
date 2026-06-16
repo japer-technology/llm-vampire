@@ -8,7 +8,8 @@ _Generated: 2026-06-16 12:10 UTC_
 
 | Date | Title | Severity | Category | Status | File |
 |------|-------|----------|----------|--------|------|
-| 2026-06-16 12:10 | `discover_nodes._probe` suffers from a "resurrection" race condition: unconditional `registry.add` after `await refresh_node` allows a deleted node to be re-added to the registry. | High | concurrency | Open | [link](2026-06-16_1210-discovery-probe-resurrection-race-unconditional-registry-add.md) |
+|| 2026-06-16 12:30 | Streaming proxy disconnects leak active_requests counter via background tasks | High | Concurrency | Open | [link](2026-06-16_1230-streaming-proxy-disconnect-leaks-active-requests.md) |
+|| 2026-06-16 12:10 | `discover_nodes._probe` suffers from a "resurrection" race condition: unconditional `registry.add` after `await refresh_node` allows a deleted node to be re-added to the registry. | High | concurrency | Open | [link](2026-06-16_1210-discovery-probe-resurrection-race-unconditional-registry-add.md) |
 | 2026-06-15 12:00 | `PATCH /vampire/v1/nodes/{id}` skips health refresh for metadata updates when node is in maintenance mode | Medium | api-correctness | Open | [link](2026-06-15_1200-patch-node-skips-health-refresh-for-unavailable-nodes.md) |
 | 2026-06-15 11:00 | `PATCH /vampire/v1/nodes/{id}` silently fails to update metadata when node is in maintenance/draining status | Medium | api-correctness | Open | [link](2026-06-15_1100-silent-patch-failure-on-maintenance-nodes.md) |
 | 2026-06-15 09:34 | `is_allowed_target_url` waves through every DNS hostname — SSRF guard only blocks IP literals (metadata-by-name, internal services, DNS rebinding) | High | security | Open | [link](2026-06-15_0934-ssrf-dns-hostname-bypass-and-rebinding.md) |

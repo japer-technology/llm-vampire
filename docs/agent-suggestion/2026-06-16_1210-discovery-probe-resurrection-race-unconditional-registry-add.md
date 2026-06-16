@@ -83,3 +83,5 @@ async def test_probe_prevents_resurrection(monkeypatch):
 - **Scout link:** AOI-C from `2026-06-15_1818-strategic-scout-lifecycle-namespace-and-config-drift.md`
 
 - **Receipt (estimated):** model `google/gemma-4-26b-a4b-qat` (lmstudio) · input ~2000 tok · output ~1200 tok · run started 12:10 finished 12:12. _(Estimated from agent.log in=/out= for this run.)_
+
+> APPLIED 2026-06-17 12:00 UTC on main (commit 954b863): tests green (2 passed in 0.11s). Awaiting review.
