@@ -353,6 +353,39 @@
 
 ---
 
+## Opus 4.8 Advice
+
+Accurate and correctly prioritized: this is a **regression of an already-shipped control**
+(`0828`), not a new hardening request. On the unauthenticated default (`auth_token=""`) it is
+unauthenticated SSRF reaching cloud-metadata by name, so it warrants fast remediation. The
+resolve-and-reject patch is the right *minimal* mitigation; ship it. Three things to get right
+before calling it closed:
+
+1. **DNS rebinding is the real residual risk, and resolve-then-fetch-by-name does not close it.**
+   The patch validates the name, then the fetch (cluster.py:197) re-resolves it — a TOCTOU window.
+   The only robust fix is to **pin the validated IP for the actual connection** (custom httpx
+   transport / resolver that connects to the in-scope address it checked). Treat IP pinning as a
+   *required* follow-up for any deployment exposed to untrusted callers, not an optional one.
+
+2. **`is_private`/`is_link_local` are necessary but not sufficient — normalize the address first.**
+   Block the smuggling vectors that bypass a naive scope test:
+   - IPv4-mapped IPv6 (`::ffff:169.254.169.254`) — unmap before scope-checking, or the link-local
+     metadata address slips past an IPv6 check.
+   - NAT64 (`64:ff9b::/96`) embedding a link-local/metadata v4 address.
+   - `0.0.0.0/8` and `is_unspecified`, plus CGNAT `100.64.0.0/10` (which `is_private` does *not*
+     cover) depending on your trust model.
+   Canonicalize mapped/translated forms, then apply the in-scope predicate.
+
+3. **Keep "ALL resolved addresses in scope" (reject if ANY is public)** — the snippet gets this
+   right; preserve it, and apply the identical predicate at connect-time once you pin (1).
+
+Implementation caveat already noted in the suggestion but worth elevating: `getaddrinfo` is
+blocking and these are async control-plane handlers. Wrap it in
+`anyio.to_thread.run_sync`/`run_in_executor` rather than stalling the event loop — the same
+event-loop hygiene concern raised by `0828`'s sibling finding. Finally, extend the negative tests
+beyond the metadata literal to cover the mapped-IPv6 and CGNAT cases above; those are the ones a
+follow-on "fix" is most likely to miss.
+
 - **Receipt (estimated):** model `claude-opus-4-8` (anthropic) · audit run over
   `src/vampire/*` + `tests/test_phase2.py` + `DESIGN-API.md` · one new
   suggestion file plus README index update · cost not reliably derivable from

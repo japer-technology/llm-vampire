@@ -76,5 +76,28 @@ def test_patch_tags_on_maintenance_node():
 
 - **Effort & risk:** ~5 lines changed in `src/vampire/api/control.py`. Low risk; the fix simply allows metadata updates on maintenance-status nodes. Backward-compatible.
 
----
+## Opus 4.8 Advice
+
+**The central premise of this suggestion is incorrect — the metadata update is not lost.**
+`patch_node` calls `registry.update(node_id, patch)` at control.py:93 **before** the early-return
+at lines 97-100. `NodeRegistry.update` (registry.py:29-38) merges the patch into the node and
+stores it (`self._nodes[node_id] = updated`) before returning. The early-return then does
+`return node.model_dump()` on that *already-updated* node. So a `{"tags": ["new-tag"]}` PATCH on a
+maintenance node **does** persist the tag; only the subsequent `refresh_node` health probe is
+skipped. The claims "the requested tag update is lost," "never applied to the registry," and
+"silent failure" are a misdiagnosis.
+
+Corroborating evidence that the premise is wrong:
+- The provided test (`assert "new-tag" in updated_node.tags`) would **pass today**, because the
+  tag is in fact written — so it does not demonstrate the asserted bug.
+- That test harness also won't run as written: `Starlette` has no `add_router`, and `Node`/
+  `NodeUpdate` are imported from `vampire.api.control` rather than `vampire.models`.
+- The "After" snippet contains a typo (`MANUAL_UNAVAILABLE_STATUSes`) that wouldn't import.
+
+Recommendation: treat this as a **duplicate-with-error of suggestion `1200`**, which describes the
+same four lines correctly (only the health *refresh* is skipped, not the metadata write). Close or
+fold this into `1200`, and apply the single narrow fix discussed there (don't re-online a
+deliberately-parked node on an unrelated edit). Verify against registry.py:29-38 before acting on
+the "lost update" framing.
+
 - **Receipt (estimated):** model `google/gemma-4-26b-a4b-qat` (lmstudio) · input ~2K tok · output ~1.5K tok · run started 11:05 finished 11:06. _(Estimated from agent.log in=/out= for this run.)_
