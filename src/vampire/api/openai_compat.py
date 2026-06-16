@@ -1,13 +1,5 @@
 """Layer 1 — LM Studio / OpenAI-compatible routes (DESIGN-API.md §3, §5-6).
-
-These ``/v1/*`` routes are the drop-in compatibility surface. Phase 1 wires them
-to the transparent proxy in :mod:`vampire.proxy`, which forwards every request to
-the configured downstream LM Studio node while preserving streaming (§20) and the
-OpenAI error format (§23). The named endpoints below document the Minimal MVP
-surface (§24); a catch-all keeps any other ``/v1/*`` path transparent so existing
-clients work unchanged by only swapping their base URL.
 """
-
 from __future__ import annotations
 
 import json
@@ -17,7 +9,7 @@ import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from starlette.background import BackgroundTask, BackgroundTasks
-from starlette.responses import Response
+from starlette.responses import Response, StreamingResponse
 
 from vampire.cluster import aggregate_model_cards, refresh_registered_nodes
 from vampire.models import ModelCard, ModelListResponse, RoutePolicy
@@ -168,7 +160,18 @@ async def _route_or_proxy(request: Request) -> Response:
     except BaseException:
         registry.mark_idle(target.node)
         raise
-    response.background = _release_on_finish(target.node, response.background)
+
+    if isinstance(response, StreamingResponse):
+        original_iterator = response.body_iterator
+        async def lifecycle_generator():
+            try:
+                async for chunk in original_iterator:
+                    yield chunk
+            finally:
+                registry.mark_idle(target.node)
+        response.body_iterator = lifecycle_generator()
+    else:
+        response.background = _release_on_finish(target.node, response.background)
     return response
 
 
