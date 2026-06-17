@@ -150,8 +150,8 @@ src/vampire/            Python package
     __init__.py
     openai_compat.py    Layer 1: /v1/* OpenAI-compatible routes
     control.py          Layer 2: /vampire/v1/* control routes
-web/
-  index.html            Placeholder dashboard SPA
+html/
+  vampire-dashboard.html  Phase 4 single-file dashboard SPA (served at /)
 tests/
   __init__.py
   test_smoke.py         Imports + app-startup smoke test

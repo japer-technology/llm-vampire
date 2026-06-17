@@ -25,11 +25,12 @@ Vampire is a pure-Python project (see [`pyproject.toml`](../pyproject.toml)):
   [`src/vampire/app.py`](../src/vampire/app.py).
 - **Runtime dependencies:** `fastapi`, `uvicorn`, `httpx`, `pydantic`,
   `pydantic-settings`, `zeroconf`, `aiosqlite`.
-- **Bundled data:** the static single-page UI in [`web/`](../web) (currently
-  `web/index.html`), mounted at `/` by `create_app()` via `StaticFiles`.
+- **Bundled data:** the single-file Phase 4 dashboard
+  [`html/vampire-dashboard.html`](../html/vampire-dashboard.html), served at `/`
+  by `create_app()` via a `FileResponse` route.
 
 So "compile to an exe" means: **bundle the CPython interpreter, all of the above
-dependencies, and the `web/` assets into a single self-contained Windows binary**
+dependencies, and the `html/vampire-dashboard.html` asset into a single self-contained Windows binary**
 that, when run, starts the gateway and (optionally) opens the dashboard in a
 browser.
 
@@ -68,15 +69,16 @@ pip install pyinstaller
 Freezing exposes two assumptions in the current code that break inside a bundle.
 Both should be addressed before (or as part of) shipping an `.exe`:
 
-1. **Locating the `web/` directory.**
-   `app.py` computes `WEB_DIR = Path(__file__).resolve().parents[2] / "web"`,
+1. **Locating the dashboard file.**
+   `app.py` computes
+   `DASHBOARD_FILE = Path(__file__).resolve().parents[2] / "html" / "vampire-dashboard.html"`,
    i.e. it walks up from `src/vampire/app.py` to the repository root. Inside a
    frozen app there is no repository layout: PyInstaller unpacks bundled data to
    a temp directory exposed as `sys._MEIPASS` (one-file mode) or next to the
-   `.exe` (one-folder mode). The web-dir resolution needs a frozen-aware branch,
-   for example: if `getattr(sys, "frozen", False)` is set, resolve `web/`
+   `.exe` (one-folder mode). The dashboard-path resolution needs a frozen-aware branch,
+   for example: if `getattr(sys, "frozen", False)` is set, resolve `html/`
    relative to `sys._MEIPASS` / the executable directory instead of the source
-   tree. Because the directory is missing today the UI simply won't mount in a
+   tree. Because the file is missing today the UI simply won't be served in a
    bundle — the API would still work, but the dashboard wouldn't.
 
 2. **The Uvicorn factory import string.**
@@ -119,8 +121,8 @@ dynamically (by string) must be declared. For this stack expect to declare:
 - **`pydantic` / `pydantic_core`** — Pydantic v2 has a compiled `pydantic_core`
   extension. Recent PyInstaller versions include hooks, but pin a current
   PyInstaller and verify; otherwise add `--collect-all pydantic`.
-- **The `web/` assets** must be added as data:
-  `--add-data "web;web"` (note the Windows `;` separator), then resolved at
+- **The `html/vampire-dashboard.html` asset** must be added as data:
+  `--add-data "html/vampire-dashboard.html;html"` (note the Windows `;` separator), then resolved at
   runtime via the frozen-aware path from §2.2.
 
 ### 2.4 Build command (quick start)
@@ -138,7 +140,7 @@ pyinstaller --name LMStudioVampire ^
   --hidden-import uvicorn.loops.auto ^
   --hidden-import uvicorn.protocols.http.auto ^
   --hidden-import uvicorn.protocols.websockets.auto ^
-  --add-data "web;web" ^
+  --add-data "html/vampire-dashboard.html;html" ^
   --icon LOGO.ico ^
   src\vampire\__main__.py
 ```
@@ -152,7 +154,7 @@ a multi-resolution `.ico` for `--icon`.
 
 Rather than a long command line, commit a PyInstaller **spec file** (e.g.
 `packaging/windows/LMStudioVampire.spec`) that encodes the entry point, hidden
-imports, `datas` (the `web/` folder), icon, and one-file vs one-folder choice.
+imports, `datas` (the `html/vampire-dashboard.html` file), icon, and one-file vs one-folder choice.
 CI and contributors then build with a single `pyinstaller LMStudioVampire.spec`.
 This keeps the build reproducible and reviewable.
 
@@ -232,8 +234,8 @@ unbundled data file, subprocess spawn). Always smoke-test the built `.exe`:
 2. Confirm the gateway starts and binds its port (default `7777`, see
    [`src/vampire/config.py`](../src/vampire/config.py)).
 3. Hit `GET /vampire/v1/status` and an OpenAI-compatible route.
-4. Open `/` and confirm the dashboard UI loads (verifies the `web/` bundling
-   from §2.2).
+4. Open `/` and confirm the dashboard UI loads (verifies the
+   `html/vampire-dashboard.html` bundling from §2.2).
 5. Verify graceful shutdown and that no orphaned processes remain.
 
 Wire at least steps 2–4 into the CI job so a broken bundle fails the build.
@@ -259,14 +261,14 @@ strongest upgrade path** if compilation speed or binary hardening becomes a goal
 
 To ship a distributable Windows `.exe`:
 
-- [ ] Make `web/` discovery frozen-aware (`sys.frozen` / `sys._MEIPASS`) in
+- [ ] Make `html/vampire-dashboard.html` discovery frozen-aware (`sys.frozen` / `sys._MEIPASS`) in
       `app.py`.
 - [ ] Start Uvicorn from the imported `create_app` callable (no reload/workers
       subprocesses) for freeze-safety.
 - [ ] (Recommended) Add a double-click launcher entry point that starts the
       server and opens the dashboard.
 - [ ] Add PyInstaller as a build-only dependency and commit a `.spec` file with
-      hidden imports + `web/` data + icon.
+      hidden imports + `html/vampire-dashboard.html` data + icon.
 - [ ] Build on Windows (locally or `windows-latest` CI); never cross-compile.
 - [ ] Smoke-test the `.exe` on a clean, Python-free Windows machine.
 - [ ] (Recommended) Wrap in an installer (Inno Setup / WiX) and **code-sign**

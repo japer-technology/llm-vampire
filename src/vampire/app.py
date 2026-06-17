@@ -1,8 +1,8 @@
 """FastAPI application factory.
 
 One process serves three things (METHOD-A.md): the OpenAI-compatible API
-(``/v1/*``), the Vampire control API (``/vampire/v1/*``), and the static browser
-UI (``/``).
+(``/v1/*``), the Vampire control API (``/vampire/v1/*``), and the static Phase 4
+browser dashboard (``/``).
 """
 
 from __future__ import annotations
@@ -12,17 +12,17 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 import vampire.proxy as proxy
 from vampire import __version__
 from vampire.api import control, openai_compat
 from vampire.auth import AuthError, auth_exception_handler, require_auth
 
-# Repository ``web/`` directory holding the static single-page UI. Editable
+# Repository ``html/`` single-file Phase 4 dashboard served at ``/``. Editable
 # installs resolve this from the checked-out repository; packaged installs can
-# omit it until the Phase 4 dashboard graduates from placeholder to product UI.
-WEB_DIR = Path(__file__).resolve().parents[2] / "web"
+# omit it and still build the API-only application.
+DASHBOARD_FILE = Path(__file__).resolve().parents[2] / "html" / "vampire-dashboard.html"
 
 
 @asynccontextmanager
@@ -39,9 +39,10 @@ def create_app() -> FastAPI:
 
     METHOD-A calls for one artifact that exposes three surfaces: the
     OpenAI-compatible proxy at ``/v1/*``, the opt-in Vampire control API at
-    ``/vampire/v1/*``, and the static browser UI at ``/``. The UI is mounted only
-    when the repository ``web/`` directory is present so tests and minimal
-    packaged environments can still create the API-only application.
+    ``/vampire/v1/*``, and the static browser UI at ``/``. The Phase 4
+    dashboard is served only when the repository ``html/vampire-dashboard.html``
+    file is present so tests and minimal packaged environments can still create
+    the API-only application.
     """
     app = FastAPI(
         title="lmstudio-vampire",
@@ -54,7 +55,11 @@ def create_app() -> FastAPI:
     app.include_router(openai_compat.router, dependencies=[Depends(require_auth)])
     app.include_router(control.router, dependencies=[Depends(require_auth)])
 
-    if WEB_DIR.is_dir():
-        app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="ui")
+    if DASHBOARD_FILE.is_file():
+
+        @app.get("/", include_in_schema=False)
+        async def dashboard() -> FileResponse:
+            """Serve the single-file Phase 4 browser dashboard."""
+            return FileResponse(DASHBOARD_FILE, media_type="text/html")
 
     return app

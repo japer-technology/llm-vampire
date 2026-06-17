@@ -103,9 +103,9 @@ def test_app_mounts_openai_control_and_static_surfaces() -> None:
     assert any(path.startswith("/v1") for path in paths)
     assert "/vampire/v1/status" in paths
 
-    # Layer 3 static UI is mounted at the application root in editable installs.
-    mount_names = {getattr(route, "name", None) for route in create_app().routes}
-    assert "ui" in mount_names
+    # Layer 3 static UI: the Phase 4 dashboard is served from the application
+    # root in editable installs.
+    assert "/" in paths
 
 
 def test_status_route_reports_scaffold_envelope() -> None:
