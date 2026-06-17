@@ -76,7 +76,7 @@ formatting, linting, type-checking, and test commands.
 | --- | --- |
 | `vampire` console script | The CLI entry point (`vampire.cli:main`). See the [CLI reference](05-cli-reference.md). |
 | `vampire` Python package | The FastAPI app, proxy, registry, router, and models under `src/vampire/`. |
-| `web/index.html` | The static placeholder browser UI served at `/`. |
+| `html/vampire-dashboard.html` | The single-file Phase 4 browser dashboard served at `/`. |
 
 ## Next steps
 
