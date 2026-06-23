@@ -1,3 +1,5 @@
-# https://github.com/lmstudio-ai/lmstudio-js
+# Official LM Studio Code Libraries
 
-An Offical Library
+- https://github.com/lmstudio-ai/lmstudio-js
+
+- https://github.com/lmstudio-ai/lmstudio-python
