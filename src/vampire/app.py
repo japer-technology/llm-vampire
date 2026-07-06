@@ -19,10 +19,10 @@ from vampire import __version__
 from vampire.api import control, openai_compat
 from vampire.auth import AuthError, auth_exception_handler, require_auth
 
-# Repository ``html/`` single-file Phase 4 dashboard served at ``/``. Editable
-# installs resolve this from the checked-out repository; packaged installs can
-# omit it and still build the API-only application.
-DASHBOARD_FILE = Path(__file__).resolve().parents[2] / "html" / "vampire-dashboard.html"
+# Product-bundled single-file Phase 4 dashboard served at ``/``. Keeping it
+# inside the Python package lets wheels and frozen desktop builds include it as a
+# normal package asset instead of depending on the repository layout.
+DASHBOARD_FILE = Path(__file__).resolve().parent / "assets" / "vampire-dashboard.html"
 
 
 @asynccontextmanager
@@ -40,7 +40,7 @@ def create_app() -> FastAPI:
     METHOD-A calls for one artifact that exposes three surfaces: the
     OpenAI-compatible proxy at ``/v1/*``, the opt-in Vampire control API at
     ``/vampire/v1/*``, and the static browser UI at ``/``. The Phase 4
-    dashboard is served only when the repository ``html/vampire-dashboard.html``
+    dashboard is served only when the package ``assets/vampire-dashboard.html``
     file is present so tests and minimal packaged environments can still create
     the API-only application.
     """

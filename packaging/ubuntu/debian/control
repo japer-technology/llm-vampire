@@ -1,0 +1,12 @@
+Source: lmstudio-vampire
+Section: net
+Priority: optional
+Maintainer: japer-technology
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13), python3, python3-build, python3-installer
+
+Package: lmstudio-vampire
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3
+Description: LM Studio Vampire gateway and dashboard
+ Private AI compute gateway for owner-approved LM Studio API endpoints.

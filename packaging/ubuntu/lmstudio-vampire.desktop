@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=LM Studio Vampire
+Comment=Start the LM Studio Vampire gateway and dashboard
+Exec=vampire-desktop
+Terminal=false
+Categories=Development;Network;
