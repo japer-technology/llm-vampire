@@ -1,8 +1,9 @@
-"""Layer 1 — LM Studio / OpenAI-compatible routes (DESIGN-API.md §3, §5-6).
-"""
+"""Layer 1 — LM Studio / OpenAI-compatible routes (DESIGN-API.md §3, §5-6)."""
+
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -163,12 +164,14 @@ async def _route_or_proxy(request: Request) -> Response:
 
     if isinstance(response, StreamingResponse):
         original_iterator = response.body_iterator
-        async def lifecycle_generator():
+
+        async def lifecycle_generator() -> AsyncIterator[str | bytes | memoryview]:
             try:
                 async for chunk in original_iterator:
                     yield chunk
             finally:
                 registry.mark_idle(target.node)
+
         response.body_iterator = lifecycle_generator()
     else:
         response.background = _release_on_finish(target.node, response.background)
