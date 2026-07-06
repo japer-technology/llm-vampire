@@ -20,9 +20,10 @@ Vampire can only use what LM Studio offers. It interrogates reachable endpoints,
 
 The compute behind an LM Studio endpoint may be local, remote, headless, GPU-backed, CPU-backed, or routed through LM Studio’s own link layer. Vampire does not need to know where the GPU is. LM Studio provides the connection; Vampire provides governance, routing, policy, and aggregation.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Status: Phase 4 routing + dashboard](https://img.shields.io/badge/status-phase%204%20routing%20%2B%20dashboard-orange)
 ![Docs: design papers + runnable scaffold](https://img.shields.io/badge/docs-design%20%2B%20scaffold-blue)
-![License: TBD](https://img.shields.io/badge/license-TBD-lightgrey)
+[![AI](https://img.shields.io/badge/Assisted-Development-2b2bff?logo=openai&logoColor=white)](https://www.japer.technology)
 
 > [!IMPORTANT]
 > This repository now contains build steps **Phase 0 — scaffolding** through
