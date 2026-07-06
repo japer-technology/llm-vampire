@@ -8,6 +8,12 @@ build/
 dist/
 *.egg-info/
 .eggs/
+*.app/
+*.dmg
+*.deb
+*.exe
+*.msi
+*.AppImage
 
 # Virtual environments
 .venv/

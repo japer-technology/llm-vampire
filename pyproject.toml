@@ -37,6 +37,7 @@ dev = [
 
 [project.scripts]
 vampire = "vampire.cli:main"
+vampire-desktop = "vampire.desktop.launcher:main"
 
 [project.urls]
 Homepage = "https://github.com/japer-technology/lmstudio-vampire"
@@ -45,7 +46,7 @@ Homepage = "https://github.com/japer-technology/lmstudio-vampire"
 where = ["src"]
 
 [tool.setuptools.package-data]
-vampire = ["../../html/vampire-dashboard.html"]
+vampire = ["assets/vampire-dashboard.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

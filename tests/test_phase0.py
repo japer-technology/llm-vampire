@@ -61,6 +61,12 @@ def test_pyproject_declares_vampire_console_script() -> None:
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "[project.scripts]" in pyproject
     assert 'vampire = "vampire.cli:main"' in pyproject
+    assert 'vampire-desktop = "vampire.desktop.launcher:main"' in pyproject
+
+
+def test_pyproject_packages_dashboard_asset() -> None:
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'vampire = ["assets/vampire-dashboard.html"]' in pyproject
 
 
 def test_python_dash_m_vampire_runs_the_cli() -> None:

@@ -79,11 +79,11 @@ live *outside* the gateway's request path but make a fleet reproducible.
 
 ### 1e. Reference for the JS/TS browser tooling
 
-This repo ships self-contained browser tools (`html/vampire-dashboard.html`,
-`html/vampire-scanner.html`, `html-toolkit/vampire.html`) that talk to LM Studio
-surfaces directly from the browser. `lmstudio-js` is the canonical reference for
-the request/response shapes and identity headers those tools rely on, and could
-back a future bundled (non-single-file) dashboard build.
+This repo ships a product-bundled dashboard (`src/vampire/assets/vampire-dashboard.html`)
+and self-contained helper browser tools (`tools/html/vampire-scanner.html`,
+`tools/html/landing.html`) that talk to LM Studio surfaces directly from the browser.
+`lmstudio-js` is the canonical reference for the request/response shapes and identity
+headers those tools rely on, and could back a future bundled dashboard build.
 
 ---
 

@@ -75,8 +75,9 @@ formatting, linting, type-checking, and test commands.
 | Component | Purpose |
 | --- | --- |
 | `vampire` console script | The CLI entry point (`vampire.cli:main`). See the [CLI reference](05-cli-reference.md). |
+| `vampire-desktop` console script | Desktop-friendly launcher that starts the gateway and opens the dashboard. |
 | `vampire` Python package | The FastAPI app, proxy, registry, router, and models under `src/vampire/`. |
-| `html/vampire-dashboard.html` | The single-file Phase 4 browser dashboard served at `/`. |
+| `src/vampire/assets/vampire-dashboard.html` | The product-bundled Phase 4 browser dashboard served at `/`. |
 
 ## Next steps
 

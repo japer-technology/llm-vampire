@@ -9,6 +9,7 @@ from vampire import __version__
 from vampire.app import create_app
 from vampire.cli import main
 from vampire.config import Settings
+from vampire.desktop.launcher import build_parser as build_desktop_parser
 from vampire.models import (
     ChatCompletionRequest,
     ModelCard,
@@ -72,6 +73,13 @@ def test_cli_version_uses_phase_zero_console_entrypoint(capsys: CaptureFixture[s
         assert exc.code == 0
 
     assert f"vampire {__version__}" in capsys.readouterr().out
+
+
+def test_desktop_launcher_parser_accepts_no_open() -> None:
+    args = build_desktop_parser().parse_args(["--host", "127.0.0.1", "--port", "7777", "--no-open"])
+    assert args.host == "127.0.0.1"
+    assert args.port == 7777
+    assert args.no_open is True
 
 
 def test_virtual_model_shape() -> None:
