@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 
 import pytest
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
@@ -98,14 +97,17 @@ def test_app_factory_returns_independent_instances() -> None:
 
 
 def test_app_mounts_openai_control_and_static_surfaces() -> None:
-    paths = {route.path for route in create_app().routes if isinstance(route, APIRoute)}
+    app = create_app()
+    paths = set(app.openapi()["paths"])
     # Layer 1 OpenAI-compatible proxy + Layer 2 Vampire control API.
     assert any(path.startswith("/v1") for path in paths)
     assert "/vampire/v1/status" in paths
 
     # Layer 3 static UI: the Phase 4 dashboard is served from the application
     # root in editable installs.
-    assert "/" in paths
+    response = TestClient(app).get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
 
 
 def test_status_route_reports_scaffold_envelope() -> None:

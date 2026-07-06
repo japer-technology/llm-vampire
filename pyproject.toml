@@ -31,6 +31,7 @@ dependencies = [
 dev = [
     "mypy>=1.13.0",
     "pytest>=8.0",
+    "pytest-asyncio>=0.24",
     "ruff>=0.8.0",
 ]
 
@@ -48,6 +49,8 @@ vampire = ["../../html/vampire-dashboard.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 100
