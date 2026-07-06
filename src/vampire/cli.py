@@ -20,11 +20,13 @@ def _serve(args: argparse.Namespace) -> int:
     """Run the gateway with CLI flags taking precedence over environment settings."""
     import uvicorn
 
+    from vampire.app import create_app
+
     settings = get_settings()
     configure_logging(settings)
     host = args.host or settings.host
     port = args.port or settings.port
-    uvicorn.run("vampire.app:create_app", host=host, port=port, factory=True)
+    uvicorn.run(create_app(), host=host, port=port)
     return 0
 
 

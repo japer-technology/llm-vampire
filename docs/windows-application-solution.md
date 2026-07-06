@@ -20,7 +20,7 @@ Vampire is a pure-Python project (see [`pyproject.toml`](../pyproject.toml)):
   ([`src/vampire/cli.py`](../src/vampire/cli.py)). The interesting subcommand is
   `vampire serve`, which starts a Uvicorn/ASGI server.
 - **Web server:** `vampire serve` calls
-  `uvicorn.run("vampire.app:create_app", ..., factory=True)`
+  `uvicorn.run(create_app(), ...)`
   ([`src/vampire/cli.py`](../src/vampire/cli.py)). The app factory lives in
   [`src/vampire/app.py`](../src/vampire/app.py).
 - **Runtime dependencies:** `fastapi`, `uvicorn`, `httpx`, `pydantic`,
@@ -64,41 +64,27 @@ pip install -e .
 pip install pyinstaller
 ```
 
-### 2.2 Codebase changes required before freezing
+### 2.2 Freeze-friendly codebase choices
 
-Freezing exposes two assumptions in the current code that break inside a bundle.
-Both should be addressed before (or as part of) shipping an `.exe`:
+Freezing exposes assumptions that are easy to miss in a source checkout. The
+current structure addresses the important ones:
 
 1. **Locating the dashboard file.**
    `app.py` computes
    `DASHBOARD_FILE = Path(__file__).resolve().parent / "assets" / "vampire-dashboard.html"`,
-   i.e. it walks up from `src/vampire/app.py` to the repository root. Inside a
-   frozen app there is no repository layout: PyInstaller unpacks bundled data to
-   a temp directory exposed as `sys._MEIPASS` (one-file mode) or next to the
-   `.exe` (one-folder mode). The dashboard-path resolution needs a frozen-aware branch,
-   for example: if `getattr(sys, "frozen", False)` is set, resolve `html/`
-   relative to `sys._MEIPASS` / the executable directory instead of the source
-   tree. Because the file is missing today the UI simply won't be served in a
-   bundle — the API would still work, but the dashboard wouldn't.
+   resolving the dashboard as package data. The PyInstaller spec collects that
+   package asset so the same package-relative path works in editable installs,
+   wheels, and frozen bundles.
 
 2. **The Uvicorn factory import string.**
-   `uvicorn.run("vampire.app:create_app", factory=True)` passes a *string*, so
-   Uvicorn imports the module by name at runtime. This works in a frozen app
-   **only if** `vampire.app` is actually bundled (it is, since it is imported),
-   but the import-string path is fragile under freezing. The robust fix is to
-   import `create_app` directly and pass the **callable** (and disable
-   `reload`/`workers`, which spawn subprocesses that misbehave when the "Python
-   interpreter" is really an `.exe`). Passing the app object also avoids any
-   reliance on module discovery inside the bundle.
+   `vampire serve` and the desktop launcher import `create_app` directly and pass
+   an application object to Uvicorn. That avoids relying on runtime import-string
+   discovery inside the bundle.
 
 3. **A GUI/desktop entry point (recommended, optional).**
    For a true "double-click" experience the exe should not require typing
-   `vampire serve`. Add a small launcher entry point that: starts the server in
-   a background thread, waits for the port, opens the browser to the dashboard
-   (the CLI already has `webbrowser` logic in `_dashboard`), and provides a way
-   to quit (a console window, a tray icon, or a minimal window). Keep the
-   existing CLI intact — the launcher is just an additional `main()` that the
-   `.exe` targets.
+   `vampire serve`. The `vampire-desktop` launcher starts the server and opens
+   the browser to the dashboard while keeping the existing CLI intact.
 
 > These are small, localized changes. Items 1 and 2 are correctness fixes for
 > *any* frozen/packaged distribution; item 3 is UX polish for non-technical
@@ -121,7 +107,7 @@ dynamically (by string) must be declared. For this stack expect to declare:
 - **`pydantic` / `pydantic_core`** — Pydantic v2 has a compiled `pydantic_core`
   extension. Recent PyInstaller versions include hooks, but pin a current
   PyInstaller and verify; otherwise add `--collect-all pydantic`.
-- **The `html/vampire-dashboard.html` asset** must be added as data:
+- **The `src/vampire/assets/vampire-dashboard.html` asset** must be added as data:
   `collect_data_files("vampire", includes=["assets/vampire-dashboard.html"])` in the committed spec file.
 
 ### 2.4 Build command (quick start)

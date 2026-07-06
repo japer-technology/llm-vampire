@@ -17,7 +17,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="Start LM Studio Vampire and open the browser dashboard.",
     )
     parser.add_argument("--host", default=None, help="Host to bind (default from settings).")
-    parser.add_argument("--port", type=int, default=None, help="Port to bind (default from settings).")
+    parser.add_argument(
+        "--port", type=int, default=None, help="Port to bind (default from settings)."
+    )
     parser.add_argument(
         "--no-open",
         action="store_true",
