@@ -14,6 +14,7 @@ Python toolchain.
 | Path | Purpose |
 | --- | --- |
 | [`common/`](common/) | Cross-platform packaging assets and the shared smoke test. |
+| [`html/`](html/) | Self-contained single-file HTML/JS/CSS helper apps. |
 | [`common/icons/`](common/icons/) | Generated platform icon files (`.ico`, `.icns`, `.png`). |
 | [`common/release-metadata/`](common/release-metadata/) | Shared release notes, signing, and store metadata templates. |
 | [`linux/`](linux/) | Generic (non-Ubuntu) Linux artifacts: source rebuilds, wheels, sdists. |
@@ -34,6 +35,7 @@ and are invoked from the repository root:
 | Ubuntu (`.deb`) | `scripts/packaging/build-ubuntu-deb.sh` | wheel + sdist (`.deb` recipe WIP) |
 | macOS (`.app`) | `scripts/packaging/build-macos.sh` | `dist/LM Studio Vampire.app` |
 | Windows (`.exe`) | `scripts/packaging/build-windows.ps1` | `dist/LMStudioVampire/` |
+| HTML apps | `scripts/packaging/build-html-apps.sh` | single-file apps in `dist/html/` |
 
 PyInstaller is **not** a cross-compiler: build each native artifact on the
 platform it targets (macOS on macOS, Windows on Windows).
