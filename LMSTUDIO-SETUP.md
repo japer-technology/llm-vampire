@@ -253,7 +253,7 @@ These surfaces expose richer model/load-state information than plain `/v1/models
 Open:
 
 ```text
-tools/html/vampire-scanner.html
+packaging/html/vampire-scanner.html
 ```
 
 or serve it from the repository if your browser blocks local-file requests.
