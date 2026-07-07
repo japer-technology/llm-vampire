@@ -1,0 +1,135 @@
+name: Packaging
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+
+      - name: Ruff format check
+        run: python -m ruff format --check .
+
+      - name: Ruff lint
+        run: python -m ruff check .
+
+      - name: Mypy
+        run: python -m mypy
+
+      - name: Pytest
+        run: python -m pytest
+
+  linux-source:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Linux source distribution
+        run: scripts/packaging/build-linux-source.sh
+
+      - name: Stage HTML helper apps
+        run: scripts/packaging/build-html-apps.sh
+
+      - name: Upload Linux source and HTML artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-source-and-html
+          path: dist/
+          if-no-files-found: error
+
+  macos-app:
+    needs: validate
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build macOS app bundle
+        run: scripts/packaging/build-macos.sh
+
+      - name: Upload macOS app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: dist/
+          if-no-files-found: error
+
+  windows-folder:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Windows executable folder
+        shell: pwsh
+        run: .\scripts\packaging\build-windows.ps1
+
+      - name: Upload Windows executable folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-folder
+          path: dist/
+          if-no-files-found: error
+
+  attach-to-release:
+    if: github.event_name == 'release'
+    needs: [linux-source, macos-app, windows-folder]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Assemble release bundles
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          for name in linux-source-and-html macos-app windows-folder; do
+            (cd "artifacts/${name}" && zip -r "../../release/${name}.zip" .)
+          done
+          (cd release && sha256sum ./*.zip > SHA256SUMS.txt)
+
+      - name: Attach artifacts to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" release/* --repo "${{ github.repository }}" --clobber
