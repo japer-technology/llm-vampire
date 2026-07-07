@@ -1,6 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
+spec_dir = Path(SPECPATH)
 
 datas = collect_data_files("vampire", includes=["assets/vampire-dashboard.html"])
 hiddenimports = collect_submodules("vampire")
@@ -34,7 +38,7 @@ exe = EXE(
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
-    entitlements_file="entitlements.plist",
+    entitlements_file=str(spec_dir / "entitlements.plist"),
 )
 
 coll = COLLECT(
@@ -52,5 +56,5 @@ app = BUNDLE(
     name="LM Studio Vampire.app",
     icon=None,
     bundle_identifier="technology.japer.lmstudio-vampire",
-    info_plist="Info.plist",
+    info_plist=str(spec_dir / "Info.plist"),
 )
