@@ -79,7 +79,7 @@ topography**, **who controls what**, and **what it unlocks**.
 ## Read this catalogue alongside
 
 - [`../../VISION.md`](../../VISION.md) — the one-paragraph thesis.
-- [`../../WORLD-CHANGING.md`](../../WORLD-CHANGING.md) — why owner-offered private
+- [`../analysis/change-the-world.md`](../analysis/change-the-world.md) — why owner-offered private
   compute is a new category.
 - [`../../DESIGN-API.md`](../../DESIGN-API.md) — the API, including `POST
   /vampire/v1/discover` (`static`, `mdns`, `udp_broadcast`, `lan_scan`).

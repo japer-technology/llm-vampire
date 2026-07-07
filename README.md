@@ -342,9 +342,9 @@ pytest
 | [ASPIRATION.md](ASPIRATION.md) | The full aspirations paper: thesis, audiences, and goals. |
 | [LMSTUDIO-SETUP.md](LMSTUDIO-SETUP.md) | Definitive LM Studio owner setup: server, auth, LAN/CORS, model loading, scanner verification, and logging/privacy posture. |
 | [DESIGN-API.md](DESIGN-API.md) | The OpenAI-compatible + Vampire orchestration API design. |
-| [MVP.md](MVP.md) | Minimum Viable Product definition. |
-| [MVVP.md](MVVP.md) | Minimum Viable Valuable Product (per Guy Kawasaki). |
-| [MVVVP.md](MVVVP.md) | Minimum Viable Valuable Validating Product (per Guy Kawasaki). |
+| [docs/analysis/MVP.md](docs/analysis/MVP.md) | Minimum Viable Product definition. |
+| [docs/analysis/MVVP.md](docs/analysis/MVVP.md) | Minimum Viable Valuable Product (per Guy Kawasaki). |
+| [docs/analysis/MVVVP.md](docs/analysis/MVVVP.md) | Minimum Viable Valuable Validating Product (per Guy Kawasaki). |
 | [POSSIBILITIES.md](POSSIBILITIES.md) | Broader explorations and feature possibilities. |
 | [docs/vampire.md](docs/vampire.md) | The consent & contribution design thesis, in the project's vampire/folklore register. |
 | [docs/startrek.md](docs/startrek.md) | The same thesis retold in a Star Trek register. |
