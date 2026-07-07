@@ -79,8 +79,13 @@ Signing and notarization should also happen in Actions when release credentials
 are available. Store signing certificates, passwords, API keys, and notarization
 credentials in GitHub Actions secrets; never commit them to the repository.
 
-The current repository only has a CI workflow. A packaging workflow can be added
-later without changing the scripts in this directory.
+This repository implements this method in `.github/workflows/packaging.yml`. The
+workflow runs on `workflow_dispatch`, `v*` tags, and published releases; it
+validates the code with the CI checks, builds the Linux source distribution and
+HTML staging on `ubuntu-latest`, the macOS app bundle on `macos-latest`, and the
+Windows executable folder on `windows-latest`, uploads each `dist/` as a
+workflow artifact, and attaches zipped bundles with checksums to published
+releases.
 
 ## Method 3: other ways to produce executable folders
 
