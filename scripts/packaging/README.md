@@ -84,9 +84,12 @@ workflow runs on `workflow_dispatch`, `v*` tags, and published releases; it
 validates the code with the CI checks, builds the Linux source distribution and
 HTML staging on `ubuntu-latest`, the macOS app bundle on `macos-latest`, and the
 Windows executable folder on `windows-latest`, uploads each `dist/` as a
-workflow artifact, and attaches zipped bundles with checksums to published
-releases. Manual `workflow_dispatch` runs only attach to a release when the
-`release_tag` input names an existing GitHub Release.
+workflow artifact, and attaches zipped bundles with checksums to a GitHub
+Release. The release tag comes from the triggering release or `v*` tag push, or
+from the `release_tag` input on manual `workflow_dispatch` runs; when that input
+is blank the tag is derived as `v<version>` from the repository `VERSION` file.
+If no GitHub Release exists for the resolved tag, the workflow creates it
+automatically before uploading the bundles.
 
 ## Method 3: other ways to produce executable folders
 
