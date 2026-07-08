@@ -2,6 +2,11 @@ name: Packaging
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing GitHub Release tag to attach bundles to; leave blank to only upload workflow artifacts"
+        required: false
+        type: string
   push:
     tags:
       - "v*"
@@ -109,18 +114,64 @@ jobs:
           if-no-files-found: error
 
   attach-to-release:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     needs: [linux-source, macos-app, windows-folder]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_EVENT_TAG: ${{ github.event.release.tag_name }}
+          DISPATCH_RELEASE_TAG: ${{ inputs.release_tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          case "$EVENT_NAME" in
+            release)
+              tag="$RELEASE_EVENT_TAG"
+              ;;
+            workflow_dispatch)
+              tag="$DISPATCH_RELEASE_TAG"
+              ;;
+            *)
+              tag="$REF_NAME"
+              ;;
+          esac
+
+          if [ -z "$tag" ]; then
+            echo "::error::A release tag is required to attach packaging artifacts to a release."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            echo "::notice::No GitHub Release exists for tag '$tag'; skipping release upload."
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "::error::No GitHub Release exists for tag '$tag'. Create the release first, then rerun Packaging with release_tag=$tag."
+          exit 1
+
       - name: Download all artifacts
+        if: steps.release.outputs.exists == 'true'
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Assemble release bundles
+        if: steps.release.outputs.exists == 'true'
         run: |
           set -euo pipefail
           mkdir -p release
@@ -130,6 +181,7 @@ jobs:
           (cd release && sha256sum ./*.zip > SHA256SUMS.txt)
 
       - name: Attach artifacts to release
+        if: steps.release.outputs.exists == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" release/* --repo "${{ github.repository }}" --clobber
+        run: gh release upload "${{ steps.release.outputs.tag }}" release/* --repo "${{ github.repository }}" --clobber

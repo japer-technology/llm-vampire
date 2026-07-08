@@ -85,7 +85,8 @@ validates the code with the CI checks, builds the Linux source distribution and
 HTML staging on `ubuntu-latest`, the macOS app bundle on `macos-latest`, and the
 Windows executable folder on `windows-latest`, uploads each `dist/` as a
 workflow artifact, and attaches zipped bundles with checksums to published
-releases.
+releases. Manual `workflow_dispatch` runs only attach to a release when the
+`release_tag` input names an existing GitHub Release.
 
 ## Method 3: other ways to produce executable folders
 
