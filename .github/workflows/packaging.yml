@@ -1,187 +1,159 @@
-name: Packaging
+name: Build and release
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: "GitHub Release tag to attach bundles to; leave blank to derive v<version> from the VERSION file"
-        required: false
-        type: string
   push:
     tags:
-      - "v*"
-  release:
-    types: [published]
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build without publishing (must match project metadata)"
+        required: true
+        default: "0.0.1"
+        type: string
 
 permissions:
   contents: read
 
+env:
+  UV_VERSION: "0.11.28"
+  PYTHON_VERSION: "3.12"
+  RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || format('v{0}', inputs.version) }}
+
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.3.2
         with:
-          python-version: "3.12"
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - uses: actions/setup-python@v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra dev --extra packaging
+      - name: Validate version
+        run: uv run --frozen python scripts/packaging/version.py --tag "$RELEASE_TAG"
+      - name: Run quality gates
+        run: |
+          uv run --frozen ruff format --check .
+          uv run --frozen ruff check .
+          uv run --frozen mypy
+          uv run --frozen pytest
 
-      - name: Install package
-        run: python -m pip install -e ".[dev]"
-
-      - name: Ruff format check
-        run: python -m ruff format --check .
-
-      - name: Ruff lint
-        run: python -m ruff check .
-
-      - name: Mypy
-        run: python -m mypy
-
-      - name: Pytest
-        run: python -m pytest
-
-  linux-source:
+  linux:
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.3.2
         with:
-          python-version: "3.12"
-
-      - name: Build Linux source distribution
-        run: scripts/packaging/build-linux-source.sh
-
-      - name: Stage HTML helper apps
-        run: scripts/packaging/build-html-apps.sh
-
-      - name: Upload Linux source and HTML artifacts
-        uses: actions/upload-artifact@v4
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - uses: actions/setup-python@v6.3.0
         with:
-          name: linux-source-and-html
-          path: dist/
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra packaging
+      - name: Build Linux archive and Debian package
+        run: |
+          scripts/packaging/build-linux.sh
+          scripts/packaging/build-ubuntu-deb.sh --reuse-linux-build
+          uv run --frozen python scripts/packaging/validate-artifacts.py \
+            dist --version "${RELEASE_TAG#v}" --platform linux
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: linux-release-assets
+          path: |
+            dist/LMStudio-Vampire-*-linux-x86_64.tar.gz
+            dist/LMStudio-Vampire-*-linux-x86_64.deb
           if-no-files-found: error
 
-  macos-app:
+  macos:
     needs: validate
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.3.2
         with:
-          python-version: "3.12"
-
-      - name: Build macOS app bundle
-        run: scripts/packaging/build-macos.sh
-
-      - name: Upload macOS app bundle
-        uses: actions/upload-artifact@v4
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - uses: actions/setup-python@v6.3.0
         with:
-          name: macos-app
-          path: dist/
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra packaging
+      - name: Build macOS application
+        run: |
+          scripts/packaging/build-macos.sh
+          uv run --frozen python scripts/packaging/validate-artifacts.py \
+            dist --version "${RELEASE_TAG#v}" --platform macos
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: macos-release-assets
+          path: dist/LMStudio-Vampire-*-macos-x86_64.zip
           if-no-files-found: error
 
-  windows-folder:
+  windows:
     needs: validate
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.3.2
         with:
-          python-version: "3.12"
-
-      - name: Build Windows executable folder
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - uses: actions/setup-python@v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra packaging
+      - name: Build Windows portable archive and installer
         shell: pwsh
-        run: .\scripts\packaging\build-windows.ps1
-
-      - name: Upload Windows executable folder
-        uses: actions/upload-artifact@v4
+        run: |
+          .\scripts\packaging\build-windows.ps1
+          $Version = $env:RELEASE_TAG.TrimStart("v")
+          uv run --frozen python scripts/packaging/validate-artifacts.py `
+            dist --version $Version --platform windows
+      - uses: actions/upload-artifact@v7.0.1
         with:
-          name: windows-folder
-          path: dist/
+          name: windows-release-assets
+          path: |
+            dist/LMStudio-Vampire-*-windows-x86_64.exe
+            dist/LMStudio-Vampire-*-windows-x86_64-portable.zip
           if-no-files-found: error
 
-  attach-to-release:
-    needs: [linux-source, macos-app, windows-folder]
-    runs-on: ubuntu-latest
+  release:
+    if: github.event_name == 'push'
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Resolve release tag
-        id: release
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_EVENT_TAG: ${{ github.event.release.tag_name }}
-          DISPATCH_RELEASE_TAG: ${{ inputs.release_tag }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-
-          case "$EVENT_NAME" in
-            release)
-              tag="$RELEASE_EVENT_TAG"
-              ;;
-            workflow_dispatch)
-              tag="$DISPATCH_RELEASE_TAG"
-              if [ -z "$tag" ]; then
-                tag="v$(tr -d '[:space:]' < VERSION)"
-              fi
-              ;;
-            *)
-              tag="$REF_NAME"
-              ;;
-          esac
-
-          if [ -z "$tag" ]; then
-            echo "::error::A release tag is required to attach packaging artifacts to a release."
-            exit 1
-          fi
-
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
-          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "::notice::GitHub Release '$tag' already exists; attaching artifacts to it."
-            exit 0
-          fi
-
-          echo "::notice::Creating GitHub Release '$tag'."
-          gh release create "$tag" \
-            --repo "${{ github.repository }}" \
-            --target "$GITHUB_SHA" \
-            --title "$tag" \
-            --generate-notes
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7.0.0
+      - uses: actions/download-artifact@v8.0.1
         with:
-          path: artifacts
-
-      - name: Assemble release bundles
+          pattern: "*-release-assets"
+          path: dist
+          merge-multiple: true
+      - name: Generate and validate checksums
         run: |
-          set -euo pipefail
-          mkdir -p release
-          for name in linux-source-and-html macos-app windows-folder; do
-            (cd "artifacts/${name}" && zip -r "../../release/${name}.zip" .)
-          done
-          (cd release && sha256sum ./*.zip > SHA256SUMS.txt)
-
-      - name: Attach artifacts to release
+          python scripts/packaging/validate-artifacts.py \
+            dist --version "${RELEASE_TAG#v}" --write-checksums
+      - name: Create one release and upload separate assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ steps.release.outputs.tag }}" release/* --repo "${{ github.repository }}" --clobber
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
+              --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber \
+            dist/*
