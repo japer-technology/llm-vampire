@@ -79,8 +79,8 @@ Windows PowerShell:
 
 Artifacts appear in `dist/` with names beginning
 `LMStudio-Vampire-<version>-<platform>-<architecture>`. Linux and Debian builds
-may be run independently; the Debian script builds the Linux executable first
-when necessary.
+may be run independently; the Debian script always performs a clean Linux build.
+CI may pass `--reuse-linux-build` only after building Linux in the same job.
 
 To validate a complete set and create checksums:
 

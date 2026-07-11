@@ -8,5 +8,5 @@ scripts/packaging/build-ubuntu-deb.sh
 ```
 
 The script creates control metadata from the validated release version and uses
-`dpkg-deb` to produce the final package. It builds the Linux executable first
-when needed. See [`../../BUILDING.md`](../../BUILDING.md).
+`dpkg-deb` to produce the final package. It always starts with a clean Linux
+executable build. See [`../../BUILDING.md`](../../BUILDING.md).

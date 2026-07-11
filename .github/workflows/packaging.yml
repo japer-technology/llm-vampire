@@ -60,7 +60,7 @@ jobs:
       - name: Build Linux archive and Debian package
         run: |
           scripts/packaging/build-linux.sh
-          scripts/packaging/build-ubuntu-deb.sh
+          scripts/packaging/build-ubuntu-deb.sh --reuse-linux-build
           uv run --frozen python scripts/packaging/validate-artifacts.py \
             dist --version "${RELEASE_TAG#v}" --platform linux
       - uses: actions/upload-artifact@v7.0.1
@@ -146,9 +146,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$RELEASE_TAG" \
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
+              --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "$RELEASE_TAG" \
-            --generate-notes \
+            --clobber \
             dist/*
