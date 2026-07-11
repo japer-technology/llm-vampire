@@ -31,7 +31,9 @@ def digest(path: Path) -> str:
 
 
 def expected_names(version: str, platform: str) -> set[str]:
-    platforms = PLATFORM_ARTIFACTS if platform == "all" else {platform: PLATFORM_ARTIFACTS[platform]}
+    platforms = (
+        PLATFORM_ARTIFACTS if platform == "all" else {platform: PLATFORM_ARTIFACTS[platform]}
+    )
     return {
         template.format(version=version)
         for templates in platforms.values()
