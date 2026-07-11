@@ -53,6 +53,9 @@ The compute behind an LM Studio endpoint may be local, remote, headless, GPU-bac
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
 
+Build, native packaging, checksum, and release instructions are maintained in
+[`BUILDING.md`](BUILDING.md).
+
 ---
 
 ## About LM Studio
