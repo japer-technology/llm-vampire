@@ -5,7 +5,7 @@
 > people genuinely want, that jumps a curve rather than competing on the same
 > one. Builds on [MVP.md](MVP.md); leads to [MVVVP.md](MVVVP.md).
 
-This document defines the smallest version of `lmstudio-vampire` that is not
+This document defines the smallest version of `llm-vampire` that is not
 just viable but **valuable**: it does something for users that no plain proxy
 does, and that they would miss if it were taken away. It carries the vision in
 [VISION.md](VISION.md) further into reality.

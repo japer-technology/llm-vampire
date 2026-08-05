@@ -1,7 +1,7 @@
 # Debian/Ubuntu packaging
 
 The package installs the standalone `vampire-desktop` executable and the desktop
-menu entry in `lmstudio-vampire.desktop`. Build it on Debian or Ubuntu:
+menu entry in `llm-vampire.desktop`. Build it on Debian or Ubuntu:
 
 ```bash
 scripts/packaging/build-ubuntu-deb.sh

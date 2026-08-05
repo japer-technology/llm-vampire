@@ -1,7 +1,7 @@
 # `vampire.desktop` — desktop launcher
 
-Double-click friendly launcher used by the packaged desktop builds of
-LM Studio Vampire (macOS `.app` bundle and Windows executable folder).
+Double-click friendly launcher used by packaged LLM Vampire desktop builds
+(macOS `.app` bundle and Windows executable folder).
 
 | Module | Purpose |
 | --- | --- |

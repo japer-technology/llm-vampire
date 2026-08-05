@@ -1,7 +1,7 @@
-# Contributing to `lmstudio-vampire`
+# Contributing to `llm-vampire`
 
-Thank you for your interest in improving **LM Studio Vampire**. This project turns
-owner-approved LM Studio endpoints into one governed, private AI service. The
+Thank you for your interest in improving **LLM Vampire**. This project turns
+owner-approved local LLM endpoints into one governed, private AI service. The
 canonical reference implementation is the Python package under
 [`src/vampire/`](src/vampire/) (see [METHOD-A.md](METHOD-A.md)); every install
 pathway, OS application, and SDK hangs off that single source of truth.
@@ -55,7 +55,7 @@ formatting.
 1. Fork and create a topic branch. Branch names are prefixed with your GitHub
    username (for example `yourname/short-description`).
 2. Keep changes **additive and reversible** — preserve the stable public surface:
-   the project name `lmstudio-vampire`, the CLI command `vampire`, and the default
+   the project name `llm-vampire`, the CLI command `vampire`, and the default
    port `7777`.
 3. Add or update tests. Each implementation phase has a dedicated
    `tests/test_phaseN.py` suite; cross-cutting behaviour lives in

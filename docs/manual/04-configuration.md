@@ -32,7 +32,7 @@ listen address.
 | --- | --- | --- | --- |
 | `host` | `VAMPIRE_HOST` | `127.0.0.1` | Address the gateway binds to when `vampire serve` starts. |
 | `port` | `VAMPIRE_PORT` | `7777` | Port the gateway listens on. |
-| `lmstudio_base_url` | `VAMPIRE_LMSTUDIO_BASE_URL` | `http://localhost:1234` | Default downstream LM Studio node used by the Phase 1 transparent proxy. |
+| `default_base_url` | `VAMPIRE_DEFAULT_BASE_URL` | `http://localhost:1234` | Default downstream local LLM node used by the transparent proxy. |
 | `log_level` | `VAMPIRE_LOG_LEVEL` | `INFO` | Logging verbosity for the gateway process. |
 | `auth_token` | `VAMPIRE_AUTH_TOKEN` | `""` (empty) | Optional bearer token for `/vampire/v1/*` control routes. Empty keeps the control API unauthenticated. |
 
@@ -45,7 +45,7 @@ Prefix any setting name with `VAMPIRE_` and uppercase it:
 ```bash
 VAMPIRE_HOST=0.0.0.0 \
 VAMPIRE_PORT=8080 \
-VAMPIRE_LMSTUDIO_BASE_URL=http://lm-studio-host:1234 \
+VAMPIRE_DEFAULT_BASE_URL=http://llm-host:1234 \
 vampire serve
 ```
 
@@ -57,11 +57,12 @@ Create a `.env` file in the directory you run `vampire` from:
 # .env
 VAMPIRE_HOST=0.0.0.0
 VAMPIRE_PORT=8080
-VAMPIRE_LMSTUDIO_BASE_URL=http://lm-studio-host:1234
+VAMPIRE_DEFAULT_BASE_URL=http://llm-host:1234
 VAMPIRE_LOG_LEVEL=DEBUG
 ```
 
-Values in `.env` are loaded automatically by pydantic-settings.
+Values in `.env` are loaded automatically by pydantic-settings. The legacy
+`VAMPIRE_LMSTUDIO_BASE_URL` name remains accepted.
 
 ### CLI flags
 
@@ -77,7 +78,7 @@ vampire serve --host 0.0.0.0 --port 8080
 ```mermaid
 flowchart TD
     q{"What are you<br/>trying to do?"}
-    q -->|"Front a remote node"| a["VAMPIRE_LMSTUDIO_BASE_URL=<br/>http://host:1234"]
+    q -->|"Front a remote node"| a["VAMPIRE_DEFAULT_BASE_URL=<br/>http://host:1234"]
     q -->|"Expose to the LAN"| b["VAMPIRE_HOST=0.0.0.0"]
     q -->|"Avoid a port clash"| c["VAMPIRE_PORT=8080<br/>or serve --port 8080"]
     q -->|"Debug a problem"| d["VAMPIRE_LOG_LEVEL=DEBUG"]

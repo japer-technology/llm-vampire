@@ -14,11 +14,20 @@ import httpx
 
 import vampire.proxy as proxy
 from vampire.config import get_settings
-from vampire.models import DiscoveryRequest, ModelCard, ModelListResponse, Node, PhysicalModel
+from vampire.models import (
+    DEFAULT_DISCOVERY_PORTS,
+    DiscoveryRequest,
+    ModelCard,
+    ModelListResponse,
+    Node,
+    PhysicalModel,
+)
+from vampire.providers import probe_endpoint
+from vampire.providers.openai_compatible import coerce_model_cards
 from vampire.registry import registry
 
 _MAX_SCAN_SUBNETS = 8
-_MAX_SCAN_PORTS = 8
+_MAX_SCAN_PORTS = 16
 _MAX_SCAN_HOSTS_PER_SUBNET = 256
 _MAX_SCAN_CANDIDATES = 1024
 _DISCOVERY_CONCURRENCY = 16
@@ -168,20 +177,8 @@ def _dedupe_local_access_urls(urls: list[str]) -> list[str]:
 
 
 def _coerce_model_cards(payload: object) -> list[ModelCard]:
-    """Extract OpenAI-compatible model cards from a ``/v1/models`` response."""
-    if not isinstance(payload, dict):
-        return []
-    data = payload.get("data")
-    if not isinstance(data, list):
-        return []
-
-    cards: list[ModelCard] = []
-    for raw in data:
-        if isinstance(raw, dict) and isinstance(raw.get("id"), str):
-            if raw["id"].startswith("vampire:"):
-                continue
-            cards.append(ModelCard.model_validate(raw))
-    return cards
+    """Retain the original model-card coercion seam for compatibility."""
+    return coerce_model_cards(payload)
 
 
 async def refresh_node(
@@ -190,19 +187,26 @@ async def refresh_node(
     timeout_ms: int | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> Node:
-    """Interrogate a node's ``/v1/models`` endpoint and update health metadata."""
+    """Interrogate a node through provider adapters and update health metadata."""
     timeout = httpx.Timeout((timeout_ms or 1500) / 1000)
-    base_url = node.lmstudio_base_url.rstrip("/")
+    base_url = node.base_url.rstrip("/")
     http_client = client or proxy.build_async_client()
     started = perf_counter()
     try:
-        response = await http_client.get(f"{base_url}/v1/models", timeout=timeout)
+        probe = await probe_endpoint(
+            http_client,
+            base_url,
+            timeout=timeout,
+            provider_hint=node.provider,
+        )
         latency_ms = round((perf_counter() - started) * 1000, 3)
-        response.raise_for_status()
         updated = node.model_copy(
             update={
                 "status": "online",
-                "models": _coerce_model_cards(response.json()),
+                "provider": probe.provider,
+                "api_format": probe.api_format,
+                "models": probe.models,
+                "capabilities": probe.capabilities,
                 "request_count": node.request_count + 1,
                 "latency_ms": latency_ms,
                 "last_checked_at": _now(),
@@ -302,7 +306,10 @@ def physical_model_inventory(nodes: list[Node]) -> list[PhysicalModel]:
                 PhysicalModel(
                     node=node.id,
                     model=model.id,
+                    provider=node.provider,
+                    api_format=node.api_format,
                     owned_by=model.owned_by,
+                    capabilities=node.capabilities,
                     tokens_per_second=node.tokens_per_second,
                 )
             )
@@ -347,8 +354,13 @@ def _candidate_urls(request: DiscoveryRequest) -> list[str]:
         urls.append(cleaned)
     methods = set(request.methods)
     if "static" in methods:
-        urls.append(get_settings().lmstudio_base_url.rstrip("/"))
-        urls.extend(node.lmstudio_base_url.rstrip("/") for node in registry.list())
+        urls.append(get_settings().default_base_url.rstrip("/"))
+        urls.extend(node.base_url.rstrip("/") for node in registry.list())
+
+    if "local" in methods:
+        urls.append(get_settings().default_base_url.rstrip("/"))
+        ports = request.ports or list(DEFAULT_DISCOVERY_PORTS)
+        urls.extend(f"http://127.0.0.1:{port}" for port in ports[:_MAX_SCAN_PORTS])
 
     if "lan_scan" in methods:
         for subnet in request.subnets[:_MAX_SCAN_SUBNETS]:
@@ -369,6 +381,14 @@ def _candidate_urls(request: DiscoveryRequest) -> list[str]:
     return _dedupe_local_access_urls(list(dict.fromkeys(urls)))[:_MAX_SCAN_CANDIDATES]
 
 
+def _provider_hint_for_url(base_url: str) -> str:
+    """Return a safe provider hint for ports with a single dominant convention."""
+    try:
+        return "ollama" if urlparse(base_url).port == 11434 else "auto"
+    except ValueError:
+        return "auto"
+
+
 async def discover_nodes(
     request: DiscoveryRequest, *, client: httpx.AsyncClient | None = None
 ) -> list[Node]:
@@ -384,7 +404,8 @@ async def discover_nodes(
         node = current or Node(
             id=node_id,
             host=urlparse(base_url).hostname,
-            lmstudio_base_url=base_url,
+            base_url=base_url,
+            provider=_provider_hint_for_url(base_url),
             trusted=False,
         )
         async with semaphore:

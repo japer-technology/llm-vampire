@@ -1,4 +1,4 @@
-# Implementation Plan — `lmstudio-vampire` (METHOD-A)
+# Implementation Plan — `llm-vampire` (METHOD-A)
 
 This plan turns the design papers in this repository into a runnable project. It
 follows the recommended construction in [METHOD-A.md](METHOD-A.md) (a single
@@ -6,19 +6,19 @@ Python/FastAPI process that serves the OpenAI-compatible API, the Vampire contro
 API, and the browser UI) and targets the **Minimal MVP** defined in
 [DESIGN-API.md](DESIGN-API.md) §24.
 
-End state: `pip install lmstudio-vampire` → `vampire serve` → a process listening
-on `http://localhost:7777/v1` that proxies and routes across approved LM Studio
+End state: `pip install llm-vampire` → `vampire serve` → a process listening
+on `http://localhost:7777/v1` that proxies and routes across approved local LLM
 nodes, with a browser dashboard.
 
 ## Guiding constraints (from the design papers)
 
-- **Compatibility first.** `/v1/*` routes must behave exactly like
-  LM Studio / OpenAI; existing clients only change their base URL. Vampire
+- **Compatibility first.** `/v1/*` routes must follow the OpenAI-compatible API;
+  existing clients only change their base URL. Vampire
   features are strictly opt-in via the `vampire` request field, `X-Vampire-*`
   headers, or `/vampire/v1/*` routes.
 - **Single artifact.** One process serves the OpenAI API, the Vampire control
   API, and the static UI.
-- **Owner stays in control.** Vampire only talks to LM Studio endpoints an owner
+- **Owner stays in control.** Vampire only talks to local LLM endpoints an owner
   has deliberately exposed; it never controls GPUs directly.
 - **Streaming is native.** SSE / chunked passthrough works from day one.
 
@@ -60,18 +60,18 @@ top once traffic flows.
 
 ### Phase 0 — Scaffolding & foundations
 - Python package with the `vampire` console-script entry point.
-- App factory, configuration (default port `7777`, downstream LM Studio `1234`),
+- App factory, configuration (default port `7777`, configurable downstream URL),
   logging.
 - Core Pydantic models for the objects in DESIGN-API §4 (Node, virtual model,
   route policy) and OpenAI request/response shapes.
 - Testing (pytest), linting/formatting, type checking, CI.
 
 ### Phase 1 — Transparent proxy (build step 1)
-- Drop-in `/v1/*` passthrough to a single configured LM Studio node:
+- Drop-in `/v1/*` passthrough to a single configured local LLM node:
   `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`,
   `/v1/responses`.
 - Preserve OpenAI-compatible streaming (DESIGN-API §20) and error format (§23).
-- Acceptance: an existing OpenAI/LM Studio client works unchanged against
+- Acceptance: an existing OpenAI-compatible client works unchanged against
   `:7777/v1`.
 
 ### Phase 2 — Node registry + discovery (build step 2)
@@ -80,7 +80,7 @@ top once traffic flows.
 - Manual registration first (§13), then health checks and capability/model
   interrogation. The MVP relies on manual registration only; automatic mDNS
   discovery and the node agent are deferred (ASPIRATION Phase 6).
-- `POST /vampire/v1/discover` (§12): static/dev-subnet scan first, mDNS later.
+- `POST /vampire/v1/discover` (§12): static/local multi-port scan first, mDNS later.
 - Aggregate `/v1/models` and `/vampire/v1/models` across nodes (§15).
 - Basic read-only `GET /vampire/v1/metrics` (§18): per-node request counts,
   health, and latency. This completes the "Minimal MVP" control surface in
@@ -124,7 +124,7 @@ top once traffic flows.
   `/vampire/v1/traces/{id}` (§19).
 
 ## Cross-cutting concerns
-- **Testing:** a mock LM Studio server fixture so every phase can be tested
+- **Testing:** mock OpenAI-compatible and Ollama server fixtures so every phase can be tested
   without real GPUs; contract tests asserting `/v1/*` OpenAI parity.
 - **Optional node agent** (`/agent/v1/*`, DESIGN-API Layer 3): defer until after
   MVP.
@@ -143,7 +143,7 @@ src/vampire/            Python package
   config.py             Settings (ports, downstream URL)
   app.py                FastAPI app factory; mounts API layers + static UI
   models.py             Pydantic models (Node, virtual model, route policy)
-  proxy.py              Transparent /v1 passthrough to LM Studio nodes
+  proxy.py              Transparent /v1 passthrough to local LLM nodes
   registry.py           Node registry
   router.py             Virtual-model routing
   api/

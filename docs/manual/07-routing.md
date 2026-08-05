@@ -22,7 +22,7 @@ flowchart LR
     end
 
     policy -->|"select online target"| pick["node-b : llama-3"]
-    pick --> node["🟢 LM Studio node-b"]
+    pick --> node["🟢 Local LLM node-b"]
 ```
 
 A **virtual model** (e.g. `vampire:chat`) is an alias. A **route policy** binds

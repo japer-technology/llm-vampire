@@ -1,7 +1,7 @@
 # Windows Application Solution
 
-> How to compile `lmstudio-vampire` into a standalone Windows executable (`.exe`)
-> that an owner can double-click to turn their PC into an LM Studio Vampire — no
+> How to compile `llm-vampire` into a standalone Windows executable (`.exe`)
+> that an owner can double-click to turn their PC into an LLM Vampire — no
 > Python install, no `pip`, no command line required.
 
 This document explains **what is required** to ship a distributable Windows `.exe`,
@@ -116,7 +116,7 @@ A one-folder build is the most reliable starting point (faster startup, easiest
 to debug):
 
 ```powershell
-pyinstaller --name LMStudioVampire ^
+pyinstaller --name LLMVampire ^
   --console ^
   --collect-submodules vampire ^
   --collect-all zeroconf ^
@@ -126,11 +126,11 @@ pyinstaller --name LMStudioVampire ^
   --hidden-import uvicorn.protocols.http.auto ^
   --hidden-import uvicorn.protocols.websockets.auto ^
   --collect-data vampire ^
-  --icon packaging\common\icons\LMStudioVampire.ico ^
+  --icon packaging\common\icons\LLMVampire.ico ^
   src\vampire\desktop\launcher.py
 ```
 
-The result is `dist\LMStudioVampire\LMStudioVampire.exe` plus its support
+The result is `dist\LLMVampire\LLMVampire.exe` plus its support
 folder. For a single self-contained file, swap to `--onefile` (see §2.6 for the
 trade-off). Convert one of the existing PNG logos (`LOGO.png` / `LOGO-3.png`) to
 a multi-resolution `.ico` for `--icon`.
@@ -138,9 +138,9 @@ a multi-resolution `.ico` for `--icon`.
 ### 2.5 A committed `.spec` file (recommended for repeatability)
 
 Rather than a long command line, commit a PyInstaller **spec file** (e.g.
-`packaging/windows/LMStudioVampire.spec`) that encodes the entry point, hidden
+`packaging/windows/LLMVampire.spec`) that encodes the entry point, hidden
 imports, `datas` (the package dashboard asset), icon, and one-file vs one-folder choice.
-CI and contributors then build with a single `pyinstaller LMStudioVampire.spec`.
+CI and contributors then build with a single `pyinstaller LLMVampire.spec`.
 This keeps the build reproducible and reviewable.
 
 ### 2.6 One-file vs one-folder
@@ -163,7 +163,7 @@ Because PyInstaller can't cross-compile, build the Windows artifact on a
 1. `runs-on: windows-latest`.
 2. `actions/setup-python` with the target Python version.
 3. `pip install -e .` then `pip install pyinstaller`.
-4. `pyinstaller packaging/windows/LMStudioVampire.spec`.
+4. `pyinstaller packaging/windows/LLMVampire.spec`.
 5. Smoke-test the artifact (see §6) — fail the build if the exe doesn't start.
 6. Upload with `actions/upload-artifact`, and on tags attach the zipped build to
    a GitHub Release.
@@ -183,8 +183,8 @@ Common choices that pair well with a PyInstaller `--onedir` build:
 - **WiX Toolset** — produces a `.msi` for managed/enterprise deployment.
 - **NSIS** — lightweight scriptable installer.
 
-The installer wraps the `dist\LMStudioVampire\` folder, creates shortcuts to
-`LMStudioVampire.exe`, and registers an uninstaller. For Microsoft Store
+The installer wraps the `dist\LLMVampire\` folder, creates shortcuts to
+`LLMVampire.exe`, and registers an uninstaller. For Microsoft Store
 distribution you would instead produce an **MSIX** package.
 
 ---
@@ -250,7 +250,7 @@ To ship a distributable Windows `.exe`:
 - [ ] Start Uvicorn from the imported `create_app` callable (no reload/workers
       subprocesses) for freeze-safety.
 - [x] Add the `vampire-desktop` launcher entry point that starts the server and opens the dashboard.
-- [x] Commit `packaging/windows/LMStudioVampire.spec` with hidden imports and bundled package data.
+- [x] Commit `packaging/windows/LLMVampire.spec` with hidden imports and bundled package data.
 - [ ] Build on Windows (locally or `windows-latest` CI); never cross-compile.
 - [ ] Smoke-test the `.exe` on a clean, Python-free Windows machine.
 - [ ] (Recommended) Wrap in an installer (Inno Setup / WiX) and **code-sign**

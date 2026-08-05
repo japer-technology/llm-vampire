@@ -1,13 +1,13 @@
-#define AppName "LM Studio Vampire"
+#define AppName "LLM Vampire"
 #define AppPublisher "japer-technology"
-#define AppExeName "LMStudioVampire.exe"
+#define AppExeName "LLMVampire.exe"
 
 [Setup]
 AppId={{D29E29A6-A926-4BC7-8D91-5B382DAEC96D}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
-DefaultDirName={autopf}\LM Studio Vampire
+DefaultDirName={autopf}\LLM Vampire
 DefaultGroupName={#AppName}
 OutputDir={#OutputDir}
 OutputBaseFilename={#OutputBaseFilename}

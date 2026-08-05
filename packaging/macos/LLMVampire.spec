@@ -31,7 +31,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="LMStudioVampire",
+    name="LLMVampire",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -51,16 +51,16 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="LMStudioVampire",
+    name="LLMVampire",
 )
 
 app = BUNDLE(
     coll,
-    name="LM Studio Vampire.app",
+    name="LLM Vampire.app",
     icon=None,
-    bundle_identifier="technology.japer.lmstudio-vampire",
+    bundle_identifier="technology.japer.llm-vampire",
     info_plist={
-        "CFBundleDisplayName": "LM Studio Vampire",
+        "CFBundleDisplayName": "LLM Vampire",
         "CFBundleShortVersionString": release_version,
         "CFBundleVersion": release_version,
         "LSMinimumSystemVersion": "12.0",

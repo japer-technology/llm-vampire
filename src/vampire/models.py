@@ -10,10 +10,13 @@ from __future__ import annotations
 import time
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+
+DEFAULT_DISCOVERY_PORTS = (1234, 11434, 8080, 8000, 5000, 5001, 4891, 1337)
+"""Common ports used by local LLM servers supported by automatic discovery."""
 
 OpenAIRole = Literal["system", "user", "assistant", "tool", "developer"]
-"""Roles accepted by the LM Studio / OpenAI chat-compatible message format."""
+"""Roles accepted by the OpenAI-compatible chat message format."""
 
 ModelKind = Literal["physical", "virtual"]
 """Model catalogue categories: node-hosted models or Vampire virtual aliases."""
@@ -30,7 +33,7 @@ class ModelCard(BaseModel):
     id: str
     object: Literal["model"] = "model"
     created: int = _SYNTHETIC_CREATED
-    owned_by: str = "lmstudio-vampire"
+    owned_by: str = "llm-vampire"
 
     model_config = ConfigDict(extra="allow")
 
@@ -51,7 +54,7 @@ class ModelListResponse(BaseModel):
 
 
 class NodeCapabilities(BaseModel):
-    """Capabilities Vampire records for an owner-approved LM Studio endpoint.
+    """Capabilities Vampire records for an owner-approved LLM service.
 
     Phase 0 supplies the shape. Phase 2 will populate it by interrogating each
     node, and Phase 3 routing can use it to avoid sending embeddings, tools, or
@@ -68,18 +71,21 @@ class NodeCapabilities(BaseModel):
 
 
 class Node(BaseModel):
-    """A machine running an owner-approved LM Studio API endpoint (§4.1).
+    """A machine running an owner-approved local LLM API endpoint (§4.1).
 
-    ``lmstudio_base_url`` is the OpenAI-compatible endpoint Vampire proxies to in
-    Phase 1. ``agent_base_url`` is reserved for the optional node agent deferred
-    beyond MVP. ``trusted`` and ``tags`` are carried from day one because later
-    routing and policy phases use them without changing the public node shape.
+    ``base_url`` is the provider endpoint Vampire proxies to. The deprecated
+    ``lmstudio_base_url`` input and output remain available for existing clients.
+    ``agent_base_url`` is reserved for the optional node agent deferred beyond
+    MVP. ``trusted`` and ``tags`` are carried from day one because later routing
+    and policy phases use them without changing the public node shape.
     """
 
     id: str
     name: str | None = None
     host: str | None = None
-    lmstudio_base_url: str
+    base_url: str
+    provider: str = "auto"
+    api_format: str = "openai-compatible"
     agent_base_url: str | None = None
     status: str = "unknown"
     trusted: bool = False
@@ -95,13 +101,36 @@ class Node(BaseModel):
     last_checked_at: str | None = None
     last_error: str | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_base_url(cls, data: Any) -> Any:
+        """Accept the pre-rebrand ``lmstudio_base_url`` request field."""
+        if not isinstance(data, dict):
+            return data
+        values = dict(data)
+        base_url = values.get("base_url")
+        legacy_url = values.get("lmstudio_base_url")
+        if base_url is None and legacy_url is not None:
+            values["base_url"] = legacy_url
+        elif base_url is not None and legacy_url is not None and base_url != legacy_url:
+            raise ValueError("base_url and lmstudio_base_url must match")
+        return values
+
+    @computed_field(return_type=str)  # type: ignore[prop-decorator]
+    @property
+    def lmstudio_base_url(self) -> str:
+        """Return the deprecated provider URL field for API compatibility."""
+        return self.base_url
+
 
 class NodeUpdate(BaseModel):
-    """Partial update for a registered LM Studio node (§14)."""
+    """Partial update for a registered LLM service node (§14)."""
 
     name: str | None = None
     host: str | None = None
-    lmstudio_base_url: str | None = None
+    base_url: str | None = None
+    provider: str | None = None
+    api_format: str | None = None
     agent_base_url: str | None = None
     status: str | None = None
     trusted: bool | None = None
@@ -111,13 +140,28 @@ class NodeUpdate(BaseModel):
     queue_depth: int | None = None
     tokens_per_second: float | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_base_url(cls, data: Any) -> Any:
+        """Accept the pre-rebrand ``lmstudio_base_url`` patch field."""
+        if not isinstance(data, dict):
+            return data
+        values = dict(data)
+        base_url = values.get("base_url")
+        legacy_url = values.get("lmstudio_base_url")
+        if base_url is None and legacy_url is not None:
+            values["base_url"] = legacy_url
+        elif base_url is not None and legacy_url is not None and base_url != legacy_url:
+            raise ValueError("base_url and lmstudio_base_url must match")
+        return values
+
 
 class DiscoveryRequest(BaseModel):
     """Discovery request body (DESIGN-API.md §12)."""
 
-    methods: list[str] = Field(default_factory=lambda: ["static"])
+    methods: list[str] = Field(default_factory=lambda: ["local"])
     subnets: list[str] = Field(default_factory=list)
-    ports: list[int] = Field(default_factory=lambda: [1234])
+    ports: list[int] = Field(default_factory=lambda: list(DEFAULT_DISCOVERY_PORTS))
     timeout_ms: int = 1500
     trusted_only: bool = False
     base_urls: list[str] = Field(default_factory=list)
@@ -128,8 +172,11 @@ class PhysicalModel(BaseModel):
 
     node: str
     model: str
+    provider: str = "openai-compatible"
+    api_format: str = "openai-compatible"
     loaded: bool = True
-    owned_by: str = "lmstudio-vampire"
+    owned_by: str = "llm-vampire"
+    capabilities: NodeCapabilities = Field(default_factory=NodeCapabilities)
     context_window: int | None = None
     tokens_per_second: float | None = None
 
@@ -198,7 +245,7 @@ class ShareUpdate(BaseModel):
 class OpenAIMessage(BaseModel):
     """OpenAI-compatible chat message shape.
 
-    Extra fields are preserved so LM Studio extensions pass through unchanged.
+    Extra fields are preserved so provider extensions pass through unchanged.
     Tool-call fields are included even before Phase 6 policy because modern
     OpenAI-compatible clients may send or receive them on the transparent
     passthrough surface.
@@ -214,7 +261,7 @@ class OpenAIMessage(BaseModel):
 
 
 class OpenAIRequestBase(BaseModel):
-    """Shared OpenAI-compatible request fields accepted by LM Studio.
+    """Shared OpenAI-compatible request fields accepted by local LLM providers.
 
     The optional ``vampire`` object is ignored by the Phase 1 transparent proxy
     and becomes an opt-in routing/policy control in later phases.

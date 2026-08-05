@@ -1,4 +1,4 @@
-# LM Studio Vampire API
+# LLM Vampire API
 
 **Vampire = LM Studio-compatible API + local-network orchestration extensions.**
 
@@ -142,7 +142,7 @@ A node is a machine running LM Studio or an agent beside LM Studio.
   "id": "node-mac-studio-01",
   "name": "Mac Studio M2 Ultra",
   "host": "192.168.1.41",
-  "lmstudio_base_url": "http://192.168.1.41:1234",
+  "base_url": "http://192.168.1.41:1234",
   "agent_base_url": "http://192.168.1.41:7778",
   "status": "online",
   "trusted": true,
@@ -782,7 +782,7 @@ Response:
     {
       "id": "node-mac-studio-01",
       "host": "192.168.1.41",
-      "lmstudio_base_url": "http://192.168.1.41:1234",
+      "base_url": "http://192.168.1.41:1234",
       "status": "online",
       "models": ["qwen/qwen3-32b", "nomic-embed-text"]
     }
@@ -802,7 +802,7 @@ Content-Type: application/json
 ```json
 {
   "name": "Ubuntu RTX 4090",
-  "lmstudio_base_url": "http://192.168.1.52:1234",
+  "base_url": "http://192.168.1.52:1234",
   "agent_base_url": "http://192.168.1.52:7778",
   "trust": {
     "mode": "manual",
@@ -1417,7 +1417,7 @@ console.log(data);
 
 # 28. Final shape
 
-The **LM Studio Vampire API** is:
+The **LLM Vampire API** is:
 
 ```txt
 LM Studio-compatible at /v1/*

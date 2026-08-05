@@ -1,7 +1,7 @@
 # lmstudio.ai — LM Studio Technical Reference for Vampire
 
 This folder is a deep technical study of [LM Studio](https://lmstudio.ai/) — the platform
-that `lmstudio-vampire` builds on. It collects every LM Studio mechanism that Vampire's
+that `llm-vampire` builds on. It collects every LM Studio mechanism that Vampire's
 design depends on: the API server, its endpoint surfaces, authentication, model lifecycle,
 headless operation, remote-device routing (LM Link), the `lms` CLI, and concurrency.
 

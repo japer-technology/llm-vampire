@@ -4,13 +4,13 @@
 > governed gateway in front of **many** owner-approved LM Studio servers, exposing
 > a single, stable OpenAI-compatible endpoint that interrogates, routes,
 > load-balances, and fails over across the fleet. This is the mechanism that the
-> third-party [`lmstudio-vampire`](README.md) project builds on top of LM Studio
+> third-party [`llm-vampire`](README.md) project builds on top of LM Studio
 > today; this document describes how LM Studio could implement it as a native
 > feature instead.
 
 - **Status:** Proposal / feature request
 - **Audience:** LM Studio maintainers ([lmstudio-ai](https://github.com/lmstudio-ai))
-- **Relationship to this repo:** `lmstudio-vampire` is an external orchestration
+- **Relationship to this repo:** `llm-vampire` is an external orchestration
   layer. Everything below is achievable today only by sitting *outside* LM Studio.
   This request asks whether the most broadly useful parts belong *inside* it.
 
@@ -202,7 +202,7 @@ multi-node gateway** described in §3.
 
 ## 8. Alternatives considered
 
-- **External reverse proxy (status quo).** Works (this is what `lmstudio-vampire`
+- **External reverse proxy (status quo).** Works (this is what `llm-vampire`
   does), but every user must install and operate a separate tool, and it cannot
   offer the same in-GUI, owner-consented experience as a first-party feature.
 - **Client-side load balancing.** Pushes node lists, health checks, and failover
@@ -224,6 +224,6 @@ owner-controlled experience without external moving parts.
 
 ---
 
-*Filed in the context of [`lmstudio-vampire`](README.md), a third-party project
+*Filed in the context of [`llm-vampire`](README.md), a third-party project
 that implements this mechanism on top of LM Studio today. It is not affiliated
 with LM Studio unless explicitly adopted by that team.*

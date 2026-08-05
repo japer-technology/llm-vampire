@@ -74,12 +74,12 @@ Every control command accepts `--gateway URL` to target a non-default gateway
 | `vampire --version` | Print the installed `vampire` version. | Local argparse version output. |
 | `vampire serve [--host HOST] [--port PORT]` | Run the OpenAI-compatible gateway. | Starts Uvicorn with `vampire.app:create_app`. |
 | `vampire status [--gateway URL]` | Show gateway and cluster status. | `GET /vampire/v1/status` |
-| `vampire discover [--gateway URL] [--method M]... [--subnet CIDR]... [--port N]... [--timeout-ms MS] [--trusted-only] [--base-url URL]...` | Discover reachable LM Studio nodes. | `POST /vampire/v1/discover` |
+| `vampire discover [--gateway URL] [--method M]... [--subnet CIDR]... [--port N]... [--timeout-ms MS] [--trusted-only] [--base-url URL]...` | Discover reachable local LLM nodes. | `POST /vampire/v1/discover` |
 | `vampire nodes [--gateway URL]` | List registered nodes. | Defaults to `vampire nodes list`. |
 | `vampire nodes [--gateway URL] list` | List registered nodes. | `GET /vampire/v1/nodes` |
-| `vampire nodes [--gateway URL] add NODE_ID LMSTUDIO_BASE_URL [--name NAME] [--host HOST] [--agent-base-url URL] [--trusted] [--tag TAG]...` | Register an owner-approved LM Studio node. | `POST /vampire/v1/nodes` |
+| `vampire nodes [--gateway URL] add NODE_ID BASE_URL [--provider PROVIDER] [--name NAME] [--host HOST] [--agent-base-url URL] [--trusted] [--tag TAG]...` | Register an owner-approved local LLM node. | `POST /vampire/v1/nodes` |
 | `vampire nodes [--gateway URL] get NODE_ID` | Show one registered node. | `GET /vampire/v1/nodes/{id}` |
-| `vampire nodes [--gateway URL] update NODE_ID [--name N] [--host H] [--lmstudio-base-url URL] [--agent-base-url URL] [--status STATUS] [--trusted] [--tag TAG]... [--active-requests N] [--queue-depth N] [--tokens-per-second F]` | Patch mutable node metadata. | `PATCH /vampire/v1/nodes/{id}` |
+| `vampire nodes [--gateway URL] update NODE_ID [--name N] [--host H] [--base-url URL] [--provider PROVIDER] [--agent-base-url URL] [--status STATUS] [--trusted] [--tag TAG]... [--active-requests N] [--queue-depth N] [--tokens-per-second F]` | Patch mutable node metadata. | `PATCH /vampire/v1/nodes/{id}` |
 | `vampire nodes [--gateway URL] drain NODE_ID [on\|off]` | Mark a node draining, or restore it to online service. | `PATCH /vampire/v1/nodes/{id}` |
 | `vampire nodes [--gateway URL] delete NODE_ID` | Remove a registered node. | `DELETE /vampire/v1/nodes/{id}` |
 | `vampire models [--gateway URL]` | List aggregated physical models. | `GET /vampire/v1/models` |
@@ -122,7 +122,7 @@ Calls `GET /vampire/v1/status`. Reports `version`, `nodes_total`, and
 
 ## `vampire discover`
 
-Ask the gateway to discover reachable LM Studio nodes.
+Ask the gateway to discover reachable local LLM nodes.
 
 ```bash
 vampire discover [--method M]... [--subnet CIDR]... [--port N]... \
@@ -131,9 +131,9 @@ vampire discover [--method M]... [--subnet CIDR]... [--port N]... \
 
 | Flag | Repeatable | Default | Description |
 | --- | --- | --- | --- |
-| `--method` | yes | `static` | Discovery method(s): `static`, `lan_scan`. |
+| `--method` | yes | `local` | Discovery method(s): `local`, `static`, `lan_scan`. |
 | `--subnet` | yes | (none) | CIDR subnet(s) to scan when using `lan_scan`. |
-| `--port` | yes | `1234` | Port(s) to probe. |
+| `--port` | yes | common provider ports | Port(s) to probe. |
 | `--timeout-ms` | no | `1500` | Per-node probe timeout in milliseconds. |
 | `--trusted-only` | no | off | Only return nodes marked trusted. |
 | `--base-url` | yes | (none) | Explicit base URL(s) to probe directly. |
@@ -151,7 +151,7 @@ vampire nodes [--gateway URL] [SUBCOMMAND]
 | Subcommand | Calls | Description |
 | --- | --- | --- |
 | `list` | `GET /vampire/v1/nodes` | List registered nodes. |
-| `add NODE_ID LMSTUDIO_BASE_URL [...]` | `POST /vampire/v1/nodes` | Register an owner-approved node. |
+| `add NODE_ID BASE_URL [...]` | `POST /vampire/v1/nodes` | Register an owner-approved node. |
 | `get NODE_ID` | `GET /vampire/v1/nodes/{id}` | Show one node. |
 | `update NODE_ID [...]` | `PATCH /vampire/v1/nodes/{id}` | Patch mutable node metadata. |
 | `drain NODE_ID [on\|off]` | `PATCH /vampire/v1/nodes/{id}` | Mark a node draining, or restore it to online service. |
@@ -160,14 +160,16 @@ vampire nodes [--gateway URL] [SUBCOMMAND]
 ### `vampire nodes add`
 
 ```bash
-vampire nodes add NODE_ID LMSTUDIO_BASE_URL \
-  [--name NAME] [--host HOST] [--agent-base-url URL] [--trusted] [--tag TAG]...
+vampire nodes add NODE_ID BASE_URL \
+  [--provider PROVIDER] [--name NAME] [--host HOST] [--agent-base-url URL] \
+  [--trusted] [--tag TAG]...
 ```
 
 | Argument / flag | Description |
 | --- | --- |
 | `NODE_ID` | Unique id for the node. |
-| `LMSTUDIO_BASE_URL` | The node's OpenAI-compatible base URL (e.g. `http://host:1234`). |
+| `BASE_URL` | The provider's HTTP(S) base URL (e.g. `http://host:1234`). |
+| `--provider` | Provider name or `auto` for adapter detection (default). |
 | `--name` | Friendly display name. |
 | `--host` | Host label. |
 | `--agent-base-url` | Reserved for the optional node agent (post-MVP). |
@@ -178,7 +180,7 @@ vampire nodes add NODE_ID LMSTUDIO_BASE_URL \
 
 ```bash
 vampire nodes update NODE_ID \
-  [--name N] [--host H] [--lmstudio-base-url URL] [--agent-base-url URL] \
+  [--name N] [--host H] [--base-url URL] [--provider PROVIDER] [--agent-base-url URL] \
   [--status STATUS] [--trusted] [--tag TAG]... \
   [--active-requests N] [--queue-depth N] [--tokens-per-second F]
 ```

@@ -1,6 +1,6 @@
 # 2. Installation
 
-This chapter covers installing the current `lmstudio-vampire` scaffold. The
+This chapter covers installing the current `llm-vampire` scaffold. The
 single-command installers advertised in the README are a **planned** future
 deliverable; today you install from a checkout with `pip`.
 
@@ -10,7 +10,7 @@ deliverable; today you install from a checkout with `pip`.
 | --- | --- |
 | **Python 3.10+** | The package targets `>=3.10` (see [`pyproject.toml`](../../pyproject.toml)). |
 | **pip** | Used to install the package and its dependencies. |
-| **An LM Studio endpoint** | At least one running LM Studio server you can reach (commonly `http://localhost:1234`). See [`lmstudio.ai/02-api-server.md`](../../lmstudio.ai/02-api-server.md). |
+| **A local LLM endpoint** | At least one reachable service, such as LM Studio (`http://localhost:1234`), Ollama (`http://localhost:11434`), llama.cpp, or another OpenAI-compatible server. |
 
 Runtime dependencies (FastAPI, Uvicorn, httpx, Pydantic, pydantic-settings,
 zeroconf, aiosqlite) are installed automatically by `pip`.

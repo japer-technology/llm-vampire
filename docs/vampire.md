@@ -3,7 +3,7 @@
 > *A vampire cannot cross a threshold uninvited. To be turned, a mortal must
 > offer themselves. The offering can be withdrawn.*
 
-This document captures the design thesis of `lmstudio-vampire` in the project's
+This document captures the design thesis of `llm-vampire` in the project's
 own folklore register. It is a narrative companion to the rigorous treatment in
 [`security-design-thesis.md`](security-design-thesis.md) and the mechanism
 mapping in [`../lmstudio.ai/12-vampire-integration.md`](../lmstudio.ai/12-vampire-integration.md).
@@ -20,7 +20,7 @@ There are many **mortals** and very few **vampires**.
 - A **mortal** is an LM Studio instance. People already run it. It executes
   models behind an OpenAI-compatible API and asks nothing of anyone. Most
   machines on any network will only ever be mortals.
-- A **vampire** is an `lmstudio-vampire` instance. It runs no models of its own.
+- A **vampire** is an `llm-vampire` instance. It runs no models of its own.
   It is a thin overlay that *discovers, governs, routes, and aggregates* the
   mortals that have offered themselves to it.
 

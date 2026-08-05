@@ -1,6 +1,6 @@
-# Building and releasing LM Studio Vampire
+# Building and releasing LLM Vampire
 
-LM Studio Vampire is a Python 3.10+ application with two entry points:
+LLM Vampire is a Python 3.10+ application with two entry points:
 `vampire` for the CLI and `vampire-desktop` for the browser-opening desktop
 launcher. Release packages contain the desktop launcher and its Python runtime.
 PyInstaller builds are native and cannot be cross-compiled.
@@ -12,13 +12,13 @@ The automated release currently supports x86-64 runners only:
 | Target | Release files |
 | --- | --- |
 | Linux x86-64 | `.tar.gz` standalone archive and Debian/Ubuntu `.deb` |
-| macOS 12+ x86-64 | ZIP containing `LM Studio Vampire.app` |
+| macOS 12+ x86-64 | ZIP containing `LLM Vampire.app` |
 | Windows x86-64 | portable ZIP and Inno Setup `.exe` installer |
 
 AppImage, RPM, MSI, 32-bit, and ARM releases are not implemented. The source is
 portable Python, but those release packages have not been validated. The HTML
 helper applications under `packaging/html/` are supporting tools and are not
-LM Studio Vampire release assets.
+LLM Vampire release assets.
 
 ## Prerequisites
 
@@ -78,7 +78,7 @@ Windows PowerShell:
 ```
 
 Artifacts appear in `dist/` with names beginning
-`LMStudio-Vampire-<version>-<platform>-<architecture>`. Linux and Debian builds
+`LLM-Vampire-<version>-<platform>-<architecture>`. Linux and Debian builds
 may be run independently; the Debian script always performs a clean Linux build.
 CI may pass `--reuse-linux-build` only after building Linux in the same job.
 
@@ -117,7 +117,7 @@ To publish after the draft pull request is merged and version metadata is ready:
 ```bash
 git switch main
 git pull --ff-only
-git tag -a v0.0.1 -m "LM Studio Vampire v0.0.1"
+git tag -a v0.0.1 -m "LLM Vampire v0.0.1"
 git push origin v0.0.1
 ```
 

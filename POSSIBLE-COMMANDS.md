@@ -1,7 +1,7 @@
 # Possible Commands — the next 100 `vampire` commands
 
 This document ranks the **next 100 CLI commands** to implement or expand for
-`lmstudio-vampire`, in **descending order of importance**. It is derived from a
+`llm-vampire`, in **descending order of importance**. It is derived from a
 close reading of [POSSIBILITIES.md](POSSIBILITIES.md) (numbered items cited as
 `P#`) and the operator manual in [`docs/manual/`](docs/manual/) (the current CLI
 surface is [`05-cli-reference.md`](docs/manual/05-cli-reference.md); planned

@@ -1,6 +1,6 @@
-# The Maths of LM Studio Vampire
+# The Maths of LLM Vampire
 
-This document describes the mathematics behind the `lmstudio-vampire` mechanism:
+This document describes the mathematics behind the `llm-vampire` mechanism:
 a gateway that aggregates owner-approved LM Studio endpoints into one governed,
 OpenAI-compatible service, and routes, coalesces, caches, races, and fuses
 requests across them.

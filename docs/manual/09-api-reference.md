@@ -113,7 +113,8 @@ See [Routing](07-routing.md) for the opt-in signals and response headers.
 ```json
 {
   "id": "gpu-rig",
-  "lmstudio_base_url": "http://192.168.1.50:1234",
+  "base_url": "http://192.168.1.50:1234",
+  "provider": "auto",
   "name": "Studio GPU",
   "trusted": true,
   "tags": ["fast"]
@@ -124,14 +125,17 @@ See [Routing](07-routing.md) for the opt-in signals and response headers.
 
 ```json
 {
-  "methods": ["static", "lan_scan"],
+  "methods": ["local", "lan_scan"],
   "subnets": ["192.168.1.0/24"],
-  "ports": [1234],
+  "ports": [1234, 11434, 8080, 8000],
   "timeout_ms": 1500,
   "trusted_only": false,
   "base_urls": ["http://192.168.1.50:1234"]
 }
 ```
+
+The deprecated `lmstudio_base_url` node field remains accepted and returned for
+backward compatibility; new clients should use `base_url`.
 
 ### Create a route — `POST /vampire/v1/routes`
 

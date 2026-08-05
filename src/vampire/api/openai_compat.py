@@ -1,4 +1,4 @@
-"""Layer 1 — LM Studio / OpenAI-compatible routes (DESIGN-API.md §3, §5-6)."""
+"""Layer 1 — provider-neutral OpenAI-compatible routes (DESIGN-API.md §3, §5-6)."""
 
 from __future__ import annotations
 
@@ -56,13 +56,13 @@ async def completions(request: Request) -> Response:
 
 @router.post("/responses")
 async def responses(request: Request) -> Response:
-    """Proxy the newer OpenAI-compatible Responses endpoint when LM Studio serves it."""
+    """Proxy the newer OpenAI-compatible Responses endpoint when the provider serves it."""
     return await _route_or_proxy(request)
 
 
 @router.post("/embeddings")
 async def embeddings(request: Request) -> Response:
-    """Proxy embedding requests and preserve LM Studio's response envelope."""
+    """Proxy embedding requests and preserve the provider's response envelope."""
     return await _route_or_proxy(request)
 
 
@@ -74,7 +74,7 @@ async def embeddings(request: Request) -> Response:
 async def passthrough(path: str, request: Request) -> Response:
     """Forward any other ``/v1/*`` path so compatibility is not artificially capped.
 
-    LM Studio's OpenAI-compatible surface can grow faster than Vampire's named
+    Provider OpenAI-compatible surfaces can grow faster than Vampire's named
     route list. The catch-all keeps clients working by passing unknown compatible
     paths, query strings, headers, and bodies through the same transparent proxy.
     """
@@ -149,7 +149,7 @@ async def _route_or_proxy(request: Request) -> Response:
     try:
         response = await proxy_request_with_body(
             request,
-            downstream_base_url=node.lmstudio_base_url,
+            downstream_base_url=node.base_url,
             body=json.dumps(routed_payload).encode("utf-8"),
             response_headers={
                 "X-Vampire-Route": policy.id,

@@ -1,18 +1,18 @@
-# LM Studio Vampire — User Manual
+# LLM Vampire — User Manual
 
 > A practical, task-oriented guide to installing, running, and operating the
-> `lmstudio-vampire` gateway.
+> `llm-vampire` gateway.
 
-This manual is the **operator's handbook** for `lmstudio-vampire`. Where the
+This manual is the **operator's handbook** for `llm-vampire`. Where the
 [design papers](../../README.md#documentation) explain *why* Vampire exists and
 *what it aspires to become*, this folder explains *how to use what runs today*:
-installing the package, starting the gateway, registering LM Studio nodes,
+installing the package, starting the gateway, registering local LLM nodes,
 routing requests, and pointing OpenAI-compatible clients at one stable endpoint.
 
-`lmstudio-vampire` turns owner-approved **LM Studio API endpoints** into one
-governed, private AI service behind a single OpenAI-compatible URL. It does not
-run models or control GPUs itself — it connects only to LM Studio servers an
-owner has deliberately exposed. For the full background, read the
+`llm-vampire` turns owner-approved **local LLM API endpoints** into one governed,
+private AI service behind a single OpenAI-compatible URL. It does not run models
+or control GPUs itself—it connects only to services an owner has deliberately
+exposed. For the full background, read the
 [project README](../../README.md) and the
 [`lmstudio.ai/`](../../lmstudio.ai/) technical reference.
 
@@ -23,8 +23,8 @@ owner has deliberately exposed. For the full background, read the
 > [IMPLEMENTATION-PLAN.md](../../IMPLEMENTATION-PLAN.md)). This manual documents
 > the behaviour that ships in the current scaffold — **Phase 0** (foundations),
 > **Phase 1** (transparent proxy), **Phase 2** (node registry + discovery), and
-> **Phase 3** (routing). Features from later phases (dashboard, cache,
-> coalescing, auth/policy, fusion) are noted as **planned** where they appear, so
+> **Phase 3** (routing), and **Phase 4** (dashboard). Features from later phases
+> (cache, coalescing, auth/policy, fusion) are noted as **planned** where they appear, so
 > you always know what works now versus what is on the roadmap.
 
 ---
@@ -38,7 +38,7 @@ owner has deliberately exposed. For the full background, read the
 | 3 | [Quick start](03-quickstart.md) | Start the gateway and serve your first request in minutes. |
 | 4 | [Configuration](04-configuration.md) | The `VAMPIRE_*` settings reference and `.env` support. |
 | 5 | [CLI reference](05-cli-reference.md) | Every `vampire` command, flag, and exit code. |
-| 6 | [Nodes & discovery](06-nodes-and-discovery.md) | Registering nodes and discovering reachable LM Studio endpoints. |
+| 6 | [Nodes & discovery](06-nodes-and-discovery.md) | Registering nodes and discovering reachable local LLM endpoints. |
 | 7 | [Routing](07-routing.md) | Virtual models, route policies, strategies, and opt-in routing. |
 | 8 | [Sharing modes](08-sharing-modes.md) | Owner sharing modes and the `vampire share` command. |
 | 9 | [API reference](09-api-reference.md) | The `/v1/*` and `/vampire/v1/*` HTTP surfaces. |
@@ -62,11 +62,11 @@ flowchart TD
         ui["<b>/</b><br/>static browser UI"]
     end
 
-    subgraph nodes["🟢 Owner-approved LM Studio nodes"]
+    subgraph nodes["🟢 Owner-approved local LLM nodes"]
         direction LR
         node1["LM Studio<br/>localhost:1234"]
-        node2["LM Studio"]
-        node3["LM Studio"]
+        node2["Ollama<br/>localhost:11434"]
+        node3["llama.cpp / other"]
     end
 
     clients -->|"chat · completions · embeddings"| gateway

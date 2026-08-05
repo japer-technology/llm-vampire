@@ -94,7 +94,7 @@ def test_main_module_guard_executes_without_arguments() -> None:
 
 def test_app_factory_builds_titled_application() -> None:
     app = create_app()
-    assert app.title == "lmstudio-vampire"
+    assert app.title == "llm-vampire"
     assert app.version == __version__
 
 
@@ -132,7 +132,8 @@ def test_settings_defaults_match_design_api_ports() -> None:
     settings = Settings()
     assert settings.host == "127.0.0.1"
     assert settings.port == 7777
-    assert settings.lmstudio_base_url == "http://localhost:1234"
+    assert settings.default_base_url == "http://localhost:1234"
+    assert settings.lmstudio_base_url == settings.default_base_url
     assert settings.log_level == "INFO"
     assert settings.auth_token == ""
 
@@ -144,8 +145,16 @@ def test_settings_honour_vampire_env_prefix(monkeypatch: pytest.MonkeyPatch) -> 
 
     settings = get_settings()
     assert settings.port == 8123
-    assert settings.lmstudio_base_url == "http://node-x:4321"
+    assert settings.default_base_url == "http://node-x:4321"
     assert settings.log_level == "DEBUG"
+
+
+def test_settings_honour_provider_neutral_base_url_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VAMPIRE_DEFAULT_BASE_URL", "http://node-y:8080")
+
+    assert Settings().default_base_url == "http://node-y:8080"
 
 
 def test_get_settings_returns_cached_snapshot() -> None:
@@ -181,12 +190,12 @@ def test_configure_logging_falls_back_on_unknown_level() -> None:
 # --- Core Pydantic models (DESIGN-API.md §4) ---------------------------------
 
 
-def test_model_card_defaults_to_vampire_ownership() -> None:
+def test_model_card_defaults_to_llm_vampire_ownership() -> None:
     card = ModelCard(id="local-model")
     assert card.object == "model"
     assert isinstance(card.created, int)
     assert card.created > 0
-    assert card.owned_by == "lmstudio-vampire"
+    assert card.owned_by == "llm-vampire"
 
 
 def test_model_list_rejects_duplicate_model_ids() -> None:
@@ -195,13 +204,22 @@ def test_model_list_rejects_duplicate_model_ids() -> None:
 
 
 def test_node_carries_capabilities_and_routing_defaults() -> None:
-    node = Node(id="node-a", lmstudio_base_url="http://node-a:1234")
+    node = Node(id="node-a", base_url="http://node-a:1234")
     assert node.status == "unknown"
     assert node.trusted is False
     assert node.tags == []
     assert node.request_count == 0
     assert isinstance(node.capabilities, NodeCapabilities)
     assert node.capabilities.chat is True
+
+
+def test_node_accepts_and_serializes_legacy_lmstudio_base_url() -> None:
+    node = Node.model_validate(
+        {"id": "legacy-node", "lmstudio_base_url": "http://legacy-node:1234"}
+    )
+
+    assert node.base_url == "http://legacy-node:1234"
+    assert node.model_dump()["lmstudio_base_url"] == node.base_url
 
 
 def test_virtual_model_and_route_policy_shapes() -> None:

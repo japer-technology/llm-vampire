@@ -1,7 +1,7 @@
 # LM Studio Setup for Vampire
 
 This is the owner checklist for preparing an LM Studio installation so it can be
-found, trusted, and used by `lmstudio-vampire`.
+found, trusted, and used by `llm-vampire`.
 
 The short version:
 
@@ -300,7 +300,7 @@ http://localhost:7777/v1
 For a different downstream node:
 
 ```bash
-VAMPIRE_LMSTUDIO_BASE_URL=http://HOST:1234 vampire serve
+VAMPIRE_DEFAULT_BASE_URL=http://HOST:1234 vampire serve
 ```
 
 Register an owner-approved node with the control API/CLI:

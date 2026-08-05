@@ -20,7 +20,7 @@ from vampire.router import _MAX_CURSORS, Router, Selection
 
 
 def _mock_cluster() -> FastAPI:
-    """A multi-node LM Studio stand-in keyed by request host."""
+    """A multi-node local LLM stand-in keyed by request host."""
     app = FastAPI()
 
     @app.get("/v1/models")
@@ -84,7 +84,7 @@ def _online_node(
 ) -> Node:
     return Node(
         id=node_id,
-        lmstudio_base_url=f"http://{node_id}:1234",
+        base_url=f"http://{node_id}:1234",
         status="online",
         trusted=trusted,
         queue_depth=queue_depth,
@@ -257,9 +257,7 @@ def test_least_busy_reflects_inflight_registry_state() -> None:
 def test_routed_request_marks_selected_node_busy_until_response_finishes(
     monkeypatch: pytest.MonkeyPatch, client: TestClient
 ) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
     observed_active_requests: list[int] = []
 
     async def _fake_proxy_request_with_body(
@@ -323,9 +321,7 @@ def test_hot_route_keeps_rotating_after_cursor_eviction() -> None:
 
 
 def test_drained_node_stays_registered_but_is_not_route_candidate(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     drained = client.patch("/vampire/v1/nodes/node-a", json={"status": "draining"})
 
@@ -350,9 +346,7 @@ def test_drained_node_stays_registered_but_is_not_route_candidate(client: TestCl
 
 
 def test_patch_unrelated_field_does_not_undrain_node(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     drained = client.patch("/vampire/v1/nodes/node-a", json={"status": "draining"})
     updated = client.patch("/vampire/v1/nodes/node-a", json={"tags": ["gpu"]})
@@ -381,12 +375,8 @@ def test_patch_unrelated_field_does_not_undrain_node(client: TestClient) -> None
 
 
 def test_virtual_model_request_routes_to_selected_node(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-b", "lmstudio_base_url": "http://node-b:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
+    client.post("/vampire/v1/nodes", json={"id": "node-b", "base_url": "http://node-b:1234"})
     client.post(
         "/vampire/v1/routes",
         json={
@@ -418,9 +408,7 @@ def test_virtual_model_request_routes_to_selected_node(client: TestClient) -> No
 def test_route_target_removed_before_dispatch_returns_structured_503(
     monkeypatch: pytest.MonkeyPatch, client: TestClient
 ) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
     original_get = registry.get
     calls = 0
 
@@ -451,9 +439,7 @@ def test_route_target_removed_before_dispatch_returns_structured_503(
 
 
 def test_x_vampire_headers_control_physical_model_routing(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     resp = client.post(
         "/v1/chat/completions",
@@ -469,9 +455,7 @@ def test_x_vampire_headers_control_physical_model_routing(client: TestClient) ->
 def test_route_fallback_uses_secondary_policy_when_primary_has_no_online_targets(
     client: TestClient,
 ) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-b", "lmstudio_base_url": "http://node-b:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-b", "base_url": "http://node-b:1234"})
     client.post(
         "/vampire/v1/routes",
         json={
@@ -507,9 +491,7 @@ def test_route_fallback_uses_secondary_policy_when_primary_has_no_online_targets
 
 
 def test_models_endpoint_survives_virtual_physical_id_collision(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
     resp = client.post(
         "/vampire/v1/routes",
         json={
@@ -541,7 +523,7 @@ def test_models_listing_includes_created_for_every_card(client: TestClient) -> N
     registry.add(
         Node(
             id="node-a",
-            lmstudio_base_url="http://node-a:1234",
+            base_url="http://node-a:1234",
             status="online",
             trusted=True,
             models=[ModelCard(id="node-a-model")],
@@ -561,9 +543,7 @@ def test_models_listing_includes_created_for_every_card(client: TestClient) -> N
 def test_unknown_strategy_override_is_rejected_not_silently_downgraded(
     client: TestClient,
 ) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     resp = client.post(
         "/v1/chat/completions",
@@ -576,9 +556,7 @@ def test_unknown_strategy_override_is_rejected_not_silently_downgraded(
 
 
 def test_reported_strategy_is_the_effective_one(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     resp = client.post(
         "/v1/chat/completions",

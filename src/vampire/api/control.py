@@ -61,14 +61,14 @@ async def list_nodes() -> dict[str, Any]:
 
 @router.post("/nodes")
 async def register_node(node: Node, request: Request) -> dict[str, Any]:
-    """Register or replace an owner-approved LM Studio node (§13).
+    """Register or replace an owner-approved local LLM service node (§13).
 
     Pydantic validates required fields such as ``id`` and
-    ``lmstudio_base_url``. Phase 2 immediately interrogates ``/v1/models`` to
+    ``base_url``. The provider adapter immediately interrogates the endpoint to
     populate health and model metadata, while keeping offline nodes registered.
     """
-    if not is_allowed_target_url(node.lmstudio_base_url):
-        raise HTTPException(status_code=400, detail="disallowed lmstudio_base_url target")
+    if not is_allowed_target_url(node.base_url):
+        raise HTTPException(status_code=400, detail="disallowed base_url target")
     invalidate_refresh_cache()
     registry.add(node)
     refreshed = await refresh_node(node, client=_request_http_client(request))
@@ -88,8 +88,8 @@ async def get_node(node_id: str) -> dict[str, Any]:
 @router.patch("/nodes/{node_id}")
 async def patch_node(node_id: str, patch: NodeUpdate, request: Request) -> dict[str, Any]:
     """Partially update a registered node and refresh its health metadata."""
-    if patch.lmstudio_base_url is not None and not is_allowed_target_url(patch.lmstudio_base_url):
-        raise HTTPException(status_code=400, detail="disallowed lmstudio_base_url target")
+    if patch.base_url is not None and not is_allowed_target_url(patch.base_url):
+        raise HTTPException(status_code=400, detail="disallowed base_url target")
     node = registry.update(node_id, patch)
     if node is None:
         raise HTTPException(status_code=404, detail="node not found")
@@ -116,7 +116,7 @@ async def delete_node(node_id: str) -> dict[str, Any]:
 async def discover(
     request: Request, request_data: DiscoveryRequest | None = None
 ) -> dict[str, Any]:
-    """Run Phase 2 static/dev-subnet discovery for reachable LM Studio APIs (§12)."""
+    """Discover reachable local LLM APIs through static, local, or LAN probes (§12)."""
     try:
         nodes = await discover_nodes(
             request_data or DiscoveryRequest(),

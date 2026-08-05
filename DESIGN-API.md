@@ -1,8 +1,8 @@
-# LM Studio Vampire API
+# LLM Vampire API
 
-**Vampire = LM Studio-compatible API + local-network orchestration extensions.**
+**Vampire = OpenAI-compatible local LLM API + orchestration extensions.**
 
-This API design carries through the project vision in [VISION.md](VISION.md) (expanded in [ASPIRATION.md](ASPIRATION.md)): idle, LM Studio-compatible GPUs on a local network become one governed, private AI service behind a stable OpenAI-compatible endpoint. Each vision commitment maps to a concrete API surface:
+This API design carries through the project vision in [VISION.md](VISION.md) (expanded in [ASPIRATION.md](ASPIRATION.md)): local LLM services on a trusted network become one governed, private AI service behind a stable OpenAI-compatible endpoint. Each vision commitment maps to a concrete API surface:
 
 | Vision commitment | API surface in this design |
 | --- | --- |
@@ -17,7 +17,12 @@ This API design carries through the project vision in [VISION.md](VISION.md) (ex
 | Owner decides when to contribute | §13 node registration (opt-in), §21 security model |
 | Users simply see working, local-first AI | Compatibility-first principle (§2), opt-in Vampire extensions (§7) |
 
-The key rule: **anything that already works against LM Studio should keep working unchanged.** LM Studio exposes OpenAI-compatible endpoints such as `/v1/models`, `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, and `/v1/completions`; it also has native REST endpoints for chat and model management. Vampire should sit in front of those endpoints as a transparent proxy, then add optional orchestration controls. ([LM Studio][1])
+The key rule: **anything that already works against an OpenAI-compatible local
+server should keep working unchanged.** Vampire discovers and normalizes provider
+inventories—including native Ollama `/api/tags`—then transparently proxies
+OpenAI-compatible inference routes and adds optional orchestration controls. LM
+Studio is one supported provider with additional native REST metadata. ([LM
+Studio][1])
 
 ---
 
@@ -33,7 +38,7 @@ Recommended default:
 http://localhost:7777/v1
 ```
 
-A normal OpenAI-compatible or LM Studio-compatible client should be able to point its base URL at Vampire:
+A normal OpenAI-compatible client should be able to point its base URL at Vampire:
 
 ```txt
 http://localhost:7777/v1
@@ -45,7 +50,8 @@ instead of:
 http://localhost:1234/v1
 ```
 
-LM Studio commonly uses port `1234` for its local API server examples, and can serve APIs on localhost or the local network. ([LM Studio][2])
+Provider ports are configurable. Common defaults include LM Studio `1234`,
+Ollama `11434`, llama.cpp/LocalAI `8080`, and vLLM `8000`. ([LM Studio][2])
 
 ---
 
@@ -53,7 +59,7 @@ LM Studio commonly uses port `1234` for its local API server examples, and can s
 
 ## Compatibility first
 
-These should behave like LM Studio/OpenAI-compatible routes:
+These should behave like OpenAI-compatible routes:
 
 ```txt
 GET  /v1/models
@@ -96,7 +102,7 @@ This keeps existing clients working while allowing advanced clients to use orche
 
 # 3. API layers
 
-## Layer 1 — LM Studio-compatible API
+## Layer 1 — OpenAI-compatible API
 
 These are drop-in routes.
 
@@ -133,7 +139,7 @@ GET  /vampire/v1/metrics
 
 ## Layer 3 — Node agent API
 
-Optional lightweight agents running beside each LM Studio node.
+Optional lightweight agents running beside each local LLM node.
 
 ```txt
 GET  /agent/v1/health
@@ -150,14 +156,16 @@ POST /agent/v1/proxy
 
 ## 4.1 Node
 
-A node is a machine running LM Studio or an agent beside LM Studio.
+A node is a local LLM API server or an agent beside one.
 
 ```json
 {
   "id": "node-mac-studio-01",
   "name": "Mac Studio M2 Ultra",
   "host": "192.168.1.41",
-  "lmstudio_base_url": "http://192.168.1.41:1234",
+  "base_url": "http://192.168.1.41:1234",
+  "provider": "lmstudio",
+  "api_format": "openai",
   "agent_base_url": "http://192.168.1.41:7778",
   "status": "online",
   "trusted": true,
@@ -195,7 +203,7 @@ A node is a machine running LM Studio or an agent beside LM Studio.
 
 ## 4.2 Vampire model
 
-A Vampire model is a virtual model name mapped to one or more real LM Studio models.
+A Vampire model is a virtual model name mapped to one or more physical provider models.
 
 ```json
 {
@@ -780,9 +788,9 @@ Content-Type: application/json
 
 ```json
 {
-  "methods": ["static", "mdns", "udp_broadcast", "lan_scan"],
+  "methods": ["static", "local"],
   "subnets": ["192.168.1.0/24"],
-  "ports": [1234, 7778],
+  "ports": [1234, 11434, 8080, 8000, 5000, 5001, 4891, 1337],
   "timeout_ms": 1500,
   "trusted_only": false
 }
@@ -797,7 +805,8 @@ Response:
     {
       "id": "node-mac-studio-01",
       "host": "192.168.1.41",
-      "lmstudio_base_url": "http://192.168.1.41:1234",
+      "base_url": "http://192.168.1.41:1234",
+      "provider": "lmstudio",
       "status": "online",
       "models": ["qwen/qwen3-32b", "nomic-embed-text"]
     }
@@ -817,7 +826,8 @@ Content-Type: application/json
 ```json
 {
   "name": "Ubuntu RTX 4090",
-  "lmstudio_base_url": "http://192.168.1.52:1234",
+  "base_url": "http://192.168.1.52:1234",
+  "provider": "lmstudio",
   "agent_base_url": "http://192.168.1.52:7778",
   "trust": {
     "mode": "manual",
@@ -1165,7 +1175,7 @@ Authorization: Bearer <local-token>
 ```
 
 The gateway terminates this client-facing credential itself and must not forward
-it to downstream LM Studio nodes.
+it to downstream local LLM nodes.
 
 ## Suggested security controls
 
@@ -1331,10 +1341,10 @@ fusion
     Returns virtual + physical models.
 
 /v1/chat/completions
-    Drop-in LM Studio/OpenAI-compatible chat endpoint.
+    Drop-in OpenAI-compatible chat endpoint.
 
 /v1/responses
-    Drop-in LM Studio/OpenAI-compatible responses endpoint.
+    Drop-in OpenAI-compatible responses endpoint.
 
 /v1/embeddings
     Drop-in embeddings endpoint.
@@ -1395,7 +1405,7 @@ const response = await client.chat.completions.create({
 console.log(response.choices[0].message.content);
 ```
 
-The client thinks it is talking to one LM Studio-compatible server.
+The client thinks it is talking to one OpenAI-compatible server.
 
 ---
 
@@ -1443,10 +1453,10 @@ console.log(data);
 
 # 28. Final shape
 
-The **LM Studio Vampire API** is:
+The **LLM Vampire API** is:
 
 ```txt
-LM Studio-compatible at /v1/*
+OpenAI-compatible at /v1/*
 Vampire-orchestrated through optional request extensions
 Vampire-managed through /vampire/v1/*
 Node-aware through optional /agent/v1/*
@@ -1455,12 +1465,12 @@ Node-aware through optional /agent/v1/*
 The core abstraction is:
 
 ```txt
-Client → Vampire API → Route/Fuse/Pipeline → LM Studio Nodes → Vampire Response
+Client → Vampire API → Route/Fuse/Pipeline → Local LLM Nodes → Vampire Response
 ```
 
 The strongest product identity:
 
-> **Vampire turns multiple LM Studio instances into one local, secure, model-aware inference fabric.**
+> **Vampire turns multiple local LLM services into one secure, model-aware inference fabric.**
 
 [1]: https://lmstudio.ai/docs/developer/openai-compat?utm_source=chatgpt.com "OpenAI Compatibility Endpoints | LM Studio"
 [2]: https://lmstudio.ai/docs/developer/core/server?utm_source=chatgpt.com "LM Studio as a Local LLM API Server"

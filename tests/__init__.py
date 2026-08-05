@@ -1,1 +1,1 @@
-"""Test suite for lmstudio-vampire."""
+"""Test suite for llm-vampire."""

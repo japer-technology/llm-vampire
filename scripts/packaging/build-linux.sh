@@ -18,7 +18,7 @@ esac
 
 export RELEASE_VERSION="${version}"
 build_dir="${repo_root}/build/pyinstaller-linux"
-output="${repo_root}/dist/LMStudio-Vampire-${version}-linux-${architecture}.tar.gz"
+output="${repo_root}/dist/LLM-Vampire-${version}-linux-${architecture}.tar.gz"
 rm -rf "${build_dir}"
 mkdir -p "${build_dir}" "${repo_root}/dist"
 
@@ -26,10 +26,10 @@ uv run --frozen --extra packaging pyinstaller \
   --clean --noconfirm \
   --distpath "${build_dir}/dist" \
   --workpath "${build_dir}/work" \
-  packaging/linux/LMStudioVampire.spec
+  packaging/linux/LLMVampire.spec
 
-test -x "${build_dir}/dist/LMStudioVampire/LMStudioVampire"
+test -x "${build_dir}/dist/LLMVampire/LLMVampire"
 tar --sort=name --mtime="@${SOURCE_DATE_EPOCH:-0}" --owner=0 --group=0 --numeric-owner \
-  -C "${build_dir}/dist" -czf "${output}" LMStudioVampire
+  -C "${build_dir}/dist" -czf "${output}" LLMVampire
 test -s "${output}"
 printf 'Built %s\n' "${output}"

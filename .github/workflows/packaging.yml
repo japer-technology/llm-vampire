@@ -67,8 +67,8 @@ jobs:
         with:
           name: linux-release-assets
           path: |
-            dist/LMStudio-Vampire-*-linux-x86_64.tar.gz
-            dist/LMStudio-Vampire-*-linux-x86_64.deb
+            dist/LLM-Vampire-*-linux-x86_64.tar.gz
+            dist/LLM-Vampire-*-linux-x86_64.deb
           if-no-files-found: error
 
   macos:
@@ -93,7 +93,7 @@ jobs:
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: macos-release-assets
-          path: dist/LMStudio-Vampire-*-macos-x86_64.zip
+          path: dist/LLM-Vampire-*-macos-x86_64.zip
           if-no-files-found: error
 
   windows:
@@ -121,8 +121,8 @@ jobs:
         with:
           name: windows-release-assets
           path: |
-            dist/LMStudio-Vampire-*-windows-x86_64.exe
-            dist/LMStudio-Vampire-*-windows-x86_64-portable.zip
+            dist/LLM-Vampire-*-windows-x86_64.exe
+            dist/LLM-Vampire-*-windows-x86_64-portable.zip
           if-no-files-found: error
 
   release:

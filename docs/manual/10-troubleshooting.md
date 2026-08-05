@@ -54,15 +54,14 @@ flowchart TD
 ## Upstream errors when sending requests
 
 Symptom — a `/v1/*` request returns an OpenAI-style error envelope even though
-the gateway is up. Vampire forwards requests to LM Studio, so this usually means
+the gateway is up. Vampire forwards requests to a local provider, so this usually means
 the downstream node is the problem.
 
-- Confirm LM Studio's server is running and reachable (default
-  `http://localhost:1234`).
+- Confirm the provider server is running and reachable.
 - Confirm the configured downstream URL is correct:
-  `VAMPIRE_LMSTUDIO_BASE_URL`. See [Configuration](04-configuration.md).
+  `VAMPIRE_DEFAULT_BASE_URL`. See [Configuration](04-configuration.md).
 - Confirm the `model` id you sent matches one from `GET /v1/models`.
-- If LM Studio requires a token, the request must carry the owner's
+- If the provider requires a token, the request must carry the owner's
   `Authorization` header — Vampire passes headers through transparently. See
   [`lmstudio.ai/06-authentication.md`](../../lmstudio.ai/06-authentication.md).
 
@@ -77,7 +76,7 @@ flowchart TD
     q["Empty / unexpected /v1/models"] --> r1{"Any nodes registered?"}
     r1 -->|"no"| p["Falls back to proxying the<br/>single configured downstream node"]
     p --> r2{"Is that node online<br/>with a model loaded?"}
-    r2 -->|"no"| fix1["Start LM Studio + load a model"]
+    r2 -->|"no"| fix1["Start the provider + load a model"]
     r1 -->|"yes"| r3{"Are nodes online?"}
     r3 -->|"no"| fix2["Check vampire nodes list →<br/>status / last_error"]
     r3 -->|"yes"| ok["Models aggregate across nodes"]
@@ -143,4 +142,4 @@ fullest detail.
 - Cross-check against [DESIGN-API.md](../../DESIGN-API.md) and
   [IMPLEMENTATION-PLAN.md](../../IMPLEMENTATION-PLAN.md) to confirm whether a
   feature is implemented or planned.
-- Open an issue on the [repository](https://github.com/japer-technology/lmstudio-vampire).
+- Open an issue on the [repository](https://github.com/japer-technology/llm-vampire).

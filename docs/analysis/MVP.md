@@ -5,7 +5,7 @@
 > Minimum **Viable Valuable** Product ([MVVP.md](MVVP.md)), and ideally a Minimum
 > **Viable Valuable Validating** Product ([MVVVP.md](MVVVP.md)).
 
-This document defines the smallest version of `lmstudio-vampire` that is
+This document defines the smallest version of `llm-vampire` that is
 **viable**: it works, it can be shipped, and it can be used end-to-end. It is
 the floor, not the goal. It serves the vision in [VISION.md](VISION.md) and the
 MVP roadmap in [ASPIRATION.md](ASPIRATION.md), and implements the "Minimal MVP"
