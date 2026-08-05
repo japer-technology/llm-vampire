@@ -4,7 +4,7 @@ _Local LLM Aggregator and Maximizer_
 
 <p align="center">
   <picture>
-    <img src="https://raw.githubusercontent.com/japer-technology/llm-vampire/main/LOGO-3.png" alt="LLM Vampire" width="500">
+    <img src="https://raw.githubusercontent.com/japer-technology/llm-vampire/main/LLM-VAMPIRE.png" alt="LLM Vampire" width="500">
   </picture>
 </p>
 
