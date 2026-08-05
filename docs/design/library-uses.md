@@ -7,7 +7,7 @@ LM Studio publishes two official, MIT-licensed client SDKs:
 
 [`lmstudio-libraries.md`](lmstudio-libraries.md) records the two links. This
 document explains *how* those libraries could be useful — both inside
-`lmstudio-vampire` and in the wider ecosystem around it.
+`llm-vampire` and in the wider ecosystem around it.
 
 Both SDKs wrap the same surfaces this repo already targets by hand: the
 OpenAI-compatible `/v1/*` endpoints, the LM Studio REST API

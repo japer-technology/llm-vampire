@@ -1,6 +1,6 @@
 # Test suite
 
-Pytest suite for `lmstudio-vampire`. Tests mirror the build phases in
+Pytest suite for `llm-vampire`. Tests mirror the build phases in
 [IMPLEMENTATION-PLAN.md](../IMPLEMENTATION-PLAN.md): each implemented phase has
 a dedicated `test_phaseN.py`, plus cross-cutting suites for the CLI, auth,
 cluster helpers, SSRF protection, and smoke coverage.
@@ -14,8 +14,8 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-The suite is offline-friendly: downstream LM Studio nodes are simulated with
-mock ASGI apps and mocked HTTP clients — no real LM Studio server is required.
+The suite is offline-friendly: downstream provider nodes are simulated with
+mock ASGI apps and mocked HTTP clients — no real local LLM server is required.
 
 ## Layout
 
@@ -30,6 +30,7 @@ mock ASGI apps and mocked HTTP clients — no real LM Studio server is required.
 | [`test_phase4.py`](test_phase4.py) | Phase 4 browser UI: dashboard SPA served from `/` and the `vampire dashboard` / `vampire ui` launcher |
 | [`test_cli.py`](test_cli.py) | CLI coverage for the control-plane commands |
 | [`test_cluster.py`](test_cluster.py) | Cluster helpers: health checks, interrogation, discovery mechanics |
+| [`test_providers.py`](test_providers.py) | Provider adapters, Ollama inventory normalization, provider detection, and multi-port local discovery |
 | [`test_auth.py`](test_auth.py) | Bearer-token gating of `/v1/*` and `/vampire/v1/*` via `VAMPIRE_AUTH_TOKEN` |
 | [`test_ssrf_protection.py`](test_ssrf_protection.py) | `is_allowed_target_url` SSRF guard for node target URLs |
 

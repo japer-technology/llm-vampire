@@ -11,13 +11,13 @@ from pathlib import Path
 
 PLATFORM_ARTIFACTS = {
     "linux": (
-        "LMStudio-Vampire-{version}-linux-x86_64.tar.gz",
-        "LMStudio-Vampire-{version}-linux-x86_64.deb",
+        "LLM-Vampire-{version}-linux-x86_64.tar.gz",
+        "LLM-Vampire-{version}-linux-x86_64.deb",
     ),
-    "macos": ("LMStudio-Vampire-{version}-macos-x86_64.zip",),
+    "macos": ("LLM-Vampire-{version}-macos-x86_64.zip",),
     "windows": (
-        "LMStudio-Vampire-{version}-windows-x86_64.exe",
-        "LMStudio-Vampire-{version}-windows-x86_64-portable.zip",
+        "LLM-Vampire-{version}-windows-x86_64.exe",
+        "LLM-Vampire-{version}-windows-x86_64-portable.zip",
     ),
 }
 

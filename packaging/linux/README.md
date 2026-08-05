@@ -1,6 +1,6 @@
 # Linux packaging
 
-`LMStudioVampire.spec` produces the standalone application directory used by
+`LLMVampire.spec` produces the standalone application directory used by
 both Linux release formats:
 
 ```bash

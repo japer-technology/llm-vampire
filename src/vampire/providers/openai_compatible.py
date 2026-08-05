@@ -42,9 +42,7 @@ def coerce_model_cards(payload: object) -> list[ModelCard]:
     return cards
 
 
-def _provider_name(
-    response: httpx.Response, cards: list[ModelCard], provider_hint: str
-) -> str:
+def _provider_name(response: httpx.Response, cards: list[ModelCard], provider_hint: str) -> str:
     if provider_hint != "auto":
         return provider_hint
     evidence = " ".join(
@@ -87,4 +85,3 @@ class OpenAICompatibleAdapter:
             models=cards,
             capabilities=NodeCapabilities(),
         )
-

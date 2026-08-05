@@ -20,8 +20,8 @@ $env:RELEASE_VERSION = $Version
 
 $BuildDir = Join-Path $RepoRoot "build/pyinstaller-windows"
 $DistDir = Join-Path $RepoRoot "dist"
-$PortableName = "LMStudio-Vampire-$Version-windows-$Architecture-portable.zip"
-$InstallerName = "LMStudio-Vampire-$Version-windows-$Architecture.exe"
+$PortableName = "LLM-Vampire-$Version-windows-$Architecture-portable.zip"
+$InstallerName = "LLM-Vampire-$Version-windows-$Architecture.exe"
 Remove-Item -Recurse -Force $BuildDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $BuildDir, $DistDir | Out-Null
 
@@ -29,13 +29,13 @@ uv run --frozen --extra packaging pyinstaller `
     --clean --noconfirm `
     --distpath (Join-Path $BuildDir "dist") `
     --workpath (Join-Path $BuildDir "work") `
-    packaging/windows/LMStudioVampire.spec
+    packaging/windows/LLMVampire.spec
 if ($LASTEXITCODE -ne 0) {
     throw "PyInstaller failed"
 }
 
-$AppDir = Join-Path $BuildDir "dist/LMStudioVampire"
-$Executable = Join-Path $AppDir "LMStudioVampire.exe"
+$AppDir = Join-Path $BuildDir "dist/LLMVampire"
+$Executable = Join-Path $AppDir "LLMVampire.exe"
 if (-not (Test-Path $Executable -PathType Leaf)) {
     throw "Expected executable is missing: $Executable"
 }

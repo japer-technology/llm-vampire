@@ -116,7 +116,7 @@ class Node(BaseModel):
             raise ValueError("base_url and lmstudio_base_url must match")
         return values
 
-    @computed_field(return_type=str)
+    @computed_field(return_type=str)  # type: ignore[prop-decorator]
     @property
     def lmstudio_base_url(self) -> str:
         """Return the deprecated provider URL field for API compatibility."""
@@ -159,7 +159,7 @@ class NodeUpdate(BaseModel):
 class DiscoveryRequest(BaseModel):
     """Discovery request body (DESIGN-API.md §12)."""
 
-    methods: list[str] = Field(default_factory=lambda: ["static"])
+    methods: list[str] = Field(default_factory=lambda: ["local"])
     subnets: list[str] = Field(default_factory=list)
     ports: list[int] = Field(default_factory=lambda: list(DEFAULT_DISCOVERY_PORTS))
     timeout_ms: int = 1500

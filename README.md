@@ -1,24 +1,31 @@
-# LM Studio Vampire
+# LLM Vampire
 
-_Portable GPU Collaboration System_
+_Local LLM Aggregator and Maximizer_
 
 <p align="center">
   <picture>
-    <img src="https://raw.githubusercontent.com/japer-technology/lmstudio-vampire/main/LOGO-4.png" alt="LM Studio Vampire" width="500">
+    <img src="https://raw.githubusercontent.com/japer-technology/llm-vampire/main/LOGO-4.png" alt="LLM Vampire" width="500">
   </picture>
 </p>
 
-> Private AI compute, offered through LM Studio, wherever the owner allows it.
+> One governed, OpenAI-compatible endpoint for the local LLM services you trust.
 
-**`lmstudio-vampire`** turns owner-approved **LM Studio API endpoints** into one governed, private AI service.
+**`llm-vampire`** discovers, normalizes, and combines owner-approved local LLM
+services. It currently recognizes LM Studio, Ollama, llama.cpp, vLLM, LocalAI,
+Jan, GPT4All, KoboldCpp, text-generation-webui, and other OpenAI-compatible
+servers.
 
-Vampire does not discover or control GPUs directly. It connects only to LM Studio servers that an owner has deliberately exposed — locally, on a trusted network, through headless LM Studio, or through LM Studio’s own remote-device routing.
+Vampire does not discover or control GPUs directly. It connects only to API
+servers an owner has deliberately exposed, interrogates their model inventories,
+and routes approved requests through one stable `/v1` gateway.
 
-The LM Studio owner stays in control. They decide whether the server is running, whether network access is enabled, which port is exposed, whether API-token authentication is required, which tokens are valid, which models are available, and whether models may be loaded on demand.
+Each service owner stays in control of its bind address, port, authentication,
+available models, and model lifecycle. Vampire can only use what that provider
+offers.
 
-Vampire can only use what LM Studio offers. It interrogates reachable endpoints, verifies their model inventory, loaded instances, context limits, capabilities, and access requirements, then routes approved requests behind a single, stable OpenAI-compatible endpoint.
-
-The compute behind an LM Studio endpoint may be local, remote, headless, GPU-backed, CPU-backed, or routed through LM Studio’s own link layer. Vampire does not need to know where the GPU is. LM Studio provides the connection; Vampire provides governance, routing, policy, and aggregation.
+The Python package is named `llm-vampire`. Existing `vampire` commands, Python
+imports, environment variables, and `/vampire/v1/*` routes remain stable for
+backward compatibility.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Status: Phase 4 routing + dashboard](https://img.shields.io/badge/status-phase%204%20routing%20%2B%20dashboard-orange)
@@ -29,7 +36,7 @@ The compute behind an LM Studio endpoint may be local, remote, headless, GPU-bac
 > This repository now contains build steps **Phase 0 — scaffolding** through
 > **Phase 4 — browser dashboard** from
 > [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md): the transparent proxy, node
-> registry with static/dev-subnet discovery, virtual-model routing, and the
+> registry with static/local-network discovery, virtual-model routing, and the
 > dashboard SPA all run today. The broader orchestration system is still
 > pre-alpha: request coalescing/cache, auth/policy, and advanced fusion modes
 > remain future phases. See [Project status](#project-status) for what works
@@ -39,6 +46,7 @@ The compute behind an LM Studio endpoint may be local, remote, headless, GPU-bac
 
 ## Table of contents
 
+- [Supported providers](#supported-providers)
 - [About LM Studio](#about-lm-studio)
 - [LM Studio setup](#lm-studio-setup)
 - [Why](#why)
@@ -58,14 +66,33 @@ Build, native packaging, checksum, and release instructions are maintained in
 
 ---
 
+## Supported providers
+
+LLM Vampire probes both the standard OpenAI-compatible inventory endpoint and
+provider-native inventory endpoints when necessary:
+
+| Provider family | Inventory API | Common discovery port |
+| --- | --- | --- |
+| LM Studio | `/v1/models`, `/api/v0/models`, `/api/v1/models` | `1234` |
+| Ollama | `/api/tags`, `/v1/models` | `11434` |
+| llama.cpp / LocalAI | `/v1/models` | `8080` |
+| vLLM | `/v1/models` | `8000` |
+| text-generation-webui | `/v1/models` | `5000` |
+| GPT4All | `/v1/models` | `4891` |
+| KoboldCpp | `/v1/models` | `5001` |
+| Jan | `/v1/models` | `1337` |
+| Other OpenAI-compatible services | `/v1/models` | configurable |
+
+Ports are hints, not restrictions. Manual registration accepts any HTTP(S) base
+URL, and local discovery ports can be overridden. Provider responses are
+normalized into one inventory while retaining provider-specific metadata.
+
 ## About LM Studio
 
-[LM Studio](https://lmstudio.ai/) is the platform `lmstudio-vampire` is built around — and
-the real star of this project. Every Vampire capability ultimately rests on a concrete LM
-Studio mechanism. Vampire does not run models, discover GPUs, or manage compute itself; it
-connects only to LM Studio servers an owner has deliberately exposed, interrogates what
-they offer, and routes approved requests behind one stable endpoint. Understanding LM
-Studio is therefore the key to understanding Vampire.
+[LM Studio](https://lmstudio.ai/) is one of LLM Vampire's supported providers.
+Its OpenAI-compatible and native REST APIs expose a particularly rich model
+inventory, including loaded instances, context limits, runtime details, and
+capabilities.
 
 This section is a high-level introduction. The [`lmstudio.ai/`](lmstudio.ai/) folder holds a
 deep, mechanism-by-mechanism technical reference sourced from LM Studio's official
@@ -166,11 +193,11 @@ prompt/response and verbose server logging have been minimised.
 
 AI compute is already widely distributed. Millions of homes, offices, studios, labs,
 classrooms, and gaming rooms contain GPUs that sit idle for much of the day, and many
-can already run useful local models. The missing layer is not model execution — LM
-Studio provides that with an OpenAI-compatible API — but **discovery, permission,
-routing, policy, and coordination**.
+can already run useful local models. The missing layer is not model execution — local
+LLM runtimes provide that — but **discovery, permission, routing, policy, and
+coordination**.
 
-`lmstudio-vampire` asks: *what useful AI work can be served first by compute we already
+`llm-vampire` asks: *what useful AI work can be served first by compute we already
 own, already trust, and already have nearby?*
 
 - **Families** turn a home gaming PC into a shared, private AI appliance.
@@ -180,7 +207,9 @@ own, already trust, and already have nearby?*
 
 ## Features
 
-- 🧛 **Discovery** — wakes on the LAN and finds approved LM Studio-compatible endpoints.
+- 🧛 **Discovery** — probes common local-provider ports for approved endpoints.
+- 🔄 **Provider normalization** — presents OpenAI-compatible and native Ollama
+  inventories in one consistent model catalog.
 - 🔌 **Drop-in compatibility** — exposes a stable OpenAI-compatible API; existing clients
   only change their base URL.
 - 🧭 **Smart routing** — model-aware and load-aware routing, with failover across nodes.
@@ -192,14 +221,14 @@ own, already trust, and already have nearby?*
 
 ## How it works
 
-`lmstudio-vampire` sits in front of one or more LM Studio nodes as a transparent proxy
+`llm-vampire` sits in front of one or more local LLM nodes as a transparent proxy
 and adds opt-in orchestration:
 
 ```mermaid
 flowchart TD
     clients["🧑‍💻 OpenAI-compatible clients"]
 
-    subgraph vampire["🧛 lmstudio-vampire"]
+    subgraph vampire["🧛 llm-vampire"]
         direction TB
         gateway["OpenAI-compatible gateway<br/><code>/v1/...</code>"]
         control["Vampire control API<br/><code>/vampire/v1/...</code>"]
@@ -209,8 +238,8 @@ flowchart TD
     end
 
     node1["LM Studio"]
-    node2["LM Studio"]
-    node3["LM Studio"]
+    node2["Ollama"]
+    node3["llama.cpp / other"]
 
     clients --> vampire
     vampire -->|"OpenAI-compatible HTTP"| node1
@@ -225,7 +254,7 @@ flowchart TD
 ```
 
 - **Compatibility first.** Routes such as `/v1/models`, `/v1/chat/completions`,
-  `/v1/completions`, and `/v1/embeddings` behave like LM Studio / OpenAI.
+  `/v1/completions`, and `/v1/embeddings` follow the OpenAI-compatible API.
 - **Vampire additions are opt-in.** Advanced behavior is enabled through an extra
   `vampire` request field, `X-Vampire-*` headers, or dedicated `/vampire/v1/...` routes,
   so existing clients keep working unchanged.
@@ -241,8 +270,8 @@ represented in code and exercised by the test suite:
 | IMPLEMENTATION-PLAN.md phase | Current state |
 | --- | --- |
 | **Phase 0 — Scaffolding & foundations** | Implemented: installable Python package, `vampire` console script, FastAPI app factory, settings with `VAMPIRE_*` overrides, core Pydantic models, browser UI, pytest coverage, Ruff formatting/linting, mypy strict mode, and CI-oriented validation commands. |
-| **Phase 1 — Transparent proxy** | Implemented: `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/responses`, and a compatibility catch-all forward to one configured LM Studio node while preserving query strings, end-to-end headers, JSON responses, streaming responses, and OpenAI-style error envelopes for unreachable upstream nodes. |
-| **Phase 2 — Node registry + discovery** | Implemented: in-memory node registry CRUD including `PATCH`/`DELETE`, manual registration with `/v1/models` health/model interrogation, CLI node draining/restoration, static/dev-subnet discovery, registered-node aggregation for `/v1/models` and `/vampire/v1/models`, and basic per-node metrics. |
+| **Phase 1 — Transparent proxy** | Implemented: `/v1/models`, `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/responses`, and a compatibility catch-all forward to one configured local LLM node while preserving query strings, end-to-end headers, JSON responses, streaming responses, and OpenAI-style error envelopes for unreachable upstream nodes. |
+| **Phase 2 — Node registry + discovery** | Implemented: in-memory node registry CRUD including `PATCH`/`DELETE`, manual registration, OpenAI-compatible and Ollama model interrogation, CLI node draining/restoration, static/local multi-port discovery, registered-node aggregation for `/v1/models` and `/vampire/v1/models`, and basic per-node metrics. |
 | **Phase 3 — Routing** | Implemented: virtual models (`vampire:auto`, configured routes), the MVP router strategies (`round_robin`, `least_busy`, `least_latency`, `model_affinity`, `trusted_only`) with `fallback`, `GET/POST/DELETE /vampire/v1/routes`, opt-in routing via the `vampire` request object and `X-Vampire-*` headers, and `X-Vampire-*` response metadata. |
 | **Phase 4 — Browser dashboard** | Implemented: a static SPA served from `/` that drives the control API for status, nodes, discovery, models, routes, metrics, and owner share mode, plus a prompt playground that calls `/v1/chat/completions`; the `vampire dashboard` / `vampire ui` command prints or opens the dashboard URL. |
 | **Phase 5+** | Planned: cache/coalescing, auth/policy/token vault, and advanced fusion modes. |
@@ -266,13 +295,13 @@ These installers are still planned:
 **macOS / Linux**
 
 ```bash
-curl -fsSL https://github.com/japer-technology/lmstudio-vampire/install.sh | bash
+curl -fsSL https://github.com/japer-technology/llm-vampire/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-irm https://github.com/japer-technology/lmstudio-vampire/install.ps1 | iex
+irm https://github.com/japer-technology/llm-vampire/install.ps1 | iex
 ```
 
 This downloads and sets up `vampire` directly, with no `pip`, interpreter, or
@@ -288,7 +317,7 @@ pip install -e ".[dev]"
 
 #### Run the gateway
 
-Start LM Studio's local server first, commonly on `http://localhost:1234`, then run:
+Start at least one local LLM service, then run:
 
 ```bash
 vampire serve
@@ -300,13 +329,16 @@ The gateway listens on:
 http://localhost:7777/v1
 ```
 
-Point any OpenAI-compatible client at that base URL instead of a single LM Studio
-instance (commonly `http://localhost:1234/v1`). With no nodes registered, Vampire
-forwards requests to that single configured downstream node. Override it with:
+Point any OpenAI-compatible client at that base URL instead of a single provider.
+Use the dashboard or `vampire discover local` to find services. With no nodes
+registered, Vampire forwards requests to its configured fallback node. Override it
+with:
 
 ```bash
-VAMPIRE_LMSTUDIO_BASE_URL=http://lm-studio-host:1234 vampire serve
+VAMPIRE_DEFAULT_BASE_URL=http://llm-host:1234 vampire serve
 ```
+
+The legacy `VAMPIRE_LMSTUDIO_BASE_URL` setting remains accepted.
 
 The same process serves the Phase 4 browser dashboard at `http://localhost:7777/`.
 Open it directly or print/open the URL with:
@@ -369,7 +401,7 @@ Several candidate architectures have been evaluated. Each is independently descr
 
 The recommended build order (from [METHOD-A](METHOD-A.md)) is:
 
-1. **Proxy** — forward `/v1/*` to a single LM Studio node. ✅
+1. **Proxy** — forward `/v1/*` to a single local LLM node. ✅
 2. **Registry + discovery** — manual registration and static/dev-subnet discovery
    with health checks (mDNS discovery is still planned). ✅
 3. **Routing** — round-robin and failover, then model-aware and load-aware routing. ✅
@@ -404,7 +436,7 @@ issue to discuss licensing.
 
 ## Acknowledgements
 
-`lmstudio-vampire` builds on the local AI surface provided by
+`llm-vampire` builds on open local-LLM API surfaces, including those provided by
 [LM Studio](https://lmstudio.ai):
 
 - [OpenAI-compatible API](https://lmstudio.ai/docs/developer/openai-compat)

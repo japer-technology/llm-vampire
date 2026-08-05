@@ -48,7 +48,7 @@ itself. Downstream it speaks plain OpenAI-compatible HTTP to each LM Studio node
 - **Packaging:** a `vampire` console-script entry point (`vampire serve`,
   `vampire discover`, `vampire share on`), matching the CLI shape in ASPIRATION.
 
-The whole thing installs with `pip install lmstudio-vampire` and runs with
+The whole thing installs with `pip install llm-vampire` and runs with
 `vampire serve`, listening on `http://localhost:7777/v1` as DESIGN-API specifies.
 
 ---

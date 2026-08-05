@@ -5,16 +5,17 @@ minutes. It assumes you have completed [Installation](02-installation.md).
 
 ```mermaid
 flowchart LR
-    s1["1 · Start<br/>LM Studio server"] --> s2["2 · Start<br/>vampire serve"]
+    s1["1 · Start<br/>a local LLM server"] --> s2["2 · Start<br/>vampire serve"]
     s2 --> s3["3 · Check<br/>vampire status"]
     s3 --> s4["4 · List<br/>/v1/models"]
     s4 --> s5["5 · Send a<br/>chat completion"]
 ```
 
-## Step 1 — Start an LM Studio server
+## Step 1 — Start a local LLM server
 
-Vampire needs at least one LM Studio endpoint to talk to. In LM Studio, open the
-**Developer** tab and start the local server. By default it listens on:
+Vampire needs at least one local LLM endpoint. You can use LM Studio, Ollama,
+llama.cpp, LocalAI, vLLM, or another OpenAI-compatible server. For example, open
+LM Studio's **Developer** tab and start its local server, which defaults to:
 
 ```text
 http://localhost:1234
@@ -45,11 +46,11 @@ http://localhost:7777/v1
 ```
 
 > By default Vampire binds to `127.0.0.1:7777` and proxies to a single
-> downstream LM Studio node at `http://localhost:1234`. To change either, see
+> downstream node at `http://localhost:1234`. To change either, see
 > [Configuration](04-configuration.md). For example, to front a different node:
 >
 > ```bash
-> VAMPIRE_LMSTUDIO_BASE_URL=http://lm-studio-host:1234 vampire serve
+> VAMPIRE_DEFAULT_BASE_URL=http://llm-host:1234 vampire serve
 > ```
 
 ## Step 3 — Check it is alive
@@ -81,7 +82,7 @@ registry.
 curl http://localhost:7777/v1/models
 ```
 
-With no nodes registered, this transparently returns the configured LM Studio
+With no nodes registered, this transparently returns the configured provider
 node's `/v1/models` response. Once you register nodes, Vampire aggregates models
 across them (see [Nodes & discovery](06-nodes-and-discovery.md)).
 
@@ -108,7 +109,7 @@ Here is what happens when that request reaches the gateway:
 sequenceDiagram
     participant C as 🧑‍💻 Client
     participant V as 🧛 Vampire (7777)
-    participant L as 🟢 LM Studio (1234)
+    participant L as 🟢 Local LLM provider
 
     C->>V: POST /v1/chat/completions
     Note over V: No vampire opt-in →<br/>transparent proxy (Phase 1)
@@ -139,7 +140,7 @@ print(resp.choices[0].message.content)
 
 ## What you have now
 
-- A gateway on `http://localhost:7777` fronting your LM Studio server.
+- A gateway on `http://localhost:7777` fronting your local LLM service.
 - A drop-in OpenAI-compatible surface at `/v1/*`.
 - A control surface at `/vampire/v1/*` and the matching `vampire` CLI.
 

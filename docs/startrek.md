@@ -4,7 +4,7 @@
 > not annexed; they petition. Membership is freely given — and may be freely
 > rescinded." — paraphrase of the Prime Directive*
 
-This document retells the design thesis of `lmstudio-vampire` in a Star Trek
+This document retells the design thesis of `llm-vampire` in a Star Trek
 register. It is a narrative companion to [`vampire.md`](vampire.md) (the same
 thesis in the project's folklore register) and to the rigorous treatment in
 [`security-design-thesis.md`](security-design-thesis.md). Where this document
@@ -20,7 +20,7 @@ There are many **worlds** and very few instances of the **Federation**.
 - A **world** is an LM Studio instance — a sovereign system with its own
   resources, running models behind an OpenAI-compatible API. Most systems on any
   network will only ever be independent worlds. People already run them.
-- The **Federation** is an `lmstudio-vampire` instance. It commands no compute of
+- The **Federation** is an `llm-vampire` instance. It commands no compute of
   its own. It is the thin layer that *charts, governs, routes, and coordinates*
   the worlds that have **petitioned to join**.
 

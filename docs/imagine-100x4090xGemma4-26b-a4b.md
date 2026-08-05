@@ -1,10 +1,10 @@
 # Imagine: 100 × 4090 (24 GB) running Gemma 4 26B A4B QAT
 
-> One LM Studio Vampire on a network turns a crowd of ordinary GPUs into a single,
+> One LLM Vampire on a network turns a crowd of ordinary GPUs into a single,
 > private, OpenAI-compatible model — and it scales the same way from **1 person with
 > 1 remote GPU** to **250 people contributing 1000 GPUs**.
 
-All it takes is a **LM Studio Vampire** running on a network and a crowd that opts in:
+All it takes is an **LLM Vampire** running on a network and a crowd that opts in:
 
 - 100 school children bring their notebooks to school and link their home rigs.
 - 100 workers log in to LM Studio installed on their business desktops.
@@ -17,7 +17,7 @@ Gemma 4 26B A4B QAT. The whole design philosophy fits in one line: present a
 
 ```mermaid
 flowchart LR
-    crowd["👥 A crowd that opts in<br/>school · office · conference"] --> v["🧛 LM Studio Vampire<br/>one OpenAI-compatible endpoint"]
+    crowd["👥 A crowd that opts in<br/>school · office · conference"] --> v["🧛 LLM Vampire<br/>one OpenAI-compatible endpoint"]
     v --> grid["🧱 N × RTX 4090 replicas<br/>each serving gemma-4-26b-a4b-qat"]
     grid --> users["🧑‍💻 Everyone<br/>one model name, many GPUs"]
 ```

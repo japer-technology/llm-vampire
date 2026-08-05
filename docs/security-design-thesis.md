@@ -1,7 +1,7 @@
 # Security Design Thesis — Consent, Tiering, and Metering
 
 This is the rigorous, metaphor-free treatment of the consent and contribution
-model for `lmstudio-vampire`. The same thesis is told in the project's folklore
+model for `llm-vampire`. The same thesis is told in the project's folklore
 register in [`vampire.md`](vampire.md) and in a Star Trek register in
 [`startrek.md`](startrek.md); this document is the normative reference. It builds
 on the LM Studio authentication model

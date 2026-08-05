@@ -5,11 +5,11 @@ This directory contains native packaging definitions for the
 
 | Path | Purpose |
 | --- | --- |
-| `linux/LMStudioVampire.spec` | Linux standalone PyInstaller directory |
-| `ubuntu/lmstudio-vampire.desktop` | Debian/Ubuntu desktop integration |
-| `macos/LMStudioVampire.spec` | macOS `.app` bundle |
+| `linux/LLMVampire.spec` | Linux standalone PyInstaller directory |
+| `ubuntu/llm-vampire.desktop` | Debian/Ubuntu desktop integration |
+| `macos/LLMVampire.spec` | macOS `.app` bundle |
 | `macos/entitlements.plist` | macOS runtime entitlements |
-| `windows/LMStudioVampire.spec` | Windows portable application directory |
+| `windows/LLMVampire.spec` | Windows portable application directory |
 | `windows/installer.iss` | Inno Setup installer |
 | `html/` | Optional standalone HTML helper tools |
 | `common/smoke-test.md` | Manual post-package smoke test |

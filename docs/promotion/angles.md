@@ -10,7 +10,7 @@ project's actual architecture.
 Use this as the default description in READMEs, release notes, social posts,
 issue summaries, and directory listings:
 
-> `lmstudio-vampire` turns owner-approved LM Studio API endpoints into one
+> `llm-vampire` turns owner-approved local LLM API endpoints into one
 > governed, private, OpenAI-compatible AI service.
 
 Shorter variants:
@@ -21,7 +21,7 @@ Shorter variants:
 
 Longer variant:
 
-> `lmstudio-vampire` sits in front of owner-approved LM Studio servers, verifies
+> `llm-vampire` sits in front of owner-approved local LLM servers, verifies
 > what each endpoint can provide, and exposes one OpenAI-compatible gateway for
 > local-first AI applications. Owners keep control of server exposure, ports,
 > authentication, model availability, and when their machines participate.
@@ -287,7 +287,7 @@ security, or current implementation status.
 
 ### README Hero
 
-> `lmstudio-vampire` turns owner-approved LM Studio API endpoints into one
+> `llm-vampire` turns owner-approved local LLM API endpoints into one
 > governed, private AI service behind a stable OpenAI-compatible URL.
 
 ### Release Note
@@ -298,7 +298,7 @@ security, or current implementation status.
 
 ### Social Post
 
-> Local AI should not mean every device runs alone. `lmstudio-vampire` puts a
+> Local AI should not mean every device runs alone. `llm-vampire` puts a
 > stable OpenAI-compatible gateway in front of the LM Studio machines you
 > already own and trust.
 

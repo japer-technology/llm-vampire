@@ -1,6 +1,6 @@
 # 6. Nodes & discovery
 
-A **node** is one machine running an owner-approved LM Studio API endpoint.
+A **node** is one owner-approved local LLM API endpoint.
 Vampire keeps an in-memory **registry** of nodes and can **discover** reachable
 ones. This is Phase 2 of [IMPLEMENTATION-PLAN.md](../../IMPLEMENTATION-PLAN.md).
 
@@ -21,14 +21,15 @@ stateDiagram-v2
     offline --> [*]: delete
 ```
 
-Whenever a node is registered, patched, or discovered, Vampire interrogates its
-`/v1/models` endpoint to set `status` (`online`/`offline`), capture its model
-list, and record latency and error metadata.
+Whenever a node is registered, patched, or discovered, Vampire uses provider
+adapters to interrogate `/v1/models` or Ollama's `/api/tags`, set `status`
+(`online`/`offline`), capture its model list, and record provider, API format,
+latency, and error metadata.
 
 ## Registering a node
 
 ```bash
-vampire nodes add gpu-rig http://192.168.1.50:1234 --name "Studio GPU" --trusted --tag fast
+vampire nodes add gpu-rig http://192.168.1.50:1234 --provider auto --name "Studio GPU" --trusted --tag fast
 ```
 
 This sends a `POST /vampire/v1/nodes` and immediately interrogates the node:
@@ -37,11 +38,11 @@ This sends a `POST /vampire/v1/nodes` and immediately interrogates the node:
 sequenceDiagram
     participant U as 🧑 You
     participant V as 🧛 Gateway
-    participant N as 🟢 LM Studio node
+    participant N as 🟢 Local LLM node
 
     U->>V: vampire nodes add gpu-rig http://192.168.1.50:1234
     V->>V: store node in registry
-    V->>N: GET /v1/models (health + inventory)
+    V->>N: GET /v1/models or /api/tags
     alt reachable
         N-->>V: 200 + model list
         V->>V: status = online, record models + latency
@@ -71,15 +72,17 @@ Only the fields you pass are changed; updating also re-interrogates the node.
 
 ## Discovery
 
-`vampire discover` asks the gateway to find reachable LM Studio endpoints. The
-scaffold supports two methods:
+`vampire discover` asks the gateway to find reachable local LLM endpoints. Local
+multi-port discovery is the default, and the scaffold supports three methods:
 
 ```mermaid
 flowchart TD
     start["vampire discover"] --> methods{"--method"}
+    methods -->|"local (default)"| d["Loopback on common provider ports"]
     methods -->|"static"| s["Default downstream URL<br/>+ already-registered nodes<br/>+ any --base-url"]
     methods -->|"lan_scan"| l["Expand each --subnet (CIDR),<br/>probe up to 256 hosts × --port"]
-    s --> probe["Probe /v1/models on each candidate"]
+    d --> probe["Probe provider inventory APIs"]
+    s --> probe
     l --> probe
     probe --> filter{"online?<br/>(and trusted, if --trusted-only)"}
     filter -->|"yes"| keep["Return as discovered node"]
@@ -96,6 +99,17 @@ Static discovery probes the configured downstream URL, every already-registered
 node, and any `--base-url` you provide. Equivalent localhost / loopback /
 local-interface aliases are de-duplicated to a single preferred URL.
 
+### Local provider discovery
+
+```bash
+vampire discover
+```
+
+The default scan probes loopback on the common ports `1234`, `11434`, `8080`,
+`8000`, `5000`, `5001`, `4891`, and `1337`. These cover common defaults for LM
+Studio, Ollama, llama.cpp, LocalAI, vLLM, text-generation-webui, KoboldCpp,
+GPT4All, and Jan. Override or extend the list with repeated `--port` options.
+
 ### Dev-subnet scan
 
 ```bash
@@ -107,7 +121,8 @@ listed port. Use it on small development subnets; it is not a full network
 sweep.
 
 > **`--trusted-only`.** When set, discovery only returns nodes marked trusted.
-> Without it, newly discovered nodes are treated as trusted candidates.
+> Newly discovered nodes are untrusted until an owner explicitly marks them
+> trusted.
 
 ## Aggregated models
 

@@ -34,4 +34,3 @@ class ProviderAdapter(Protocol):
         provider_hint: str,
     ) -> ProviderProbe | None:
         """Return normalized provider data, or ``None`` when the API is absent."""
-

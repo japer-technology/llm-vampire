@@ -1,6 +1,6 @@
-# LM Studio Vampire will change the world
+# LLM Vampire will change the world
 
-LM Studio Vampire turns private, owner-controlled AI compute into a usable network primitive.
+LLM Vampire turns private, owner-controlled AI compute into a usable network primitive.
 
 Not cloud AI versus local AI.
 
@@ -252,7 +252,7 @@ Vampire gives that model a technical spine.
 
 Say it plainly:
 
-> **LM Studio Vampire turns owner-offered LM Studio endpoints into governed private AI infrastructure. It lets people pool and share local or remote model capacity without giving up control, privacy, or compatibility with existing OpenAI-style tools.**
+> **LLM Vampire turns owner-offered local LLM endpoints into governed private AI infrastructure. It lets people pool and share local or remote model capacity without giving up control, privacy, or compatibility with existing OpenAI-style tools.**
 
 Say it with ambition:
 

@@ -58,4 +58,3 @@ class OllamaAdapter:
             models=cards,
             capabilities=NodeCapabilities(embeddings=True),
         )
-

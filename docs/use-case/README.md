@@ -1,11 +1,11 @@
-# Use Cases — Network Topographies for LM Studio Vampire
+# Use Cases — Network Topographies for LLM Vampire
 
 > Where private, owner-controlled AI compute becomes more than the sum of its
 > machines.
 
-`lmstudio-vampire` is interesting precisely because it does not invent compute —
+`llm-vampire` is interesting precisely because it does not invent compute —
 it **coordinates compute that already exists**. The value appears the moment two
-or more LM Studio endpoints, owned by people who already trust each other, are
+or more local LLM endpoints, owned by people who already trust each other, are
 pooled behind one stable, governed, OpenAI-compatible endpoint.
 
 This folder is a succinct catalogue of the **network topographies** where that

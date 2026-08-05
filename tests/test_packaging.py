@@ -11,11 +11,11 @@ VERSION_SCRIPT = ROOT / "scripts/packaging/version.py"
 VALIDATOR = ROOT / "scripts/packaging/validate-artifacts.py"
 VERSION = "0.0.1"
 ARTIFACTS = (
-    f"LMStudio-Vampire-{VERSION}-linux-x86_64.tar.gz",
-    f"LMStudio-Vampire-{VERSION}-linux-x86_64.deb",
-    f"LMStudio-Vampire-{VERSION}-macos-x86_64.zip",
-    f"LMStudio-Vampire-{VERSION}-windows-x86_64.exe",
-    f"LMStudio-Vampire-{VERSION}-windows-x86_64-portable.zip",
+    f"LLM-Vampire-{VERSION}-linux-x86_64.tar.gz",
+    f"LLM-Vampire-{VERSION}-linux-x86_64.deb",
+    f"LLM-Vampire-{VERSION}-macos-x86_64.zip",
+    f"LLM-Vampire-{VERSION}-windows-x86_64.exe",
+    f"LLM-Vampire-{VERSION}-windows-x86_64-portable.zip",
 )
 
 

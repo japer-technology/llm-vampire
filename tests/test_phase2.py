@@ -86,9 +86,7 @@ def test_node_registration_accepts_legacy_lmstudio_url_field(client: TestClient)
 
 
 def test_patch_node_updates_and_refreshes(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     resp = client.patch("/vampire/v1/nodes/node-a", json={"tags": ["gpu"], "trusted": True})
     assert resp.status_code == 200
@@ -117,12 +115,8 @@ def test_update_preserves_nested_capabilities_type() -> None:
 
 
 def test_registered_nodes_aggregate_openai_and_vampire_models(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
-    )
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-b", "base_url": "http://node-b:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
+    client.post("/vampire/v1/nodes", json={"id": "node-b", "base_url": "http://node-b:1234"})
 
     openai_models = client.get("/v1/models").json()
     assert openai_models["object"] == "list"
@@ -449,9 +443,7 @@ def test_discover_collapses_local_access_aliases_to_loopback(
 
 
 def test_metrics_include_node_counts_health_and_latency(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     metrics = client.get("/vampire/v1/metrics").json()
     assert metrics["object"] == "vampire.metrics"
@@ -463,9 +455,7 @@ def test_metrics_include_node_counts_health_and_latency(client: TestClient) -> N
 
 
 def test_node_delete_removes_registration_and_unknown_nodes_404(client: TestClient) -> None:
-    client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
-    )
+    client.post("/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"})
 
     assert client.delete("/vampire/v1/nodes/node-a").json() == {
         "id": "node-a",

@@ -8,12 +8,12 @@ import httpx
 import pytest
 
 from vampire import cluster
-from vampire.models import DEFAULT_DISCOVERY_PORTS, DiscoveryRequest, Node
+from vampire.models import DEFAULT_DISCOVERY_PORTS, DiscoveryRequest, ModelCard, Node
 from vampire.registry import registry
 
 
 def test_local_discovery_includes_popular_provider_ports() -> None:
-    urls = cluster._candidate_urls(DiscoveryRequest(methods=["local"]))
+    urls = cluster._candidate_urls(DiscoveryRequest())
 
     assert {urlparse(url).port for url in urls} == set(DEFAULT_DISCOVERY_PORTS)
 
@@ -81,7 +81,7 @@ def test_provider_metadata_is_exposed_in_normalized_inventory() -> None:
         base_url="http://127.0.0.1:8080",
         provider="localai",
         status="online",
-        models=[{"id": "codestral", "owned_by": "localai"}],
+        models=[ModelCard(id="codestral", owned_by="localai")],
     )
 
     inventory = cluster.physical_model_inventory([node])

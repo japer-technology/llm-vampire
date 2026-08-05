@@ -22,9 +22,7 @@ class Settings(BaseSettings):
     pre-rebrand ``VAMPIRE_LMSTUDIO_BASE_URL`` name remains supported.
     """
 
-    model_config = SettingsConfigDict(
-        env_prefix="VAMPIRE_", env_file=".env", populate_by_name=True
-    )
+    model_config = SettingsConfigDict(env_prefix="VAMPIRE_", env_file=".env", populate_by_name=True)
 
     # Address the gateway listens on when ``vampire serve`` starts Uvicorn.
     host: str = "127.0.0.1"

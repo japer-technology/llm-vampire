@@ -18,7 +18,7 @@ esac
 
 export RELEASE_VERSION="${version}"
 build_dir="${repo_root}/build/pyinstaller-macos"
-output="${repo_root}/dist/LMStudio-Vampire-${version}-macos-${architecture}.zip"
+output="${repo_root}/dist/LLM-Vampire-${version}-macos-${architecture}.zip"
 rm -rf "${build_dir}"
 mkdir -p "${build_dir}" "${repo_root}/dist"
 
@@ -26,10 +26,10 @@ uv run --frozen --extra packaging pyinstaller \
   --clean --noconfirm \
   --distpath "${build_dir}/dist" \
   --workpath "${build_dir}/work" \
-  packaging/macos/LMStudioVampire.spec
+  packaging/macos/LLMVampire.spec
 
-app="${build_dir}/dist/LM Studio Vampire.app"
-test -x "${app}/Contents/MacOS/LMStudioVampire"
+app="${build_dir}/dist/LLM Vampire.app"
+test -x "${app}/Contents/MacOS/LLMVampire"
 rm -f "${output}"
 ditto -c -k --sequesterRsrc --keepParent "${app}" "${output}"
 test -s "${output}"

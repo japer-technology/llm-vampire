@@ -6,7 +6,7 @@
 > **validating** — it proves the vision is right (or wrong) with real evidence.
 > Builds on [MVP.md](MVP.md) and [MVVP.md](MVVP.md).
 
-This document defines the smallest version of `lmstudio-vampire` that
+This document defines the smallest version of `llm-vampire` that
 validates the vision in [VISION.md](VISION.md): every claim in that paragraph
 becomes a testable hypothesis with a measurable result.
 
