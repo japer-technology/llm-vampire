@@ -1,7 +1,7 @@
-"""Transparent OpenAI-compatible proxy to a downstream LM Studio node.
+"""Transparent OpenAI-compatible proxy to a downstream local LLM service.
 
 Phase 1 (IMPLEMENTATION-PLAN.md): forward ``/v1/*`` requests to a single
-configured LM Studio node, preserving OpenAI-compatible streaming
+configured provider endpoint, preserving OpenAI-compatible streaming
 (DESIGN-API.md §20) and the OpenAI error format (DESIGN-API.md §23).
 
 The response is always streamed back to the caller, so both regular JSON
@@ -56,9 +56,9 @@ _LIMITS = httpx.Limits(max_connections=200, max_keepalive_connections=50)
 
 
 def build_async_client() -> httpx.AsyncClient:
-    """Return the HTTP client used to reach downstream LM Studio nodes.
+    """Return the HTTP client used to reach downstream LLM service nodes.
 
-    Exposed as a seam so tests can inject a mock transport (a stand-in LM Studio
+    Exposed as a seam so tests can inject a mock transport (a stand-in provider
     server) without opening real network sockets.
     """
     return httpx.AsyncClient(timeout=_TIMEOUT, limits=_LIMITS)
@@ -94,7 +94,7 @@ def _filter_response_headers(headers: httpx.Headers) -> list[tuple[str, str]]:
 def _upstream_error(message: str) -> JSONResponse:
     """Build an OpenAI-compatible error envelope for an unreachable node (§23).
 
-    Network failures are the gateway's error, not LM Studio's response, so the
+    Network failures are the gateway's error, not the provider's response, so the
     custom ``vampire_upstream_error`` type lets operators distinguish routing
     connectivity from model-serving failures while keeping the familiar
     ``{"error": ...}`` envelope expected by OpenAI-compatible clients.
@@ -112,10 +112,10 @@ def _upstream_error(message: str) -> JSONResponse:
 
 
 async def proxy_request(request: Request, *, downstream_base_url: str | None = None) -> Response:
-    """Forward ``request`` to the downstream LM Studio node and stream the reply.
+    """Forward ``request`` to the downstream provider and stream the reply.
 
     The method, path, query string, headers and body are passed through
-    unchanged so an existing OpenAI / LM Studio client works against the gateway
+    unchanged so an existing OpenAI-compatible client works against the gateway
     by only swapping its base URL. The upstream response is consumed as an async
     byte iterator and returned as a ``StreamingResponse`` so regular JSON,
     chunked transfer, and Server-Sent Events all avoid full-body buffering.
@@ -132,7 +132,7 @@ async def proxy_request_with_body(
 ) -> Response:
     """Forward ``request`` with an optional pre-serialized body and response metadata."""
     settings = get_settings()
-    base_url = (downstream_base_url or settings.lmstudio_base_url).rstrip("/")
+    base_url = (downstream_base_url or settings.default_base_url).rstrip("/")
     url = f"{base_url}{request.url.path}"
 
     body = body if body is not None else await request.body()
@@ -152,8 +152,8 @@ async def proxy_request_with_body(
         if should_close_client:
             await client.aclose()
         # Log the underlying cause server-side; do not leak internals to clients.
-        logger.warning("Downstream LM Studio node %s unreachable: %r", base_url, exc)
-        response = _upstream_error(f"Could not reach downstream LM Studio node at {base_url}.")
+        logger.warning("Downstream LLM service %s unreachable: %r", base_url, exc)
+        response = _upstream_error(f"Could not reach downstream LLM service at {base_url}.")
         if response_headers:
             response.headers.update(response_headers)
         return response
@@ -168,13 +168,13 @@ async def proxy_request_with_body(
             async for chunk in upstream.aiter_raw():
                 yield chunk
         except httpx.HTTPError as exc:
-            logger.warning("Downstream LM Studio node %s failed mid-stream: %r", base_url, exc)
+            logger.warning("Downstream LLM service %s failed mid-stream: %r", base_url, exc)
             if not is_event_stream:
                 raise
             error_frame = json.dumps(
                 {
                     "error": {
-                        "message": (f"Downstream LM Studio node at {base_url} failed mid-stream."),
+                        "message": (f"Downstream LLM service at {base_url} failed mid-stream."),
                         "type": "vampire_upstream_error",
                         "code": "upstream_stream_interrupted",
                     }

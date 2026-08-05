@@ -1,1 +1,1 @@
-"""Desktop launcher support for packaged LM Studio Vampire builds."""
+"""Desktop launcher support for packaged LLM Vampire builds."""

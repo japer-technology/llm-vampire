@@ -1,10 +1,9 @@
-"""Runtime configuration for the Vampire gateway.
+"""Runtime configuration for the LLM Vampire gateway.
 
-Defaults follow DESIGN-API.md: Vampire listens on port 7777 and proxies to a
-downstream LM Studio node that commonly listens on port 1234. Settings can be
-overridden with ``VAMPIRE_*`` environment variables. They are cached on first
-access for the process lifetime; restart the gateway after changing runtime
-configuration.
+Vampire listens on port 7777 and proxies to a provider-neutral local LLM
+endpoint. Settings can be overridden with ``VAMPIRE_*`` environment variables.
+They are cached on first access for the process lifetime; restart the gateway
+after changing runtime configuration.
 """
 
 from __future__ import annotations
@@ -12,33 +11,48 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Vampire runtime settings loaded from defaults, ``.env``, and env vars.
 
-    Pydantic settings applies the ``VAMPIRE_`` prefix, so
-    ``VAMPIRE_LMSTUDIO_BASE_URL=http://host:1234`` overrides the default
-    downstream node without changing code.
+    ``VAMPIRE_DEFAULT_BASE_URL`` selects the fallback downstream service. The
+    pre-rebrand ``VAMPIRE_LMSTUDIO_BASE_URL`` name remains supported.
     """
 
-    model_config = SettingsConfigDict(env_prefix="VAMPIRE_", env_file=".env")
+    model_config = SettingsConfigDict(
+        env_prefix="VAMPIRE_", env_file=".env", populate_by_name=True
+    )
 
     # Address the gateway listens on when ``vampire serve`` starts Uvicorn.
     host: str = "127.0.0.1"
     port: int = 7777
 
-    # Default downstream LM Studio node used by the Phase 1 transparent proxy.
-    lmstudio_base_url: str = "http://localhost:1234"
+    # Default downstream service used when no registered node is selected.
+    default_base_url: str = Field(
+        default="http://localhost:1234",
+        validation_alias=AliasChoices(
+            "default_base_url",
+            "lmstudio_base_url",
+            "VAMPIRE_DEFAULT_BASE_URL",
+            "VAMPIRE_LMSTUDIO_BASE_URL",
+        ),
+    )
 
-    # Logging verbosity for this gateway process; downstream LM Studio logging is
+    # Logging verbosity for this gateway process; downstream provider logging is
     # controlled by the node owner, not by Vampire.
     log_level: str = "INFO"
 
     # Local API key required on API requests. Empty keeps Phase 1 drop-in OpenAI
     # compatibility unauthenticated by default.
     auth_token: str = ""
+
+    @property
+    def lmstudio_base_url(self) -> str:
+        """Return the deprecated fallback URL attribute for compatibility."""
+        return self.default_base_url
 
 
 def configure_logging(settings: Settings | None = None) -> None:

@@ -29,7 +29,7 @@ async def test_discover_nodes_prevents_resurrection(monkeypatch: pytest.MonkeyPa
     # Setup
     base_url = "http://localhost:1234"
     node_id = _node_id_for_url(base_url)
-    node = Node(id=node_id, lmstudio_base_url=base_url, status="online")
+    node = Node(id=node_id, base_url=base_url, status="online")
     registry.add(node)
 
     # We want to simulate a node being removed during the refresh_node call

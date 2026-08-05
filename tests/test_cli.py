@@ -55,7 +55,7 @@ def test_cli_status_calls_gateway_control_api(
     assert json.loads(capsys.readouterr().out)["object"] == "vampire.status"
 
 
-def test_cli_discover_sends_static_discovery_request(
+def test_cli_discover_sends_provider_neutral_discovery_request(
     monkeypatch: MonkeyPatch, capsys: CaptureFixture[str]
 ) -> None:
     seen = _mock_cli_client(
@@ -85,10 +85,10 @@ def test_cli_discover_sends_static_discovery_request(
 
     body = seen[0]["json"]
     assert isinstance(body, dict)
-    assert body["methods"] == ["static"]
+    assert body["methods"] == ["local"]
     assert body["base_urls"] == ["http://node-a:1234"]
     assert body["subnets"] == ["192.168.1.0/24"]
-    assert body["ports"] == [1234, 7778]
+    assert body["ports"] == [7778]
     assert body["timeout_ms"] == 250
     assert body["trusted_only"] is True
     assert json.loads(capsys.readouterr().out)["object"] == "vampire.discovery_result"
@@ -136,7 +136,8 @@ def test_cli_nodes_add_and_route_add_shape_phase_api_requests(
     assert seen[0]["method"] == "POST"
     assert seen[0]["url"] == "http://127.0.0.1:7777/vampire/v1/nodes"
     assert node_body["id"] == "node-a"
-    assert node_body["lmstudio_base_url"] == "http://node-a:1234"
+    assert node_body["base_url"] == "http://node-a:1234"
+    assert node_body["provider"] == "auto"
     assert node_body["trusted"] is True
     assert node_body["tags"] == ["gpu"]
 
@@ -191,7 +192,7 @@ def test_cli_nodes_update_get_delete_route_get_delete_and_share_call_control_api
                 "--duration",
                 "2h",
                 "--model",
-                "lmstudio-vampire/event-safe",
+                "llm-vampire/event-safe",
             ]
         )
         == 0
@@ -214,7 +215,7 @@ def test_cli_nodes_update_get_delete_route_get_delete_and_share_call_control_api
         "mode": "event",
         "enabled": True,
         "duration": "2h",
-        "model": "lmstudio-vampire/event-safe",
+        "model": "llm-vampire/event-safe",
     }
     assert seen[6]["json"] == {"mode": "off", "enabled": False}
     assert capsys.readouterr().out.count('"ok": true') == 7

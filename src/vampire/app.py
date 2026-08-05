@@ -45,9 +45,9 @@ def create_app() -> FastAPI:
     the API-only application.
     """
     app = FastAPI(
-        title="lmstudio-vampire",
+        title="llm-vampire",
         version=__version__,
-        description="OpenAI-compatible gateway + LAN orchestration for LM Studio.",
+        description="Local LLM aggregation, discovery, and OpenAI-compatible orchestration.",
         lifespan=_lifespan,
     )
 

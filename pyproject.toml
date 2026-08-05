@@ -3,14 +3,14 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lmstudio-vampire"
+name = "llm-vampire"
 version = "0.0.1"
-description = "Private AI compute, offered through LM Studio, wherever the owner allows it."
+description = "Provider-neutral local LLM discovery, aggregation, routing, and orchestration."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE.md" }
 authors = [{ name = "japer-technology" }]
-keywords = ["lmstudio", "llm", "openai", "gateway", "orchestration"]
+keywords = ["llm", "ollama", "llama.cpp", "openai", "gateway", "orchestration"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
@@ -44,7 +44,7 @@ vampire = "vampire.cli:main"
 vampire-desktop = "vampire.desktop.launcher:main"
 
 [project.urls]
-Homepage = "https://github.com/japer-technology/lmstudio-vampire"
+Homepage = "https://github.com/japer-technology/llm-vampire"
 
 [tool.setuptools.packages.find]
 where = ["src"]

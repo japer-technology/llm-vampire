@@ -20,7 +20,7 @@ from vampire.registry import NodeRegistry
 
 
 def _mock_cluster() -> FastAPI:
-    """A small multi-node LM Studio stand-in keyed by request host."""
+    """A small multi-provider stand-in keyed by request host."""
     app = FastAPI()
 
     @app.get("/v1/models")
@@ -61,7 +61,7 @@ def client() -> Iterator[TestClient]:
 def test_node_registration_interrogates_health_and_models(client: TestClient) -> None:
     resp = client.post(
         "/vampire/v1/nodes",
-        json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"},
+        json={"id": "node-a", "base_url": "http://node-a:1234"},
     )
     assert resp.status_code == 200
     assert resp.json() == {"id": "node-a", "status": "registered", "trusted": False}
@@ -73,9 +73,21 @@ def test_node_registration_interrogates_health_and_models(client: TestClient) ->
     assert node["latency_ms"] is not None
 
 
+def test_node_registration_accepts_legacy_lmstudio_url_field(client: TestClient) -> None:
+    response = client.post(
+        "/vampire/v1/nodes",
+        json={"id": "legacy", "lmstudio_base_url": "http://legacy:1234"},
+    )
+
+    assert response.status_code == 200
+    node = client.get("/vampire/v1/nodes/legacy").json()
+    assert node["base_url"] == "http://legacy:1234"
+    assert node["lmstudio_base_url"] == node["base_url"]
+
+
 def test_patch_node_updates_and_refreshes(client: TestClient) -> None:
     client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
     )
 
     resp = client.patch("/vampire/v1/nodes/node-a", json={"tags": ["gpu"], "trusted": True})
@@ -88,7 +100,7 @@ def test_patch_node_updates_and_refreshes(client: TestClient) -> None:
 
 def test_update_preserves_nested_capabilities_type() -> None:
     reg = NodeRegistry()
-    reg.add(Node(id="node-a", lmstudio_base_url="http://node-a:1234"))
+    reg.add(Node(id="node-a", base_url="http://node-a:1234"))
 
     updated = reg.update(
         "node-a",
@@ -106,10 +118,10 @@ def test_update_preserves_nested_capabilities_type() -> None:
 
 def test_registered_nodes_aggregate_openai_and_vampire_models(client: TestClient) -> None:
     client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
     )
     client.post(
-        "/vampire/v1/nodes", json={"id": "node-b", "lmstudio_base_url": "http://node-b:1234"}
+        "/vampire/v1/nodes", json={"id": "node-b", "base_url": "http://node-b:1234"}
     )
 
     openai_models = client.get("/v1/models").json()
@@ -130,7 +142,7 @@ def test_refresh_registered_nodes_coalesces_and_caches(monkeypatch: pytest.Monke
     node_registry.clear()
     cluster.invalidate_refresh_cache()
     for index in range(5):
-        node_registry.add(Node(id=f"n{index}", lmstudio_base_url=f"http://10.0.0.{index}:1234"))
+        node_registry.add(Node(id=f"n{index}", base_url=f"http://10.0.0.{index}:1234"))
 
     probes = 0
 
@@ -187,7 +199,7 @@ def test_discover_rejects_offscope_base_urls(client: TestClient) -> None:
 def test_register_node_rejects_offscope_url(client: TestClient) -> None:
     resp = client.post(
         "/vampire/v1/nodes",
-        json={"id": "evil", "lmstudio_base_url": "http://169.254.169.254/latest/meta-data"},
+        json={"id": "evil", "base_url": "http://169.254.169.254/latest/meta-data"},
     )
 
     assert resp.status_code == 400
@@ -197,17 +209,18 @@ def test_register_node_rejects_offscope_url(client: TestClient) -> None:
 def test_patch_node_rejects_offscope_url(client: TestClient) -> None:
     client.post(
         "/vampire/v1/nodes",
-        json={"id": "node-a", "lmstudio_base_url": "http://127.0.0.1:1234"},
+        json={"id": "node-a", "base_url": "http://127.0.0.1:1234"},
     )
 
     resp = client.patch(
         "/vampire/v1/nodes/node-a",
-        json={"lmstudio_base_url": "http://8.8.8.8:80"},
+        json={"base_url": "http://8.8.8.8:80"},
     )
 
     assert resp.status_code == 400
     node = client.get("/vampire/v1/nodes/node-a").json()
-    assert node["lmstudio_base_url"] == "http://127.0.0.1:1234"
+    assert node["base_url"] == "http://127.0.0.1:1234"
+    assert node["lmstudio_base_url"] == node["base_url"]
 
 
 def test_discover_does_not_register_offline_candidates(
@@ -259,7 +272,7 @@ def test_discover_caps_candidates_and_skips_public_subnets(
     seen: list[str] = []
 
     async def _spy(node: Node, *, timeout_ms: int | None = None) -> Node:
-        seen.append(node.lmstudio_base_url)
+        seen.append(node.base_url)
         return node.model_copy(update={"status": "offline"})
 
     monkeypatch.setattr(cluster, "refresh_node", _spy)
@@ -312,7 +325,7 @@ def test_discover_rejects_malformed_subnet(client: TestClient) -> None:
 def test_refresh_node_does_not_resurrect_deregistered_node(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    node = Node(id="node-z", lmstudio_base_url="http://node-z:1234")
+    node = Node(id="node-z", base_url="http://node-z:1234")
     from vampire.registry import registry
 
     registry.add(node)
@@ -337,7 +350,7 @@ def test_refresh_node_handles_malformed_url_as_offline() -> None:
     from vampire.registry import registry as node_registry
 
     node_registry.clear()
-    node = Node(id="bad", lmstudio_base_url="http://node:notaport")
+    node = Node(id="bad", base_url="http://node:notaport")
 
     refreshed = asyncio.run(cluster.refresh_node(node))
 
@@ -352,12 +365,12 @@ def test_models_endpoints_survive_one_malformed_node(client: TestClient) -> None
     node_registry.clear()
     client.post(
         "/vampire/v1/nodes",
-        json={"id": "good", "lmstudio_base_url": "http://good:1234"},
+        json={"id": "good", "base_url": "http://good:1234"},
     )
 
     bad = client.post(
         "/vampire/v1/nodes",
-        json={"id": "bad", "lmstudio_base_url": "http://node:notaport"},
+        json={"id": "bad", "base_url": "http://node:notaport"},
     )
     assert bad.status_code == 200
     assert bad.json()["status"] == "registered"
@@ -437,7 +450,7 @@ def test_discover_collapses_local_access_aliases_to_loopback(
 
 def test_metrics_include_node_counts_health_and_latency(client: TestClient) -> None:
     client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
     )
 
     metrics = client.get("/vampire/v1/metrics").json()
@@ -451,7 +464,7 @@ def test_metrics_include_node_counts_health_and_latency(client: TestClient) -> N
 
 def test_node_delete_removes_registration_and_unknown_nodes_404(client: TestClient) -> None:
     client.post(
-        "/vampire/v1/nodes", json={"id": "node-a", "lmstudio_base_url": "http://node-a:1234"}
+        "/vampire/v1/nodes", json={"id": "node-a", "base_url": "http://node-a:1234"}
     )
 
     assert client.delete("/vampire/v1/nodes/node-a").json() == {

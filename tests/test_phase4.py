@@ -27,7 +27,7 @@ from vampire.router import MVP_STRATEGIES
 
 
 def _mock_cluster() -> FastAPI:
-    """A small LM Studio stand-in so dashboard-driven calls reach a node."""
+    """A small local LLM stand-in so dashboard-driven calls reach a node."""
     app = FastAPI()
 
     @app.get("/v1/models")
@@ -76,7 +76,7 @@ def test_dashboard_is_served_from_root_as_html(client: TestClient) -> None:
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/html")
     assert "Phase 4 dashboard + playground" in resp.text
-    assert "lmstudio-vampire" in resp.text
+    assert "llm-vampire" in resp.text
 
 
 def test_dashboard_wires_to_every_control_surface(client: TestClient) -> None:
@@ -139,7 +139,7 @@ def test_dashboard_node_then_playground_round_trip(client: TestClient) -> None:
     """Register a node like the UI, then drive the playground prompt path."""
     registered = client.post(
         "/vampire/v1/nodes",
-        json={"id": "home-gpu", "lmstudio_base_url": "http://home-gpu:1234"},
+        json={"id": "home-gpu", "base_url": "http://home-gpu:1234"},
     )
     assert registered.status_code == 200
 

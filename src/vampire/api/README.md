@@ -5,7 +5,7 @@ compatibility-first routes stay separate from Vampire-native control routes.
 
 | Module | Layer | Routes | Purpose |
 | --- | --- | --- | --- |
-| [`openai_compat.py`](openai_compat.py) | Layer 1 | `/v1/*` | LM Studio / OpenAI-compatible surface that existing OpenAI and LM Studio clients can use unchanged. Proxies to the downstream node, supports opt-in virtual-model routing, and adds `X-Vampire-*` response headers |
+| [`openai_compat.py`](openai_compat.py) | Layer 1 | `/v1/*` | Provider-neutral OpenAI-compatible surface. Proxies to downstream nodes, supports opt-in virtual-model routing, and adds `X-Vampire-*` response headers |
 | [`control.py`](control.py) | Layer 2 | `/vampire/v1/*` | Vampire control API: gateway status, node CRUD and interrogation, discovery, route policies, share mode, and metrics. Later-phase routes (fusion, pipelines, jobs, traces) are stubbed |
 | [`_auth.py`](_auth.py) | — | — | Optional bearer-token dependency shared by control routes (constant-time comparison via `hmac.compare_digest`) |
 

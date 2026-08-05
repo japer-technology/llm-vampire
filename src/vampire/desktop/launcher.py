@@ -14,7 +14,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Create the desktop launcher parser."""
     parser = argparse.ArgumentParser(
         prog="vampire-desktop",
-        description="Start LM Studio Vampire and open the browser dashboard.",
+        description="Start LLM Vampire and open the browser dashboard.",
     )
     parser.add_argument("--host", default=None, help="Host to bind (default from settings).")
     parser.add_argument(

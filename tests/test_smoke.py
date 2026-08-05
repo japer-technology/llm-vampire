@@ -21,7 +21,7 @@ from vampire.models import (
 
 def test_app_builds() -> None:
     app = create_app()
-    assert app.title == "lmstudio-vampire"
+    assert app.title == "llm-vampire"
 
 
 def test_status_route() -> None:
@@ -43,7 +43,7 @@ def test_phase4_dashboard_is_served_from_root() -> None:
 
 def test_node_registration_roundtrip() -> None:
     client = TestClient(create_app())
-    node = {"id": "node-test", "lmstudio_base_url": "http://localhost:1234"}
+    node = {"id": "node-test", "base_url": "http://localhost:1234"}
     assert client.post("/vampire/v1/nodes", json=node).status_code == 200
 
     listed = client.get("/vampire/v1/nodes").json()
@@ -53,7 +53,7 @@ def test_node_registration_roundtrip() -> None:
 def test_openai_route_proxies_upstream_error_when_node_unreachable() -> None:
     client = TestClient(create_app())
     resp = client.get("/v1/models")
-    # With no reachable downstream LM Studio node the proxy returns an
+    # With no reachable downstream LLM service the proxy returns an
     # OpenAI-compatible error envelope (DESIGN-API.md §23) rather than crashing.
     assert resp.status_code == 502
     assert resp.json()["error"]["code"] == "upstream_unavailable"
@@ -62,7 +62,7 @@ def test_openai_route_proxies_upstream_error_when_node_unreachable() -> None:
 def test_default_settings_match_phase_zero_ports() -> None:
     settings = Settings()
     assert settings.port == 7777
-    assert settings.lmstudio_base_url == "http://localhost:1234"
+    assert settings.default_base_url == "http://localhost:1234"
     assert settings.log_level == "INFO"
 
 

@@ -1,7 +1,7 @@
-"""In-memory node registry (Phase 2 scaffold).
+"""In-memory local LLM service registry (Phase 2 scaffold).
 
-Holds the set of approved LM Studio nodes. v0 keeps everything in process
-memory; a SQLite (``aiosqlite``) persistence seam is planned per METHOD-A.md.
+v0 keeps everything in process memory; a SQLite (``aiosqlite``) persistence
+seam is planned per METHOD-A.md.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from vampire.models import Node, NodeUpdate, RoutePolicy, ShareStatus, ShareUpda
 
 
 class NodeRegistry:
-    """A minimal in-memory registry of owner-approved LM Studio nodes.
+    """A minimal in-memory registry of owner-approved LLM service nodes.
 
     The registry is intentionally process-local for the Phase 0/1 scaffold. It
     is the seam where Phase 2 can add SQLite persistence without changing the
@@ -32,7 +32,10 @@ class NodeRegistry:
         if node is None:
             return None
 
-        merged = {**node.model_dump(), **patch.model_dump(exclude_unset=True, exclude_none=True)}
+        merged = {
+            **node.model_dump(exclude={"lmstudio_base_url"}),
+            **patch.model_dump(exclude_unset=True, exclude_none=True),
+        }
         updated = Node.model_validate(merged)
         self._nodes[node_id] = updated
         return updated
